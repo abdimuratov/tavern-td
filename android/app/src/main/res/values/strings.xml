@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tavern TD</string>
+    <string name="title_activity_main">Tavern TD</string>
+    <string name="package_name">io.github.abdimuratov.taverntd</string>
+    <string name="custom_url_scheme">io.github.abdimuratov.taverntd</string>
+</resources>

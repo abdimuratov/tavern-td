@@ -1,0 +1,85 @@
+:root {
+  --bg: #12100e;
+  --panel: rgba(28, 24, 20, 0.86);
+  --text: #f1e6d2;
+  --muted: #a8977c;
+  --accent: #e0a64a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+/* Sizes come from visualViewport in JS (--app-w/--app-h); vh units are wrong in iOS standalone apps. */
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#board, #ui {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--app-w, 100%);
+  height: var(--app-h, 100%);
+}
+
+#board canvas { display: block; touch-action: none; }
+
+#ui { pointer-events: none; }
+#ui .interactive { pointer-events: auto; }
+
+.hud {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 8px);
+  left: calc(env(safe-area-inset-left) + 8px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  font-variant-numeric: tabular-nums;
+}
+.hud .muted { color: var(--muted); }
+
+.rotate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--bg);
+  pointer-events: auto;
+  text-align: center;
+  padding: 24px;
+}
+.rotate svg { width: 72px; height: 72px; color: var(--accent); }
+
+.toast {
+  position: absolute;
+  right: calc(env(safe-area-inset-right) + 12px);
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+.toast button {
+  font: inherit;
+  color: var(--bg);
+  background: var(--accent);
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 10px;
+}

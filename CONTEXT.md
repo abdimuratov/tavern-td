@@ -1,0 +1,109 @@
+# Tower Defense Collection
+
+A single-player collection of tower defense games, most recreating a classic Warcraft 3 custom TD, playable on Mac, iPhone and Android.
+
+## Language
+
+### Structure
+
+**Game Mode**:
+A self-contained ruleset, picked from the main menu, that defines how towers are acquired, how creeps path, and how the economy and waves work. A Game Mode either recreates one Classic or is an Original.
+_Avoid_: variant, game type, map
+
+**Classic**:
+The original Warcraft 3 custom map that a Game Mode recreates, e.g. Gem TD or Element TD. A Game Mode that recreates a Classic follows the Classic's own rules, including its randomness and its lack of progression.
+_Avoid_: map, original, inspiration
+
+**Original**:
+A Game Mode designed for this collection rather than recreating a Classic.
+_Avoid_: custom mode, new TD
+
+**Map**:
+The board a Game Mode is played on: the grid, spawns, exits, checkpoints and unbuildable terrain.
+_Avoid_: level, board, arena
+
+**Run**:
+One playthrough of a Game Mode on a Map, from the first Wave to victory or defeat.
+_Avoid_: match, game, session
+
+**Difficulty**:
+The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers.
+_Avoid_: level, challenge
+
+**Record**:
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win.
+_Avoid_: high score, achievement, stats
+
+### Play
+
+**Wave**:
+One group of creeps sent along the path in a single go; a Run is a fixed sequence of Waves.
+_Avoid_: level, round (Classics often say "level 51" when they mean a Wave)
+
+**Block**:
+A placement that would leave creeps no path from spawn to exit. Every Game Mode rejects it.
+_Avoid_: wall-off, seal
+
+**Juggling**:
+Selling and placing towers mid-Wave so creeps keep turning back and walking the maze again. Maul allows it, as Wintermaul did.
+_Avoid_: maze abuse, re-routing
+
+**Race**:
+In Maul, the builder chosen at the start of a Run, which fixes the set of towers you can build.
+_Avoid_: builder, faction, class
+
+### Gem (Gem TD rules)
+
+**Draft**:
+The five random gems placed on the field at the start of each Gem build phase; the player keeps one as a tower.
+_Avoid_: roll, hand, pick
+
+**Rock**:
+A drafted gem that was not kept; it stays on the field as a permanent wall that shapes the maze.
+_Avoid_: stone, wall, blocker
+
+**Recipe**:
+A fixed combination of specific gems that fuses into a special tower, such as Silver or Star Ruby.
+_Avoid_: combo, craft, fusion
+
+### Progression (Original only)
+
+**Campaign**:
+The ordered sequence of Stages that makes up the Original.
+_Avoid_: story, world, adventure
+
+**Stage**:
+One hand-made Map with its own Waves in the Campaign; finishing a Stage unlocks the next.
+_Avoid_: level, mission, map
+
+**Star**:
+A reward of 1–3 for finishing a Stage, spent on permanent upgrades that carry across Runs.
+_Avoid_: point, medal, crown
+
+**Tower Level**:
+How experienced a single tower is within the current Run, from 1 to 10; towers gain XP from kills and lose it when the Run ends. "Level" means only this.
+_Avoid_: rank, veterancy, tier
+
+**Build Spot**:
+A fixed place on a Stage's Map where one tower can stand; the Original has no free placement.
+_Avoid_: plot, pad, slot, tile
+
+**Tower Family**:
+One of the Original's six tower lines (Arrow, Cannon, Frost, Arcane, Poison, Totem), each unlocked by finishing a Stage.
+_Avoid_: tower type, class, line
+
+**Tier**:
+An upgrade step bought with gold during a Run; a tower climbs Tiers 1–3 and then picks one of two Specialisations.
+_Avoid_: upgrade level, rank
+
+**Specialisation**:
+One of two final forms a Tier 3 tower can become, after which it can't be upgraded further.
+_Avoid_: branch, evolution, tier 4
+
+**Talent**:
+A permanent bonus for one Tower Family, bought with Stars and refundable for free at any time.
+_Avoid_: upgrade, perk, research, skill
+
+**Perk**:
+An extra ability a tower gains on reaching Tower Level 5 and again at 10.
+_Avoid_: talent, bonus, trait

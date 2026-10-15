@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-android/
+dev-dist/
+playwright-report/
+test-results/
+.DS_Store
+*.log
+
+# Android build outputs and secrets. The keystore never leaves this Mac.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
+*.jks
