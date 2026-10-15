@@ -7,9 +7,9 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 Planning finished on 2026-10-15. **Now: Phase 0.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
 Phase 0 progress (2026-10-15):
-- Done: the web app shell, the sim ban list, unit and e2e tests (green in Chrome, WebKit and iPhone/Android emulation), the CI workflow, and the Capacitor Android project with `pnpm apk`. Committed locally.
+- Done: the web app shell, the sim ban list, unit and e2e tests (green in Chrome, WebKit and iPhone/Android emulation), and the Capacitor Android project with `pnpm apk`. The repo `abdimuratov/tavern-td` is public, and CI deploys it to https://abdimuratov.github.io/tavern-td/.
 - Blocked: Homebrew and `/usr/bin/git` refuse to run until the Xcode licence is accepted (`sudo xcodebuild -license accept`). That blocks installing JDK 21 and the Android tools. Git works meanwhile with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
-- Left: create the GitHub repo and turn on Pages; build the first APK; check the exit bar on the Mac, the iPhone and the S24.
+- Left: build the first APK; check the exit bar on the Mac, the iPhone and the S24.
 - Pinned TypeScript to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
 - [ ] Phase 0: foundations
