@@ -1,4 +1,4 @@
-import type { Container, Sprite } from 'pixi.js';
+import { Text, type Container, type Sprite } from 'pixi.js';
 import { CELL, type Creep, type GameState, type Projectile, type Tower } from '../sim';
 import { arcGlyph, ATLAS_UNIT, type Atlas } from './atlas';
 import { cellsBox, towerCells } from './footprint';
@@ -19,6 +19,7 @@ export interface EntityLayers {
   ground: Container;
   creepMarks: Container;
   projectiles: Container;
+  labels: Container;
   shadows: Container;
   air: Container;
   barBacks: Container;
@@ -53,8 +54,14 @@ interface TowerView {
   halo: Sprite | null;
   plate: Sprite | null;
   top: Sprite | null;
+  crest: Sprite | null;
   ring: Sprite[];
   pips: Sprite[];
+  /** Its number (a Tower Level) and what it last showed, so the text is redrawn only when it changes. */
+  label: Text | null;
+  labelKey: string;
+  /** World units across its footprint. */
+  span: number;
 }
 
 interface ShotView {
@@ -110,7 +117,9 @@ export class Entities {
     id: 0, spec: '', look: { shape: 'circle', color: 0, size: 0 }, air: false,
     px: 0, py: 0, x: 0, y: 0, size: 0, hp: 1, status: null, body: null, mark: null, shadow: null, barBack: null, barFill: null,
   }));
-  private readonly towerViews = new ObjectPool<TowerView>(() => ({ id: 0, spec: '', halo: null, plate: null, top: null, ring: [], pips: [] }));
+  private readonly towerViews = new ObjectPool<TowerView>(() => ({
+    id: 0, spec: '', halo: null, plate: null, top: null, crest: null, ring: [], pips: [], label: null, labelKey: '', span: 0,
+  }));
   private readonly shotViews = new ObjectPool<ShotView>(() => ({ id: 0, spec: '', px: 0, py: 0, x: 0, y: 0, sprite: null }));
 
   private readonly ground: SpritePool;
@@ -123,6 +132,8 @@ export class Entities {
   private readonly rings: SpritePool;
   private readonly tops: SpritePool;
   private readonly pips: SpritePool;
+  private readonly crests: SpritePool;
+  private readonly labels: Container;
   private readonly marks: SpritePool;
   private readonly projectiles: SpritePool;
 
@@ -137,6 +148,8 @@ export class Entities {
     this.rings = new SpritePool(layers.rings, atlas.glyph('ring'));
     this.tops = new SpritePool(layers.towers, atlas.shape('square'));
     this.pips = new SpritePool(layers.pips, atlas.shape('circle'));
+    this.crests = new SpritePool(layers.pips, atlas.shape('crest'));
+    this.labels = layers.labels;
     this.marks = new SpritePool(layers.creepMarks, atlas.shape('circle'));
     this.projectiles = new SpritePool(layers.projectiles, atlas.glyph('glow'));
   }
@@ -338,6 +351,7 @@ export class Entities {
         v.id = t.id;
         this.dressTower(v, t, state);
       }
+      this.labelTower(v, t, state);
       out[w++] = v;
     }
     while (j < views.length) this.releaseTower(views[j++]!);
@@ -346,11 +360,39 @@ export class Entities {
     this.towers = out;
   }
 
+  /** The tower's number in its plate's top-right corner, redrawn only when it changes. */
+  private labelTower(v: TowerView, t: Tower, state: GameState): void {
+    const label = this.looks.towerLabel(t, state);
+    const key = label ? `${label.text}|${label.color}` : '';
+    if (key === v.labelKey) return;
+    v.labelKey = key;
+    if (!label) {
+      if (v.label) v.label.visible = false;
+      return;
+    }
+    if (!v.label) {
+      v.label = new Text({
+        text: '',
+        resolution: 3,
+        style: { fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '800', fontSize: 26, fill: 0xffffff, stroke: { color: 0x0b0908, width: 6 } },
+      });
+      v.label.anchor.set(0.5);
+      this.labels.addChild(v.label);
+    }
+    v.label.visible = true;
+    v.label.text = label.text;
+    v.label.style.fill = label.color;
+    v.label.position.set(t.x + v.span * 0.33, t.y - v.span * 0.33);
+  }
+
   private dressTower(v: TowerView, t: Tower, state: GameState): void {
     const look: TowerLook = this.looks.tower(t.spec);
     const box = cellsBox(state.map, towerCells(t));
     const span = Math.min(box.w, box.h) * CELL;
     v.spec = t.spec;
+    v.span = span;
+    // A new spec or place: the label is placed again on the next sync.
+    v.labelKey = '-';
     if (look.halo !== undefined) {
       const halo = this.halos.acquire();
       halo.tint = look.halo;
@@ -383,6 +425,13 @@ export class Entities {
     top.scale.set((span * look.size) / ATLAS_UNIT);
     top.position.set(t.x, t.y);
     v.top = top;
+    if (look.crest !== undefined) {
+      const crest = this.crests.acquire();
+      crest.tint = look.crest;
+      crest.scale.set((span * 0.22) / ATLAS_UNIT);
+      crest.position.set(t.x, t.y - span * 0.4);
+      v.crest = crest;
+    }
     const pips = look.pips ?? 0;
     for (let i = 0; i < pips; i++) {
       // A row centred on the plate's lower edge, below any ring.
@@ -398,6 +447,8 @@ export class Entities {
     if (v.halo) this.halos.release(v.halo);
     if (v.plate) this.plates.release(v.plate);
     if (v.top) this.tops.release(v.top);
+    if (v.crest) this.crests.release(v.crest);
+    v.crest = null;
     for (const s of v.ring) this.rings.release(s);
     for (const s of v.pips) this.pips.release(s);
     v.ring.length = 0;
@@ -407,6 +458,12 @@ export class Entities {
 
   private releaseTower(v: TowerView): void {
     this.releaseSprites(v);
+    if (v.label) {
+      this.labels.removeChild(v.label);
+      v.label.destroy();
+    }
+    v.label = null;
+    v.labelKey = '';
     this.towerViews.release(v);
   }
 

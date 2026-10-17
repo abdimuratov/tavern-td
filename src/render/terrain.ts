@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { airRoute, CELL, type GameState, type MapSpec } from '../sim';
+import { airLinePolyline, airRoute, BUILD_SPOT, CELL, routeCount, routePolyline, type GameState, type MapSpec, type Point } from '../sim';
 import { cellsBox } from './footprint';
 import type { TerrainLook } from './look';
 
@@ -31,6 +31,7 @@ export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain 
   const ground = new Graphics();
   drawGround(ground, map, colors);
   if (look.plotRim !== undefined) drawPlotRims(ground, map, look.plotRim);
+  if (look.spotRim !== undefined) drawSpotRims(ground, map, look.spotRim);
   root.addChild(ground);
 
   const grid = new Graphics();
@@ -52,12 +53,13 @@ export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain 
       .stroke({ color, width: 4, alpha: 0.85 });
     labels.push(label(exit ? 'Exit' : String(i + 1), (box.col + box.w / 2) * CELL, (box.row + box.h / 2) * CELL, Math.min(box.w, box.h) * CELL));
   });
-  const [sc, sr] = map.spawn;
-  const sx = (sc + 0.5) * CELL;
-  const sy = (sr + 0.5) * CELL;
-  marks.circle(sx, sy, CELL * 0.42).fill({ color: TERRAIN_COLORS.spawn, alpha: 0.25 });
-  marks.circle(sx, sy, CELL * 0.42).stroke({ color: TERRAIN_COLORS.spawn, width: 5 });
-  marks.circle(sx, sy, CELL * 0.2).stroke({ color: TERRAIN_COLORS.spawn, width: 3, alpha: 0.8 });
+  for (const [sc, sr] of spawnCells(state)) {
+    const sx = (sc + 0.5) * CELL;
+    const sy = (sr + 0.5) * CELL;
+    marks.circle(sx, sy, CELL * 0.42).fill({ color: TERRAIN_COLORS.spawn, alpha: 0.25 });
+    marks.circle(sx, sy, CELL * 0.42).stroke({ color: TERRAIN_COLORS.spawn, width: 5 });
+    marks.circle(sx, sy, CELL * 0.2).stroke({ color: TERRAIN_COLORS.spawn, width: 3, alpha: 0.8 });
+  }
   root.addChild(marks);
   for (const l of labels) root.addChild(l);
 
@@ -112,8 +114,46 @@ function drawPlotRims(g: Graphics, map: MapSpec, color: number): void {
   g.fill({ color, alpha: 0.9 });
 }
 
+/** The Map's spawn, and on a Map with several fixed routes the start of each. */
+function spawnCells(state: GameState): (readonly [number, number])[] {
+  const map = state.map;
+  const cells: (readonly [number, number])[] = [map.spawn];
+  for (let i = 1; i < routeCount(map); i++) {
+    const p = routePolyline(state, i)[0];
+    if (!p) continue;
+    const cell = [Math.max(0, Math.min(map.cols - 1, Math.floor(p.x / CELL))), Math.max(0, Math.min(map.rows - 1, Math.floor(p.y / CELL)))] as const;
+    if (!cells.some(([c, r]) => c === cell[0] && r === cell[1])) cells.push(cell);
+  }
+  return cells;
+}
+
+/** Each fixed route's own air line, or on a mazing Map the straight line through the checkpoints. */
+function airLines(state: GameState): Point[][] {
+  const n = routeCount(state.map);
+  if (n === 0) return [airRoute(state)];
+  const lines: Point[][] = [];
+  for (let i = 0; i < n; i++) {
+    const line = airLinePolyline(state, i);
+    if (line.length >= 2) lines.push(line);
+  }
+  return lines;
+}
+
+/** Each Build Spot as its own pad: an inset edge round its 2 × 2 cells. */
+function drawSpotRims(g: Graphics, map: MapSpec, color: number): void {
+  const INSET = 5;
+  for (const [col, row] of map.buildSpots ?? []) {
+    g.roundRect(col * CELL + INSET, row * CELL + INSET, BUILD_SPOT * CELL - INSET * 2, BUILD_SPOT * CELL - INSET * 2, 10);
+  }
+  g.stroke({ color, width: 5, alpha: 0.9 });
+}
+
 function drawAirLine(g: Graphics, state: GameState): void {
-  const pts = airRoute(state);
+  for (const pts of airLines(state)) dashed(g, pts);
+  g.stroke({ color: TERRAIN_COLORS.air, width: 3, alpha: 0.28, cap: 'round' });
+}
+
+function dashed(g: Graphics, pts: readonly Point[]): void {
   const DASH = 22;
   const GAP = 18;
   for (let i = 1; i < pts.length; i++) {
@@ -128,7 +168,6 @@ function drawAirLine(g: Graphics, state: GameState): void {
       g.moveTo(a.x + (dx * d) / len, a.y + (dy * d) / len).lineTo(a.x + (dx * e) / len, a.y + (dy * e) / len);
     }
   }
-  g.stroke({ color: TERRAIN_COLORS.air, width: 3, alpha: 0.28, cap: 'round' });
 }
 
 function label(text: string, x: number, y: number, span: number): Text {

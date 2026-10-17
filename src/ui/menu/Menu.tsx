@@ -5,9 +5,10 @@ import { loadRecords, type ModeRecord } from '../../platform/storage';
 import { DIFFICULTIES, type Difficulty } from '../../sim';
 import { CATALOG, catalogEntry, DIFFICULTY_NAME, difficultyAbout, type CatalogEntry } from '../catalog';
 import { ago, clock, num } from '../format';
-import type { RecordBoard, RunChoices } from '../mode-ui';
+import type { ConfirmSpec, RecordBoard, RunChoices } from '../mode-ui';
 import { appActions, savedRuns, type CodeCheck, type SavedRunInfo } from '../state';
 import { SettingsPanel } from './Settings';
+import { Sheet } from './Sheet';
 
 /** The New Run choices last picked per Game Mode, so a second Run starts from them. */
 const lastChoices = signal<Readonly<Record<string, RunChoices>>>({});
@@ -21,29 +22,12 @@ function choicesFor(entry: CatalogEntry | undefined): RunChoices {
 type Page =
   | { readonly name: 'main' }
   | { readonly name: 'difficulty'; readonly modeId: string }
+  /** A Game Mode's own page (the Original's Stage select) and its sub-page. */
+  | { readonly name: 'mode'; readonly modeId: string; readonly view: string }
   | { readonly name: 'records' }
   | { readonly name: 'settings' }
   | { readonly name: 'howto'; readonly modeId: string }
   | { readonly name: 'import' };
-
-interface Confirm {
-  readonly title: string;
-  readonly text: string;
-  readonly yes: string;
-  run(): void;
-}
-
-function Sheet({ title, onBack, children, wide }: { title: string; onBack(): void; children: ComponentChildren; wide?: boolean }) {
-  return (
-    <div class={`sheet${wide ? ' wide' : ''}`}>
-      <header>
-        <button type="button" class="btn icon" aria-label="Back" title="Back (Esc)" data-testid="back" onClick={onBack}>‹</button>
-        <h1>{title}</h1>
-      </header>
-      <div class="sheet-body">{children}</div>
-    </div>
-  );
-}
 
 function savedLine(info: SavedRunInfo & { ok: true }): string {
   return [`Wave ${info.wave}`, info.options, DIFFICULTY_NAME[info.difficulty], ago(info.savedAt)].filter(Boolean).join(' · ');
@@ -51,6 +35,7 @@ function savedLine(info: SavedRunInfo & { ok: true }): string {
 
 function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) {
   const saved = savedRuns.value[entry.id];
+  const own = entry.ui?.MenuPage;
   return (
     <section class="mode-card" data-testid={`mode-${entry.id}`}>
       <div class="mode-title">
@@ -68,9 +53,15 @@ function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) 
             <span class="detail">{savedLine(saved)}</span>
           </button>
         )}
-        <button type="button" class={`btn${saved?.ok ? '' : ' primary'}`} data-testid="new-run" onClick={() => go({ name: 'difficulty', modeId: entry.id })}>
-          New Run
-        </button>
+        {own ? (
+          <button type="button" class={`btn${saved?.ok ? '' : ' primary'}`} data-testid="mode-page" onClick={() => go({ name: 'mode', modeId: entry.id, view: '' })}>
+            {own.label}
+          </button>
+        ) : (
+          <button type="button" class={`btn${saved?.ok ? '' : ' primary'}`} data-testid="new-run" onClick={() => go({ name: 'difficulty', modeId: entry.id })}>
+            New Run
+          </button>
+        )}
       </div>
       {saved && !saved.ok && <p class="note">{saved.problem}</p>}
     </section>
@@ -152,7 +143,7 @@ function OptionRow({ label, choices, value, testid, onPick }: {
   );
 }
 
-function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): void; confirm(c: Confirm): void }) {
+function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): void; confirm(c: ConfirmSpec): void }) {
   const entry = catalogEntry(modeId);
   const ui = entry?.ui;
   const choices = choicesFor(entry);
@@ -240,9 +231,10 @@ function RecordsPage({ back }: { back(): void }) {
         <section key={e.id} class="records-mode">
           <h2>
             {e.name} <span class="muted">{e.origin}</span>
-            {!e.ui?.result && <span class="tag soon">Coming later</span>}
+            {!e.ui?.result && !e.ui?.Records && <span class="tag soon">Coming later</span>}
           </h2>
-          {e.ui?.result && !e.ui.recordBoards && <RecordsTable modeId={e.id} />}
+          {e.ui?.Records && <e.ui.Records />}
+          {e.ui?.result && !e.ui.Records && !e.ui.recordBoards && <RecordsTable modeId={e.id} />}
           {e.ui?.result && e.ui.recordBoards?.map((b) => (
             <div key={b.id} class="records-board">
               <h3>{b.name}</h3>
@@ -255,7 +247,7 @@ function RecordsPage({ back }: { back(): void }) {
   );
 }
 
-function ImportPage({ back, confirm }: { back(): void; confirm(c: Confirm): void }) {
+function ImportPage({ back, confirm }: { back(): void; confirm(c: ConfirmSpec): void }) {
   const [code, setCode] = useState('');
   const [check, setCheck] = useState<CodeCheck | null>(null);
   const [busy, setBusy] = useState(false);
@@ -306,7 +298,7 @@ function ImportPage({ back, confirm }: { back(): void; confirm(c: Confirm): void
   );
 }
 
-function ConfirmDialog({ c, close }: { c: Confirm; close(): void }) {
+function ConfirmDialog({ c, close }: { c: ConfirmSpec; close(): void }) {
   return (
     <div class="modal-backdrop" onClick={close}>
       <div class="modal" role="alertdialog" aria-label={c.title} data-testid="confirm" onClick={(e) => e.stopPropagation()}>
@@ -324,21 +316,27 @@ function ConfirmDialog({ c, close }: { c: Confirm; close(): void }) {
 /** The main menu: Game Modes, Continue and New Run, Records, Settings, How to play and Import save code. */
 export function Menu() {
   const [page, setPage] = useState<Page>({ name: 'main' });
-  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const back = (): void => setPage({ name: 'main' });
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return;
       if (confirm) setConfirm(null);
+      else if (page.name === 'mode' && page.view !== '') setPage({ ...page, view: '' });
       else setPage({ name: 'main' });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirm]);
+  }, [confirm, page]);
   let body: ComponentChildren;
   switch (page.name) {
     case 'main': body = <MainPage go={setPage} />; break;
     case 'difficulty': body = <DifficultyPage modeId={page.modeId} back={back} confirm={setConfirm} />; break;
+    case 'mode': {
+      const Own = catalogEntry(page.modeId)?.ui?.MenuPage?.Page;
+      body = Own ? <Own view={page.view} go={(view) => setPage({ ...page, view })} back={back} confirm={setConfirm} /> : null;
+      break;
+    }
     case 'records': body = <RecordsPage back={back} />; break;
     case 'settings': body = <Sheet title="Settings" onBack={back}><SettingsPanel /></Sheet>; break;
     case 'howto': {

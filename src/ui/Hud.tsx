@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import { findTower, getMode, type GameState, type Tower } from '../sim';
 import { upcomingWaves, type UiAction } from './mode-ui';
 import { RunEndCard } from './RunEnd';
@@ -25,11 +25,15 @@ export function press(s: PlaySession, run: () => void) {
   };
 }
 
-/** Binds a hotkey while the component is mounted and `enabled`; the latest `run` is always the one called. */
+/**
+ * Binds a hotkey while the component is mounted and `enabled`; the latest `run`
+ * is always the one called. It binds as the button appears, not a frame later,
+ * so a key pressed the moment a button shows already works.
+ */
 export function useHotkey(s: PlaySession, key: string | undefined, label: string, run: () => void, enabled = true): void {
   const ref = useRef(run);
   ref.current = run;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!key || !enabled) return;
     return s.hotkeys.bind(key, label, () => ref.current());
   }, [s, key, label, enabled]);
@@ -342,8 +346,10 @@ export function BoardOverlay({ s }: { s: PlaySession }) {
   const over = p === 'won' || p === 'lost';
   const h = hint.value ?? (over ? null : s.ui.hint?.(s.view) ?? null);
   const menu = runMenu.value;
+  const Layer = s.ui.Board;
   return (
     <div class="board-overlay">
+      {Layer && !over && <Layer s={s} />}
       {!over && (
         <button
           type="button"

@@ -1,7 +1,7 @@
 import { setAudioSettings } from '../platform/audio';
 import { setHapticsEnabled } from '../platform/native';
 import { loadRun, saveSettings, type Settings } from '../platform/storage';
-import type { Difficulty, GameState } from '../sim';
+import type { Difficulty, GameState, RunOptions } from '../sim';
 import { CATALOG, catalogEntry, type CatalogEntry } from '../ui/catalog';
 import type { RunChoices } from '../ui/mode-ui';
 import { appActions, savedRuns, screen, settings, type CodeCheck, type SavedRunInfo } from '../ui/state';
@@ -26,8 +26,13 @@ export function newSeed(): number {
 }
 
 function targetFor(entry: CatalogEntry, difficulty: Difficulty, choices: RunChoices = {}): PlayTarget {
-  const options = Object.keys(choices).length > 0 ? { options: { ...choices } } : {};
-  return { ui: entry.ui!, runOptions: () => ({ mode: entry.id, seed: newSeed(), difficulty, ...options }) };
+  const ui = entry.ui!;
+  // Settings that come from the mode's own progress (the Original's Talents) are read as each Run starts.
+  const options = (): Pick<RunOptions, 'options'> => {
+    if (ui.runSettings) return { options: ui.runSettings(choices) };
+    return Object.keys(choices).length > 0 ? { options: { ...choices } } : {};
+  };
+  return { ui, runOptions: () => ({ mode: entry.id, seed: newSeed(), difficulty, ...options() }) };
 }
 
 /** The choices a saved Run was started with, so "Play again" keeps them. */
@@ -87,7 +92,10 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
 
   async function showMenu(): Promise<void> {
     stopPlay();
-    await refreshSaves();
+    await Promise.all([
+      refreshSaves(),
+      ...CATALOG.map((e) => e.ui?.loadProgress?.().catch((err: unknown) => console.warn(`[shell] ${e.id} progress`, err))),
+    ]);
     screen.value = 'menu';
   }
 

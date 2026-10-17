@@ -2,7 +2,7 @@ import type { Board } from '../render/board';
 import { boxCentre, cellAtPoint, cellsBox, sameCells, towerCells } from '../render/footprint';
 import type { PointerKind } from '../render/gestures';
 import {
-  CELL, findTower, getMode, placementError, previewRoute, routeCells, routePolyline, towerMods,
+  CELL, findTower, getMode, placementError, previewRoute, routeCells, routeCount, routePolyline, towerMods,
   type GameState, type Point, type SimEvent, type Tower,
 } from '../sim';
 import type { ModeUi, Placement, RunView } from '../ui/mode-ui';
@@ -67,6 +67,8 @@ export function reach(state: GameState, spec: string, tower?: Tower): number {
  */
 export function createInput({ controller, board, ui, view, feedback }: InputDeps) {
   let ghost: Ghost | null = null;
+  /** A ghost the Game Mode asked for (the Original's chosen family on its Build Spot): it stays up while the pointer is elsewhere. */
+  let pinned: { readonly p: Point; readonly kind: PointerKind } | null = null;
   let mouse: Point | null = null;
   let routeVersion = -1;
   let routeShown: readonly number[] | null = null;
@@ -99,12 +101,16 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
   function flushRoute(): void {
     if (!routeWanted) return;
     const s = state();
-    // A fixed route never changes, so it is drawn as the line creeps walk.
-    const line = routePolyline(s);
-    if (line.length >= 2) {
+    // Fixed routes never change, so each is drawn as the line its creeps walk.
+    const lines: Point[][] = [];
+    for (let i = 0; i < routeCount(s.map); i++) {
+      const line = routePolyline(s, i);
+      if (line.length >= 2) lines.push(line);
+    }
+    if (lines.length > 0) {
       routeWanted = null;
       routeShown = [];
-      board.setRoutePath(line, 'current');
+      board.setRoutePaths(lines, 'current');
       return;
     }
     const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null && ghost.placement.route !== false
@@ -125,7 +131,8 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       return;
     }
     const what = ghost.placement.label ?? 'Build here';
-    hint.value = { text: ghost.by === 'mouse' ? what : `${what}: tap again to build`, tone: 'ok' };
+    const again = ghost.by === 'mouse' ? (pinned ? ': click again to build' : '') : ': tap again to build';
+    hint.value = { text: `${what}${again}`, tone: 'ok' };
   }
 
   function flash(text: string, tone: HintTone, ms = FLASH_MS): void {
@@ -169,7 +176,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
         box: cellsBox(s.map, cells),
         valid: next.error === null,
         look: spec ? board.looks.tower(spec) : next.placement.look ?? null,
-        range: spec ? reach(s, spec) : 0,
+        range: next.placement.range ?? (spec ? reach(s, spec) : 0),
       });
       routeVersion = s.pathVersion;
       routeWanted = next.error === null ? 'preview' : 'current';
@@ -185,7 +192,8 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       board.setSelection(null);
     } else {
       const box = cellsBox(s.map, towerCells(t));
-      board.setSelection({ x: t.x, y: t.y, span: Math.min(box.w, box.h) * CELL, range: reach(s, t.spec, t) });
+      const range = ui.towerReach ? ui.towerReach(s, t) : reach(s, t.spec, t);
+      board.setSelection({ x: t.x, y: t.y, span: Math.min(box.w, box.h) * CELL, range });
     }
     revision.value++;
   }
@@ -201,15 +209,22 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     setGhost(null);
   }
 
-  /** The hover ghost: none over a tower (a click there selects it) or off the Map. */
+  /** The ghost the Game Mode pinned, as it stands now. */
+  function pinnedGhost(): Ghost | null {
+    return pinned ? evaluate(pinned.p, pinned.kind) : null;
+  }
+
+  /** The hover ghost: none over a tower (a click there selects it) or off the Map, where a pinned one stays up. */
   function hoverGhost(): void {
     if (!mouse) return;
     const s = state();
     const cell = cellAtPoint(s.map, mouse);
-    setGhost(cell < 0 || towerAt(s, cell) ? null : evaluate(mouse, 'mouse'));
+    const g = cell < 0 || towerAt(s, cell) ? null : evaluate(mouse, 'mouse');
+    setGhost(g ?? pinnedGhost());
   }
 
   function cancel(): void {
+    pinned = null;
     setGhost(null);
     select(0);
     ui.cancel?.(view);
@@ -236,6 +251,10 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
         select(tower.id);
         return;
       }
+      if (ui.tapGround?.(view, p, kind)) {
+        revision.value++;
+        return;
+      }
       if (kind === 'mouse') {
         const g = evaluate(p, 'mouse');
         select(0);
@@ -256,10 +275,20 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     hover(p: Point | null): void {
       mouse = p;
       if (!p) {
-        if (ghost?.by === 'mouse') setGhost(null);
+        if (ghost?.by === 'mouse') setGhost(pinnedGhost());
         return;
       }
       hoverGhost();
+    },
+    /** The Game Mode's own ghost at `p` (see RunView.showGhost); null takes it down. */
+    pin(p: Point | null, kind: PointerKind = 'touch'): void {
+      pinned = p ? { p, kind } : null;
+      if (!p) {
+        setGhost(null);
+        if (mouse) hoverGhost();
+        return;
+      }
+      setGhost(evaluate(p, kind));
     },
     secondary(): void {
       cancel();
@@ -302,6 +331,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     /** A new Run: nothing selected, no ghost, the new Map's route. */
     reset(): void {
       ghost = null;
+      pinned = null;
       board.setGhost(null);
       selected.value = 0;
       board.setSelection(null);

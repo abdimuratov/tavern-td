@@ -42,7 +42,7 @@ export interface Play {
   readonly controller: RunController;
   /** Client (CSS pixel) position of a world point, for tests and debugging. */
   worldToClient(x: number, y: number): { x: number; y: number };
-  /** Resolves once the latest autosave (or clearing it) has been written. */
+  /** Resolves once the latest autosave (or clearing it), and the mode's record of a finished Run, have been written. */
   flush(): Promise<unknown>;
   setShowGrid(show: boolean): void;
   stop(): void;
@@ -72,6 +72,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
   board.setShowGrid(opts.showGrid ?? true);
 
   let lastWrite: Promise<unknown> = Promise.resolve();
+  /** The mode folding the last finished Run into its own progress, such as the Original's Campaign. */
+  let finishing: Promise<unknown> = Promise.resolve();
   const controller = createRunController({
     runOptions: target.runOptions,
     ...(opts.initial ? { initial: opts.initial } : {}),
@@ -88,6 +90,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     refresh: () => input?.refresh(),
     select: (id) => input?.select(id),
     say: (text, tone = 'info', ms) => input?.flash(text, tone, ms),
+    showGhost: (p, kind) => input?.pin(p, kind),
+    toScreen: (p) => board.worldToClient(p),
   };
   const feedback = createFeedback({ play, haptic }, () => board.looks, () => ui);
   input = createInput({ controller, board, ui, view, feedback });
@@ -136,6 +140,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
       update: null,
     };
     runEnd.value = end;
+    if (ui.finish) finishing = ui.finish(s).catch((err: unknown) => console.error('[play] could not record the Run', err));
     if (!result) return;
     void recordResult(s.modeId, s.difficulty, result, ui.recordBoard?.(choices)).then((update) => {
       if (runEnd.value === end) runEnd.value = { ...end, update };
@@ -282,7 +287,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
   return {
     controller,
     worldToClient: (x, y) => board.worldToClient({ x, y }),
-    flush: () => lastWrite,
+    flush: () => Promise.all([lastWrite, finishing]),
     setShowGrid: (show) => board.setShowGrid(show),
     stop,
   };

@@ -178,6 +178,31 @@ const SHAPE_DRAW: Readonly<Record<Shape, Draw>> = {
     g.strokeStyle = 'rgba(10, 8, 6, 0.4)';
     g.stroke();
   },
+  drop: (g) => {
+    // Round below, coming to a point at the top.
+    g.beginPath();
+    g.moveTo(0, -R);
+    g.bezierCurveTo(R * 0.34, -R * 0.52, R * 0.86, -R * 0.02, R * 0.86, R * 0.3);
+    g.arc(0, R * 0.3, R * 0.86, 0, Math.PI);
+    g.bezierCurveTo(-R * 0.86, -R * 0.02, -R * 0.34, -R * 0.52, 0, -R);
+    g.closePath();
+    solid(g);
+  },
+  pillar: (g) => {
+    // A carved post: a cap, a body with two notches, and a foot.
+    path(g, [
+      [-R * 0.62, -R], [R * 0.62, -R], [R * 0.62, -R * 0.62], [R * 0.4, -R * 0.62], [R * 0.4, -R * 0.12], [R * 0.56, -R * 0.12],
+      [R * 0.56, R * 0.12], [R * 0.4, R * 0.12], [R * 0.4, R * 0.7], [R * 0.7, R * 0.7], [R * 0.7, R], [-R * 0.7, R], [-R * 0.7, R * 0.7],
+      [-R * 0.4, R * 0.7], [-R * 0.4, R * 0.12], [-R * 0.56, R * 0.12], [-R * 0.56, -R * 0.12], [-R * 0.4, -R * 0.12],
+      [-R * 0.4, -R * 0.62], [-R * 0.62, -R * 0.62],
+    ]);
+    solid(g, 6);
+  },
+  crest: (g) => {
+    // A pennant: square shoulders and a swallowtail.
+    path(g, [[-R * 0.8, -R * 0.9], [R * 0.8, -R * 0.9], [R * 0.8, R * 0.95], [0, R * 0.45], [-R * 0.8, R * 0.95]]);
+    solid(g, 6);
+  },
   chevron: (g) => {
     // Points along +x, so a sprite's rotation is its heading.
     // Longer than it is wide, so the heading reads at a glance.

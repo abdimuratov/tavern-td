@@ -2,9 +2,10 @@ import type { ComponentType } from 'preact';
 import type { HapticKind } from '../platform/native';
 import type { SoundName } from '../platform/audio';
 import type { RunResult } from '../platform/storage';
+import type { PointerKind } from '../render/gestures';
 import type { ModeLook, TowerLook } from '../render/look';
-import { getMode, type Command, type Difficulty, type GameState, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
-import type { Hint, HintTone, PlaySession } from './state';
+import { getMode, type Command, type Difficulty, type GameState, type Json, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
+import type { Hint, HintTone, PlaySession, RunEnd } from './state';
 
 /** What a Game Mode's UI sees of the Run it is attached to. */
 export interface RunView {
@@ -18,6 +19,15 @@ export interface RunView {
   select(id: number): void;
   /** A short message over the board for a moment (`ms`, about 2 s by default), such as "Recipe ready". */
   say(text: string, tone?: HintTone, ms?: number): void;
+  /**
+   * Shows the ghost the mode's placement gives at world point `p`, as a tap
+   * there would, and keeps it up while the pointer is elsewhere; null takes it
+   * down. `kind` is the pointer that asked, for the hint's words. The play
+   * screen always has it; a test's view may leave it out.
+   */
+  showGhost?(p: Point | null, kind?: PointerKind): void;
+  /** Where a world point is on the page, in CSS pixels, for the mode's own layer over the board. */
+  toScreen?(p: Point): Point;
 }
 
 /** What a ghost looks like when there's no tower spec to take it from. */
@@ -41,6 +51,8 @@ export interface Placement {
   readonly route?: boolean;
   /** The ghost's look when `spec` is absent. */
   readonly look?: GhostLook;
+  /** The circle the ghost shows, when it isn't the spec's attack range (an Original Totem's aura). */
+  readonly range?: number;
   /**
    * On touch, a second tap this many CSS pixels from the ghost's centre still
    * builds it, however far the board is zoomed out. Without it the tap must
@@ -108,6 +120,24 @@ export interface RunOptionSpec {
 /** A Run's choices by RunOptionSpec id. */
 export type RunChoices = Readonly<Record<string, string>>;
 
+/** A question the main menu asks before something it can't undo, such as replacing a saved Run. */
+export interface ConfirmSpec {
+  readonly title: string;
+  readonly text: string;
+  readonly yes: string;
+  run(): void;
+}
+
+/** What a Game Mode's own main-menu page gets, such as the Original's Stage select. */
+export interface MenuPageProps {
+  /** Its sub-page, '' for its first; Esc and Back step from a sub-page to the first. */
+  readonly view: string;
+  go(view: string): void;
+  /** Back to the main menu. */
+  back(): void;
+  confirm(c: ConfirmSpec): void;
+}
+
 /** Records kept apart within one Game Mode and Difficulty, because their results don't compare (Element's Full and Express). */
 export interface RecordBoard {
   readonly id: string;
@@ -147,6 +177,19 @@ export interface ModeUi {
   difficultyAbout?(difficulty: Difficulty): string;
   /** Choices a New Run asks for besides Difficulty, in order. */
   readonly runOptions?: readonly RunOptionSpec[];
+  /**
+   * The Run settings the rules take, when they aren't the choices as they
+   * stand, such as the Original's Stage number with the Campaign's Talents.
+   * Called as each Run starts, Play again included.
+   */
+  runSettings?(choices: RunChoices): { readonly [key: string]: Json };
+  /** Reads the mode's own progress from storage; the main menu waits for it before it shows. */
+  loadProgress?(): Promise<void>;
+  /**
+   * Replaces New Run and its Difficulty page with the mode's own main-menu
+   * page, such as the Original's Stage select; the mode card's button says `label`.
+   */
+  readonly MenuPage?: { readonly label: string; readonly Page: ComponentType<MenuPageProps> };
   /** The choices a Run was started with, so Continue's "Play again" keeps them. */
   optionsOf?(state: GameState): RunChoices;
   /** The choices in a few words, such as "Express · All Random", for Continue and the end card. */
@@ -157,6 +200,15 @@ export interface ModeUi {
   recordBoard?(choices: RunChoices): string;
   /** The end card's words; the core's defaults otherwise. */
   endText?(state: GameState): EndText;
+  /**
+   * Called once when a Run ends, to fold it into the mode's own progress, such
+   * as the Original's Campaign. The end card's `End` shows what it changed.
+   */
+  finish?(state: GameState): Promise<void>;
+  /** Replaces the end card's results, such as the Original's Stars and unlocks. */
+  readonly End?: ComponentType<ModeEndProps>;
+  /** The mode's own Records, in place of the table by Difficulty. */
+  readonly Records?: ComponentType;
   /** Re-read marks at least every this many ticks, for marks that change without an event (a build finishing). */
   readonly marksEvery?: number;
   /** What the pointer at world point `p` would build, or null when nothing can be built there now. */
@@ -177,6 +229,14 @@ export interface ModeUi {
   onEvents?(view: RunView, events: readonly SimEvent[]): void;
   /** A tap on a structure while the mode waits for a second pick (Gem's swap). True when the mode used it. */
   tapTower?(view: RunView, tower: Tower): boolean;
+  /**
+   * A tap or click on the board where no structure stands, before any ghost is
+   * evaluated. True when the mode used it, such as the Original opening its
+   * build ring on a Build Spot.
+   */
+  tapGround?(view: RunView, p: Point, kind: PointerKind): boolean;
+  /** The circle a selected structure shows, when it isn't the spec's attack range (Levels, Talents, Totem auras). */
+  towerReach?(state: GameState, tower: Tower): number;
   /** True while the mode waits for a second pick, so Esc cancels that instead of opening the menu. */
   pending?(view: RunView): boolean;
   /** Marks on structures, re-read after every tick that changed a structure or the mode's state. */
@@ -197,6 +257,13 @@ export interface ModeUi {
   readonly Footer?: ComponentType<ModeHudProps>;
   /** The mode's one-screen how-to-play. */
   readonly HowTo?: ComponentType;
+  /** The mode's own layer over the board, such as the Original's build ring. */
+  readonly Board?: ComponentType<ModeHudProps>;
+}
+
+export interface ModeEndProps {
+  readonly s: PlaySession;
+  readonly end: RunEnd;
 }
 
 export interface ModeHudProps {

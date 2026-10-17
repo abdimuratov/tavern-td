@@ -19,35 +19,43 @@ function Best({ on }: { on: boolean | undefined }) {
   return on ? <span class="best">New best</span> : null;
 }
 
-/** Won or lost, how far, the score and the time, with "New best" on each Record this Run beat. */
-export function RunEndCard({ s, end }: { s: PlaySession; end: RunEnd }) {
+/** How far, the score and the time, with "New best" on each Record this Run beat. */
+function Results({ end }: { end: RunEnd }) {
   const imp = end.update?.improved;
+  return (
+    <dl class="results">
+      <div>
+        <dt>Wave reached</dt>
+        <dd data-testid="end-wave">{end.wave}<Best on={imp?.bestWave} /></dd>
+      </div>
+      {end.score !== null && (
+        <div>
+          <dt>Score</dt>
+          <dd data-testid="end-score">{num(end.score)}<Best on={imp?.bestScore} /></dd>
+        </div>
+      )}
+      {end.won && end.seconds !== null && (
+        <div>
+          <dt>Time</dt>
+          <dd>{clock(end.seconds)}<Best on={imp?.fastestWin} /></dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+/** Won or lost and the results, or the Game Mode's own (the Original's Stars), with Play again and Menu. */
+export function RunEndCard({ s, end }: { s: PlaySession; end: RunEnd }) {
+  const End = s.ui.End;
   return (
     <div class="run-over interactive" data-testid="run-over">
       <div class="card">
         <h1>{end.won ? 'Victory' : 'Defeat'}</h1>
         <p class="muted" data-testid="end-summary">{end.summary}</p>
-        <dl class="results">
-          <div>
-            <dt>Wave reached</dt>
-            <dd data-testid="end-wave">{end.wave}<Best on={imp?.bestWave} /></dd>
-          </div>
-          {end.score !== null && (
-            <div>
-              <dt>Score</dt>
-              <dd data-testid="end-score">{num(end.score)}<Best on={imp?.bestScore} /></dd>
-            </div>
-          )}
-          {end.won && end.seconds !== null && (
-            <div>
-              <dt>Time</dt>
-              <dd>{clock(end.seconds)}<Best on={imp?.fastestWin} /></dd>
-            </div>
-          )}
-        </dl>
+        {End ? <End s={s} end={end} /> : <Results end={end} />}
         <div class="buttons">
           <button type="button" class="btn primary" data-testid="play-again" onClick={press(s, s.restart)}>
-            Play again · {end.options ? `${end.options} · ` : ''}{DIFFICULTY_NAME[end.difficulty]}
+            {end.won ? 'Play again' : 'Retry'} · {end.options ? `${end.options} · ` : ''}{DIFFICULTY_NAME[end.difficulty]}
           </button>
           <button type="button" class="btn" data-testid="end-menu" onClick={press(s, s.quit)}>Menu</button>
         </div>

@@ -99,31 +99,38 @@ export class Overlay {
     g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
   }
 
-  /** A fixed route through world points: the same line and arrowheads, spaced by distance along it. */
-  setRoutePath(points: readonly Point[], style: RouteStyle): void {
+  /** Fixed routes through world points: the same line and arrowheads, spaced by distance along each. */
+  setRoutePaths(lines: readonly (readonly Point[])[], style: RouteStyle): void {
     const g = this.route;
     g.clear();
-    if (points.length < 2) return;
     const { color, alpha, width } = ROUTE[style];
-    g.moveTo(points[0]!.x, points[0]!.y);
-    for (let i = 1; i < points.length; i++) g.lineTo(points[i]!.x, points[i]!.y);
+    let drawn = false;
+    for (const points of lines) {
+      if (points.length < 2) continue;
+      g.moveTo(points[0]!.x, points[0]!.y);
+      for (let i = 1; i < points.length; i++) g.lineTo(points[i]!.x, points[i]!.y);
+      drawn = true;
+    }
+    if (!drawn) return;
     g.stroke({ color, alpha, width, cap: 'round', join: 'round' });
     const s = width * 1.5;
-    let next = ARROW_SPACING / 2;
-    let walked = 0;
-    for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1]!;
-      const b = points[i]!;
-      const len = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
-      if (len === 0) continue;
-      const ux = (b.x - a.x) / len;
-      const uy = (b.y - a.y) / len;
-      for (; next <= walked + len; next += ARROW_SPACING) {
-        const ax = a.x + ux * (next - walked);
-        const ay = a.y + uy * (next - walked);
-        g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+    for (const points of lines) {
+      let next = ARROW_SPACING / 2;
+      let walked = 0;
+      for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1]!;
+        const b = points[i]!;
+        const len = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+        if (len === 0) continue;
+        const ux = (b.x - a.x) / len;
+        const uy = (b.y - a.y) / len;
+        for (; next <= walked + len; next += ARROW_SPACING) {
+          const ax = a.x + ux * (next - walked);
+          const ay = a.y + uy * (next - walked);
+          g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+        }
+        walked += len;
       }
-      walked += len;
     }
     g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
   }

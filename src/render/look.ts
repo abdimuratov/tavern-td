@@ -1,5 +1,5 @@
 import type { ShootVariant } from '../platform/audio';
-import { fnv1a, type Creep, type CreepSpec, type GameModeRules, type GameState, type SimEvent, type TowerSpec } from '../sim';
+import { fnv1a, type Creep, type CreepSpec, type GameModeRules, type GameState, type SimEvent, type Tower, type TowerSpec } from '../sim';
 
 /** Shapes drawn into the atlas at boot. Each is white with a dark outline, so a tint colours it. */
 export type Shape =
@@ -10,12 +10,18 @@ export type Shape =
   /** A flat engraved tile, for structures creeps walk over. */
   | 'tile'
   /** A twelve-point burst, for one-of-a-kind towers. */
-  | 'burst';
+  | 'burst'
+  /** A drop of venom, point up. */
+  | 'drop'
+  /** A carved post seen side-on, for totems. */
+  | 'pillar'
+  /** A small pennant-shaped badge, for a Specialisation's crest. */
+  | 'crest';
 
 export const SHAPES: readonly Shape[] = [
   'circle', 'square', 'diamond', 'triangle', 'pentagon', 'hexagon', 'octagon',
   'star', 'cross', 'gem', 'rock', 'chevron',
-  'cut3', 'cut4', 'cut5', 'cut6', 'cut8', 'tile', 'burst',
+  'cut3', 'cut4', 'cut5', 'cut6', 'cut8', 'tile', 'burst', 'drop', 'pillar', 'crest',
 ];
 
 export interface TowerLook {
@@ -40,6 +46,16 @@ export interface TowerLook {
   readonly pips?: number;
   /** Radius of the ring its hits splash, in world units, when its effects don't say. */
   readonly splash?: number;
+  /** A crest of this colour on the plate's top edge, such as an Original Specialisation's. */
+  readonly crest?: number;
+  /** Its instant attack hits everything in range, so it shows as a ring out to its range instead of a beam. */
+  readonly nova?: boolean;
+}
+
+/** A small number on a tower, such as its Tower Level. */
+export interface TowerLabel {
+  readonly text: string;
+  readonly color: number;
 }
 
 export interface CreepLook {
@@ -75,9 +91,12 @@ export interface BoardExtra {
 
 /** A short effect for a Game Mode's own event, such as a pulse ring. */
 export interface EffectCue {
-  readonly kind: 'ring' | 'flash' | 'burst';
+  /** A beam runs from (x, y) to (x2, y2), such as a bolt jumping between creeps. */
+  readonly kind: 'ring' | 'flash' | 'burst' | 'beam';
   readonly x: number;
   readonly y: number;
+  readonly x2?: number;
+  readonly y2?: number;
   readonly color: number;
   /** World units: a ring's radius, a flash's or burst's size. */
   readonly size: number;
@@ -95,6 +114,8 @@ export interface TerrainLook {
   readonly gridLine?: number;
   /** A lighter edge where buildable ground meets anything else, so plots read as raised. */
   readonly plotRim?: number;
+  /** An edge of this colour round each of the Map's Build Spots, so two side by side read as two. */
+  readonly spotRim?: number;
   /** False hides the dashed air line, for Maps no creep flies over. */
   readonly airLine?: boolean;
 }
@@ -113,7 +134,10 @@ export interface ModeLook {
   extras?(state: GameState): readonly BoardExtra[];
   /** Effects for the Game Mode's own events. */
   effects?(event: Extract<SimEvent, { type: 'mode' }>, state: GameState): readonly EffectCue[] | null;
-  readonly terrain?: TerrainLook;
+  /** A number on a tower, re-read after every tick, such as its Tower Level; null for none. */
+  towerLabel?(tower: Tower, state: GameState): TowerLabel | null;
+  /** The ground's colours, or a function of the Run for Maps whose palette varies, such as the Original's Regions. */
+  readonly terrain?: TerrainLook | ((state: GameState) => TerrainLook);
 }
 
 /** Saturated enough to read on the dark ground, distinct from the red ghost and the route line. */
@@ -181,7 +205,8 @@ export interface LookCache {
   creepStatus(c: Creep): CreepStatusLook | null;
   extras(state: GameState): readonly BoardExtra[];
   effects(event: Extract<SimEvent, { type: 'mode' }>, state: GameState): readonly EffectCue[] | null;
-  readonly terrain: TerrainLook;
+  towerLabel(tower: Tower, state: GameState): TowerLabel | null;
+  terrain(state: GameState): TerrainLook;
 }
 
 export function createLookCache(rules: GameModeRules, look: Partial<ModeLook> = {}): LookCache {
@@ -211,6 +236,10 @@ export function createLookCache(rules: GameModeRules, look: Partial<ModeLook> = 
     creepStatus: look.creepStatus ?? defaultCreepStatus,
     extras: look.extras ?? (() => NO_EXTRAS),
     effects: look.effects ?? (() => null),
-    terrain: look.terrain ?? {},
+    towerLabel: look.towerLabel ?? (() => null),
+    terrain: (state) => {
+      const t = look.terrain;
+      return typeof t === 'function' ? t(state) : t ?? {};
+    },
   };
 }
