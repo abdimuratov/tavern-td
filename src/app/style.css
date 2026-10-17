@@ -510,6 +510,11 @@ textarea.code[readonly] { font-size: 12px; }
   background: linear-gradient(135deg, #f0c8ff, #a86bff 45%, #46e2ea);
   clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
 }
+/* The Original: a war-map pin, ember red. */
+.mode-icon.original {
+  background: radial-gradient(circle at 50% 38%, #fff3dc 0 14%, transparent 15%), linear-gradient(160deg, #e2563f, #8e1e16);
+  clip-path: polygon(50% 100%, 18% 58%, 12% 38%, 20% 16%, 38% 3%, 62% 3%, 80% 16%, 88% 38%, 82% 58%);
+}
 /* Element: a hexagon of its six colours, in the cycle's order. */
 .mode-icon.element {
   background: conic-gradient(from 0deg, #3d9bff 0 60deg, #ff5a2a 60deg 120deg, #48cc4a 120deg 180deg, #c08a52 180deg 240deg, #ffd23f 240deg 300deg, #a463ff 300deg 360deg);
@@ -839,4 +844,245 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .menu-cols { grid-template-columns: 1fr 168px; }
   .ec-grid { grid-template-columns: repeat(4, 1fr); }
   .btn.ec-option { font-size: 11px; padding: 3px 6px; }
+}
+
+/* ---------- Original ---------- */
+/* A family's shape in its colour, as its towers wear it on the board. */
+.or-family { display: inline-block; flex: none; width: 14px; height: 14px; vertical-align: -2px; }
+.or-family.arrow { clip-path: polygon(50% 4%, 96% 92%, 4% 92%); }
+.or-family.cannon { border-radius: 50%; }
+.or-family.frost { clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0 50%); }
+.or-family.arcane { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.or-family.poison { border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; clip-path: polygon(50% 0, 82% 40%, 100% 66%, 92% 88%, 70% 100%, 30% 100%, 8% 88%, 0 66%, 18% 40%); }
+.or-family.totem { clip-path: polygon(18% 0, 82% 0, 82% 20%, 70% 20%, 70% 80%, 88% 80%, 88% 100%, 12% 100%, 12% 80%, 30% 80%, 30% 20%, 18% 20%); }
+.or-stars { display: inline-flex; gap: 1px; letter-spacing: 0; color: #5a4c3a; font-size: 14px; line-height: 1; }
+.or-stars .on { color: #f2c14e; text-shadow: 0 0 6px rgba(242, 193, 78, 0.35); }
+.or-star-count { display: inline-flex; align-items: center; gap: 3px; font-weight: 750; }
+.or-star-count .star { color: #f2c14e; }
+
+/* The HUD. */
+.or-status .or-stage { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.or-status .or-threat { flex: none; padding: 0 5px; border-radius: 4px; background: #3a2018; color: #ffb8a0; font-size: 11px; font-weight: 750; }
+.or-run-stars { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.btn.or-send { flex-direction: column; gap: 0; line-height: 1.1; position: relative; }
+.btn.or-send .early { font-weight: 800; }
+.btn.or-send .detail { font-size: 11px; font-weight: 600; }
+.btn.or-send .key { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+
+.or-tower { display: grid; gap: 5px; min-width: 0; }
+.or-kind { display: flex; align-items: center; gap: 6px; margin-top: -2px; font-size: 11.5px; color: var(--muted); }
+.or-kind .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.or-kind .or-level { margin-left: auto; flex: none; padding: 1px 6px; border-radius: 4px; background: var(--button); color: var(--text); font-weight: 800; }
+.or-kind .or-level.gold { background: #6b5320; color: #ffe08a; }
+.or-crest { padding: 0 5px; border-radius: 3px; background: #6b5320; color: #ffe08a; font-size: 9.5px; font-weight: 800; text-transform: uppercase; }
+.or-xp { position: relative; height: 15px; border-radius: 4px; overflow: hidden; background: var(--button); }
+.or-xp .bar { position: absolute; inset: 0 auto 0 0; background: #6b5630; }
+.or-xp .text { position: relative; display: block; font-size: 10px; line-height: 15px; text-align: center; font-weight: 650; }
+.or-upgrades { display: grid; gap: 4px; }
+.or-targeting { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.or-targeting .seg { gap: 3px; }
+.or-targeting .seg .btn { min-height: 36px; font-size: 10.5px; }
+.or-targeting .key { margin-left: 2px; }
+.btn.or-sell { position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 22px 0 9px; font-size: 12px; font-weight: 650; }
+.or-sell .detail { font-weight: 500; }
+.or-sell .key { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.panel dl.or-stats { margin: 0; grid-template-columns: 1fr 1fr; }
+.or-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 11px; line-height: 1.3; color: var(--muted); }
+.or-perks .lv { display: inline-block; min-width: 30px; padding: 0 3px; border-radius: 3px; background: var(--button); font-size: 9.5px; font-weight: 800; text-align: center; }
+.or-perks li.held { color: var(--text); }
+.or-perks li.held .lv { background: #6b5320; color: #ffe08a; }
+
+/* The build ring: buttons round the Spot, which stays clear in the middle. */
+/* Its box spans the ring, centred on the Spot by a transform; only the buttons take taps. */
+.build-ring {
+  --r: 64px;
+  position: absolute;
+  left: calc(var(--r) * -1 - 27px);
+  top: calc(var(--r) * -1 - 27px);
+  width: calc(var(--r) * 2 + 54px);
+  height: calc(var(--r) * 2 + 54px);
+  z-index: 2;
+  pointer-events: none;
+}
+.btn.ring-btn {
+  position: absolute;
+  left: calc(50% + var(--dx) * var(--r) - 27px);
+  top: calc(50% + var(--dy) * var(--r) - 27px);
+  width: 54px;
+  height: 54px;
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 50%;
+  background: rgba(26, 22, 18, 0.94);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  font-size: 9.5px;
+  line-height: 1.05;
+}
+.btn.ring-btn.active { background: var(--accent); }
+.btn.ring-btn.dim { opacity: 1; color: var(--muted); }
+.ring-btn .label { font-weight: 750; }
+/* The Spot the ring is open on. */
+.build-ring .ring-spot {
+  position: absolute;
+  left: calc(50% + var(--ox, 0px) - var(--spot) / 2);
+  top: calc(50% + var(--oy, 0px) - var(--spot) / 2);
+  width: var(--spot);
+  height: var(--spot);
+  border: 2px dashed #f2c14e;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.ring-btn .detail { display: inline-flex; align-items: center; font-size: 9.5px; color: var(--muted); }
+.ring-btn.active .detail { color: #3b2a12; }
+.ring-btn .coin { width: 8px; height: 8px; margin-right: 1px; }
+.ring-btn .key { position: absolute; top: -4px; right: -4px; }
+.ring-btn .or-family { width: 13px; height: 13px; }
+
+/* The end card. */
+.or-end { display: grid; justify-items: center; gap: 6px; }
+.or-end > .or-stars { font-size: 34px; gap: 4px; }
+.or-end .results { width: 100%; margin-bottom: 6px; }
+.or-opened { margin: 0 0 10px !important; color: var(--ok) !important; font-weight: 650; font-size: 13px; }
+
+/* Stage select: the war map spread on the last tavern's table. */
+.sheet.wide:has(.or-campaign) { max-width: 1040px; }
+.or-campaign {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr);
+  gap: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(92deg, #3b2818 0 18px, #33221500 18px 19px, #36251a 19px 41px), #36251a;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+}
+.war-map {
+  position: relative;
+  min-height: 300px;
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #d9c39a, #b89a6a 75%, #8f7346);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 28px rgba(80, 50, 20, 0.55);
+  transform: rotate(-0.6deg);
+}
+.region-band { position: relative; height: 33.34%; border-bottom: 1px dashed rgba(70, 45, 20, 0.45); }
+.region-band:last-of-type { border-bottom: 0; }
+.region-band.ashfield { background: linear-gradient(180deg, rgba(150, 70, 40, 0.1), rgba(150, 70, 40, 0.22)); }
+.region-band.blightfen { background: linear-gradient(180deg, rgba(70, 110, 50, 0.14), rgba(90, 60, 110, 0.18)); }
+.region-band.rift { background: linear-gradient(180deg, rgba(40, 20, 20, 0.35), rgba(160, 50, 30, 0.16)); }
+.region-name {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  font: italic 700 13px/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(60, 36, 16, 0.72);
+}
+.war-map .road { position: absolute; inset: 0; width: 100%; height: 100%; }
+.war-map .road polyline { fill: none; stroke: rgba(90, 50, 25, 0.6); stroke-width: 0.7; stroke-dasharray: 1.6 1.1; vector-effect: non-scaling-stroke; stroke-width: 2.5px; }
+.pin-later { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px dashed rgba(90, 50, 25, 0.55); }
+.war-map .pin {
+  position: absolute;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+.war-map .pin .num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: #a8281e;
+  border: 2px solid #f1e6d2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  color: #fff3dc;
+  font-weight: 800;
+  font-size: 13px;
+}
+.war-map .pin .num b { transform: rotate(45deg); }
+.war-map .pin.locked .num { background: #6d5f4d; border-color: #b3a488; color: #e0d4bc; }
+.war-map .pin.won .num { background: #7a5a1e; }
+.war-map .pin.picked .num { outline: 3px solid #f2c14e; outline-offset: 2px; }
+.war-map .pin .or-stars { font-size: 10px; padding: 0 3px; border-radius: 4px; background: rgba(40, 26, 14, 0.75); }
+.war-map .pin:focus-visible { outline: none; }
+.war-map .pin:focus-visible .num { outline: 3px solid var(--accent); }
+
+.stage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+}
+.stage-card .region-intro h3 { margin: 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.stage-card .region-intro p { margin: 2px 0 0; font-size: 12px; font-style: italic; color: var(--muted); }
+.stage-card h2 { margin: 2px 0 0; font-size: 18px; }
+.stage-card .stage-line { margin: 0; font-size: 13px; }
+.stage-record { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.stage-record .or-stars { font-size: 17px; }
+.difficulties.compact { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.difficulties.compact .btn.difficulty { min-height: 50px; padding: 5px 10px; }
+.difficulties.compact .difficulty .name { font-size: 14px; }
+.difficulties.compact .difficulty .about { font-size: 11px; }
+.locked-note { margin: 4px 0; padding: 10px; border-radius: 8px; border: 1px dashed var(--line); color: var(--muted); text-align: center; }
+.or-arsenal { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11px; }
+.or-arsenal .muted { margin-left: 2px; }
+.campaign-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line); }
+.campaign-foot .btn { padding: 0 14px; font-weight: 650; }
+
+/* The Talent screen. */
+.talent-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 15px; }
+.talent-trees { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.talent-tree { padding: 8px 10px; border-radius: 10px; background: #221c16; border: 1px solid var(--line); }
+.talent-tree h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.talent-row { display: flex; align-items: stretch; gap: 6px; margin-top: 4px; }
+.talent-row .cost { flex: none; width: 26px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #f2c14e; }
+.talent-row .options { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; min-width: 0; }
+.talent-row .options.n1 { grid-template-columns: minmax(0, 1fr); }
+.btn.talent { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-width: 0; padding: 4px 8px; text-align: left; line-height: 1.2; }
+.btn.talent .name { font-size: 12.5px; font-weight: 750; }
+.btn.talent .text { font-size: 10.5px; color: var(--muted); }
+.btn.talent.active .text { color: #3b2a12; }
+.btn.talent:disabled { opacity: 0.5; }
+
+@media (max-height: 520px), (max-width: 760px) {
+  .or-campaign { grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr); padding: 6px; gap: 8px; }
+  .war-map { min-height: 0; aspect-ratio: auto; height: calc(var(--app-h, 100vh) - 92px); max-height: 320px; }
+  .stage-card { padding: 7px 9px; gap: 4px; }
+  .stage-card h2 { font-size: 15px; }
+  .stage-card .stage-line, .stage-card .region-intro p { font-size: 11px; }
+  .difficulties.compact .btn.difficulty { min-height: 44px; padding: 3px 8px; }
+  .difficulties.compact .difficulty .about { display: none; }
+  .hud.mode-original .waves h2 { display: none; }
+  .or-targeting > .muted { display: none; }
+  .hud.mode-original { gap: 5px; }
+  .or-tower dl.or-stats, .or-tower .abilities { display: none; }
+}
+@media (hover: none) {
+  .btn.or-sell { padding-right: 9px; }
+  .ring-btn .key { display: none; }
 }

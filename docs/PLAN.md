@@ -34,7 +34,19 @@ Phase 3 progress (2026-10-18):
   - Progression as pure logic: Talent trees, Talents applied as Run settings, the unlock table, Star scoring and Stage Records.
   - Content: Stage 1, The Mill Road, with its Map, 8 Build Spots, air line and 12 Waves.
 - Tested: 119 tests for the Original; the replay hash and snapshot tests pass, and WebKit and Chromium match Node on a fixed Original replay. A headless bot clears Stage 1 on Normal with Arrow and Cannon at Tiers 1–2: 3 Stars waiting out the Breaks, 3 calling early. It wins Easy (3 Stars) and Hard (2 Stars), and loses Insane during Wave 4. A tick takes about 6 µs.
-- Left: Stages 2–12, Campaign storage, the HUD and Stage-select screen, the balance bots (greedy, single-family, balanced) and their tuning, then a play-test on the Mac, the iPhone and the S24.
+- Done: the Original is playable from the main menu.
+  - Campaign storage, kept apart from Run saves: Stage Records (best Stars, hardest Difficulty won, fastest win), Stages finished and Talents. A Run's end folds into it, and Quit waits for that write.
+  - Main menu: the Original's card has Continue and Campaign.
+  - Stage select: the war map on the tavern table, with the road north through the three Regions, a pin per built Stage, each Region's two-line intro, each Stage's line, Stars and Record, and New Run by Difficulty. Stages appear as they're added to `STAGES`.
+  - Talents: a tree per unlocked family, rows bought in order with Stars, and a free reset.
+  - In a Run: gold, lives, Wave, Threat, the Stars the lives left would win, Send Wave 1, and Send now with its early-call gold and the Break countdown. The wave preview tags each creep (Armored, Warded, Shield, Regen, Splits, Fast, Air, Boss).
+  - The build ring: tap an empty Build Spot for the unlocked families and their prices, tap one for its Ghost and range, tap again to build. The tower panel has Upgrade, both Specialisations at Tier 3, targeting, Sell with its value, and the Tower Level, XP and Perks.
+  - Mac hotkeys. On a ring, Q W E R T Y pick its families in order, and the same key again builds. On a selected tower, Q and W upgrade, T changes targeting and S sells.
+  - The board: Region palettes, every route's road with arrows and its faint air line, each Build Spot as its own pad, and the six family shapes. Towers show Tier pips, a gold crest for a Specialisation, and the Tower Level, gold from 5. Each creep has its own silhouette. Effects cover beams, Blizzard's ring, clouds, bouncing bolts, slows, freezes, enrage, the Riftlord's Shield, splits, brood and Perks.
+  - The end card shows the Stars won, what they added and what the win opened. How to play and Records are in place, and autosave, Continue and save codes work as in every Game Mode.
+  - e2e in all four browsers: a Run built through the ring that sends a Wave, autosaves, reloads and continues; a won Stage storing its Stars and opening Talents; the ring's hotkeys.
+- Assumed for the UI: Level 1 shows no number on the tower; the ring's hotkeys are WC3's top row; the end card times a win from Wave 1, as the Stage Record does.
+- Left: Stages 2–12 and the balance bots (greedy, single-family, balanced) with their tuning, in their own session. Then a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

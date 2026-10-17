@@ -94,3 +94,36 @@ export async function buildTower(page: Page, action: string, col: number, row: n
   await tapAt(page, p.x, p.y);
   await expect.poll(async () => (await towerSpecs(page)).length).toBe(before + 1);
 }
+
+/** From the main menu through the Campaign's Stage select into a fresh Run of Stage `stage`. */
+export async function newOriginalRun(page: Page, difficulty: 'easy' | 'normal' | 'hard' | 'insane' = 'normal', stage = 1): Promise<void> {
+  await page.getByTestId('mode-original').getByTestId('mode-page').click();
+  await expect(page.getByTestId('war-map')).toBeVisible();
+  await page.getByTestId(`stage-${stage}`).click();
+  await page.getByTestId(`difficulty-${difficulty}`).click();
+  await expect(page.getByTestId('original-status')).toBeVisible();
+  await page.waitForFunction(() => !!window.tavern);
+}
+
+/** The middle of Build Spot `spot`, from the Map's own list. */
+export async function spotPoint(page: Page, spot: number): Promise<{ x: number; y: number }> {
+  await page.waitForFunction(() => !!window.tavern);
+  const [col, row] = await page.evaluate((i) => window.tavern!.controller.state.map.buildSpots![i]!, spot);
+  return worldPoint(page, (col + 1) * 64, (row + 1) * 64);
+}
+
+/** Taps an empty Build Spot for its ring, picks a family for its Ghost, then taps the Spot again to build. */
+export async function buildOnSpot(page: Page, spot: number, family: string): Promise<void> {
+  const before = (await towerSpecs(page)).length;
+  const p = await spotPoint(page, spot);
+  await tapAt(page, p.x, p.y);
+  const pick = page.locator(`[data-action="ring-${family}"]`);
+  await expect(page.getByTestId('build-ring')).toBeVisible();
+  await pick.click();
+  await expect(pick).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('hint')).toHaveText(/again to build/);
+  expect((await towerSpecs(page)).length).toBe(before);
+  await tapAt(page, p.x, p.y);
+  await expect.poll(async () => (await towerSpecs(page)).length).toBe(before + 1);
+  await expect(page.getByTestId('build-ring')).toBeHidden();
+}

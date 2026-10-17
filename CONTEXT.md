@@ -31,7 +31,7 @@ The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scale
 _Avoid_: level, challenge
 
 **Record**:
-The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare.
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win.
 _Avoid_: high score, achievement, stats
 
 **Save code**:
@@ -155,7 +155,7 @@ _Avoid_: level 51, final boss, dummy
 ### Progression (Original only)
 
 **Campaign**:
-The ordered sequence of Stages that makes up the Original.
+The ordered sequence of Stages that makes up the Original, and the progress through it kept on the device: Stage Records, Stars and Talents. It is stored apart from Runs, so a Save code holds a Run and never the Campaign.
 _Avoid_: story, world, adventure
 
 **Region**:
@@ -177,6 +177,14 @@ _Avoid_: rank, veterancy, tier
 **Build Spot**:
 A fixed place on a Stage's Map where one tower can stand; the Original has no free placement.
 _Avoid_: plot, pad, slot, tile
+
+**Build ring**:
+The ring of unlocked Tower Families, each with its price, that opens around an empty Build Spot when it is tapped. Tapping a family shows its Ghost; tapping it again builds.
+_Avoid_: radial menu, build menu (Element's word), wheel
+
+**War map**:
+The Original's Stage-select screen: the map spread on the last tavern's table, with the road north through the Regions and a pin per Stage.
+_Avoid_: level select, world map, overworld
 
 **Tower Family**:
 One of the Original's six tower lines (Arrow, Cannon, Frost, Arcane, Poison, Totem). Arrow and Cannon are open from the start; each of the others unlocks by finishing a Stage.

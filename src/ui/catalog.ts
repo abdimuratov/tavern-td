@@ -2,6 +2,7 @@ import { DEFAULT_DIFFICULTY_HP, getMode, hasMode, type Difficulty } from '../sim
 import type { ModeUi } from './mode-ui';
 import { ELEMENT_UI } from './modes/element';
 import { GEM_UI } from './modes/gem';
+import { ORIGINAL_UI } from './modes/original';
 
 /** A Game Mode as the main menu lists it. Only those with a `ui` can be played yet. */
 export interface CatalogEntry {
@@ -16,7 +17,10 @@ export interface CatalogEntry {
 export const CATALOG: readonly CatalogEntry[] = [
   { id: 'gem', name: 'Gem', origin: 'Gem TD', blurb: 'Draft five gems, keep one, and maze the rest as Rocks.', ui: GEM_UI },
   { id: 'element', name: 'Element', origin: 'Element TD', blurb: 'Raise six Elements with Lumber and fuse their towers beside one long Lane.', ui: ELEMENT_UI },
-  { id: 'original', name: 'Original', origin: 'Our own Campaign', blurb: 'Hand-made Stages, Stars and Talents.' },
+  {
+    id: 'original', name: 'Original', origin: 'Our own Campaign',
+    blurb: 'The March is burning. Hold the old road Stage by Stage, and spend the Stars you win on Talents.', ui: ORIGINAL_UI,
+  },
   { id: 'maul', name: 'Maul', origin: 'Wintermaul', blurb: 'Pick a Race and maze an open field.' },
 ];
 
