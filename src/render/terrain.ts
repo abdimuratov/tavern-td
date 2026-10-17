@@ -1,0 +1,129 @@
+import { Container, Graphics, Text } from 'pixi.js';
+import { airRoute, CELL, type GameState, type MapSpec } from '../sim';
+import { cellsBox } from './footprint';
+
+export const TERRAIN_COLORS = {
+  background: 0x12100e,
+  buildable: 0x2d2620,
+  walkable: 0x3a3025,
+  blocked: 0x0b0908,
+  blockedRim: 0x1d1813,
+  gridLine: 0x43392e,
+  border: 0x6b5a43,
+  spawn: 0xb07cff,
+  checkpoint: 0x4aa3df,
+  exit: 0xe0604a,
+  air: 0x9fd2ff,
+};
+
+export interface Terrain {
+  readonly root: Container;
+  /** Faded in with zoom, so a 95-column Map at fit isn't a moiré of lines. */
+  readonly grid: Graphics;
+}
+
+/** The Map's ground, drawn once per Run: terrain, grid, spawn, numbered checkpoints, the exit and the air line. */
+export function buildTerrain(state: GameState): Terrain {
+  const map = state.map;
+  const root = new Container();
+  const ground = new Graphics();
+  drawGround(ground, map);
+  root.addChild(ground);
+
+  const grid = new Graphics();
+  for (let c = 1; c < map.cols; c++) grid.moveTo(c * CELL, 0).lineTo(c * CELL, map.rows * CELL);
+  for (let r = 1; r < map.rows; r++) grid.moveTo(0, r * CELL).lineTo(map.cols * CELL, r * CELL);
+  grid.stroke({ color: TERRAIN_COLORS.gridLine, width: 1.5, alpha: 0.7 });
+  root.addChild(grid);
+
+  const marks = new Graphics();
+  drawAirLine(marks, state);
+  const labels: Text[] = [];
+  map.waypoints.forEach((region, i) => {
+    const exit = i === map.waypoints.length - 1;
+    const color = exit ? TERRAIN_COLORS.exit : TERRAIN_COLORS.checkpoint;
+    for (const [c, r] of region) marks.rect(c * CELL, r * CELL, CELL, CELL);
+    marks.fill({ color, alpha: 0.22 });
+    const box = cellsBox(map, region.map(([c, r]) => r * map.cols + c));
+    marks.roundRect(box.col * CELL + 3, box.row * CELL + 3, box.w * CELL - 6, box.h * CELL - 6, 12)
+      .stroke({ color, width: 4, alpha: 0.85 });
+    labels.push(label(exit ? 'Exit' : String(i + 1), (box.col + box.w / 2) * CELL, (box.row + box.h / 2) * CELL, Math.min(box.w, box.h) * CELL));
+  });
+  const [sc, sr] = map.spawn;
+  const sx = (sc + 0.5) * CELL;
+  const sy = (sr + 0.5) * CELL;
+  marks.circle(sx, sy, CELL * 0.42).fill({ color: TERRAIN_COLORS.spawn, alpha: 0.25 });
+  marks.circle(sx, sy, CELL * 0.42).stroke({ color: TERRAIN_COLORS.spawn, width: 5 });
+  marks.circle(sx, sy, CELL * 0.2).stroke({ color: TERRAIN_COLORS.spawn, width: 3, alpha: 0.8 });
+  root.addChild(marks);
+  for (const l of labels) root.addChild(l);
+
+  const border = new Graphics().rect(0, 0, map.cols * CELL, map.rows * CELL).stroke({ color: TERRAIN_COLORS.border, width: 4 });
+  root.addChild(border);
+  return { root, grid };
+}
+
+/** Runs of equal terrain merged into one rect each, so a big Map is a few hundred rects, not thousands. */
+function drawGround(g: Graphics, map: MapSpec): void {
+  const fills: Record<string, number> = { '.': TERRAIN_COLORS.buildable, ',': TERRAIN_COLORS.walkable, '#': TERRAIN_COLORS.blocked };
+  for (const ch of ['.', ',', '#']) {
+    for (let r = 0; r < map.rows; r++) {
+      const line = map.terrain[r]!;
+      let c = 0;
+      while (c < map.cols) {
+        if (line[c] !== ch) {
+          c++;
+          continue;
+        }
+        const start = c;
+        while (c < map.cols && line[c] === ch) c++;
+        g.rect(start * CELL, r * CELL, (c - start) * CELL, CELL);
+      }
+    }
+    g.fill(fills[ch]!);
+  }
+  // Blocked cells get a faint inner rim, so a wall reads as a pit rather than a hole in the canvas.
+  for (let r = 0; r < map.rows; r++) {
+    for (let c = 0; c < map.cols; c++) {
+      if (map.terrain[r]![c] === '#') g.roundRect(c * CELL + 8, r * CELL + 8, CELL - 16, CELL - 16, 10);
+    }
+  }
+  g.fill(TERRAIN_COLORS.blockedRim);
+}
+
+function drawAirLine(g: Graphics, state: GameState): void {
+  const pts = airRoute(state);
+  const DASH = 22;
+  const GAP = 18;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) continue;
+    for (let d = 0; d < len; d += DASH + GAP) {
+      const e = Math.min(len, d + DASH);
+      g.moveTo(a.x + (dx * d) / len, a.y + (dy * d) / len).lineTo(a.x + (dx * e) / len, a.y + (dy * e) / len);
+    }
+  }
+  g.stroke({ color: TERRAIN_COLORS.air, width: 3, alpha: 0.28, cap: 'round' });
+}
+
+function label(text: string, x: number, y: number, span: number): Text {
+  const t = new Text({
+    text,
+    resolution: 3,
+    style: {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontWeight: '700',
+      fontSize: Math.max(18, Math.min(36, span * 0.24)),
+      fill: 0xffffff,
+      stroke: { color: 0x0b0908, width: 5 },
+    },
+  });
+  t.anchor.set(0.5);
+  t.alpha = 0.85;
+  t.position.set(x, y);
+  return t;
+}

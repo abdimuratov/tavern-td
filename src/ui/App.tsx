@@ -1,20 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
-import { lastTap, offlineReady, pendingUpdate, portrait, tapCount } from './state';
+import { BoardOverlay, Hud } from './Hud';
+import { offlineReady, pendingUpdate, portrait, session } from './state';
 
 const OFFLINE_TOAST_MS = 5000;
-
-function Hud() {
-  const cell = lastTap.value;
-  return (
-    <div class="hud" data-testid="hud">
-      <strong>Tavern TD</strong>{' '}
-      <span class="muted">taps</span> <span data-testid="tap-count">{tapCount.value}</span>
-      {' · '}
-      <span class="muted">cell</span>{' '}
-      <span data-testid="tap-cell">{cell ? `${cell.col},${cell.row}` : '–'}</span>
-    </div>
-  );
-}
 
 function RotateScreen() {
   return (
@@ -53,9 +41,11 @@ function OfflineReadyToast() {
 }
 
 export function App() {
+  const s = session.value;
   return (
     <>
-      <Hud />
+      {s && <BoardOverlay s={s} />}
+      {s && <Hud s={s} />}
       <OfflineReadyToast />
       <UpdateToast />
       {portrait.value && <RotateScreen />}

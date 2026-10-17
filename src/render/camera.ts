@@ -41,10 +41,15 @@ export function pan(cam: Camera, dx: number, dy: number): Camera {
   return { ...cam, x: cam.x + dx, y: cam.y + dy };
 }
 
-/** Zoom by `factor`, keeping the world point under `anchor` fixed on screen. */
-export function zoomAt(cam: Camera, anchor: Point, factor: number, screen: Size, world: Size): Camera {
+/**
+ * Zoom by `factor`, keeping the world point under `anchor` fixed on screen.
+ * Zoom stops at 4× fit, or at `maxScale` if that is further: a big Map on a
+ * phone needs more than 4× before a cell is large enough to tap.
+ */
+export function zoomAt(cam: Camera, anchor: Point, factor: number, screen: Size, world: Size, maxScale = 0): Camera {
   const min = fitScale(screen, world);
-  const scale = Math.min(min * MAX_ZOOM_OVER_FIT, Math.max(min, cam.scale * factor));
+  const max = Math.max(min * MAX_ZOOM_OVER_FIT, maxScale);
+  const scale = Math.min(max, Math.max(min, cam.scale * factor));
   const w = screenToWorld(cam, anchor);
   return { scale, x: anchor.x - w.x * scale, y: anchor.y - w.y * scale };
 }

@@ -8,6 +8,7 @@ const landscape = (device: (typeof devices)[string]) => ({
 // Runs against the production build, so the service worker and base path are real.
 export default defineConfig({
   testDir: 'e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',

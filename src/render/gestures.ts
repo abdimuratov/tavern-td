@@ -1,10 +1,20 @@
 import type { Point } from './camera';
 
+export type PointerKind = 'mouse' | 'touch' | 'pen';
+
 export interface GestureHandlers {
   /** A press that didn't move far and didn't become a pinch. */
-  tap(p: Point): void;
+  tap(p: Point, kind: PointerKind): void;
   pan(dx: number, dy: number): void;
   zoom(anchor: Point, factor: number): void;
+  /** A mouse moving with no button down; null when it leaves the element. */
+  hover?(p: Point | null): void;
+  /** A right-click. */
+  secondary?(p: Point): void;
+}
+
+function pointerKind(e: PointerEvent): PointerKind {
+  return e.pointerType === 'mouse' || e.pointerType === 'pen' ? e.pointerType : 'touch';
 }
 
 /** Beyond this many CSS pixels of movement a press is a drag, not a tap. */
@@ -34,6 +44,10 @@ export function attachGestures(el: HTMLElement, on: GestureHandlers): () => void
   };
 
   const down = (e: PointerEvent): void => {
+    if (e.pointerType === 'mouse' && e.button === 2) {
+      on.secondary?.(local(e));
+      return;
+    }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     el.setPointerCapture(e.pointerId);
     const p = local(e);
@@ -48,7 +62,10 @@ export function attachGestures(el: HTMLElement, on: GestureHandlers): () => void
 
   const move = (e: PointerEvent): void => {
     const prev = pointers.get(e.pointerId);
-    if (!prev) return;
+    if (!prev) {
+      if (e.pointerType === 'mouse' && pointers.size === 0) on.hover?.(local(e));
+      return;
+    }
     const p = local(e);
     pointers.set(e.pointerId, p);
 
@@ -63,7 +80,8 @@ export function attachGestures(el: HTMLElement, on: GestureHandlers): () => void
     }
 
     if (tapCandidate && Math.hypot(p.x - tapCandidate.start.x, p.y - tapCandidate.start.y) > TAP_SLOP) {
-      // The press became a drag: catch up with the movement swallowed by the slop.
+      // The press became a drag: no hover while dragging, then catch up with the movement swallowed by the slop.
+      if (e.pointerType === 'mouse') on.hover?.(null);
       on.pan(p.x - tapCandidate.start.x, p.y - tapCandidate.start.y);
       tapCandidate = null;
       return;
@@ -75,7 +93,7 @@ export function attachGestures(el: HTMLElement, on: GestureHandlers): () => void
     if (!pointers.has(e.pointerId)) return;
     const p = local(e);
     pointers.delete(e.pointerId);
-    if (e.type === 'pointerup' && tapCandidate?.id === e.pointerId) on.tap(p);
+    if (e.type === 'pointerup' && tapCandidate?.id === e.pointerId) on.tap(p, pointerKind(e));
     tapCandidate = null;
     lastPinch = pointers.size >= 2 ? pinchState() : null;
   };
@@ -95,21 +113,29 @@ export function attachGestures(el: HTMLElement, on: GestureHandlers): () => void
     }
   };
 
-  // Safari's own pinch-zoom gesture events would fight ours.
+  const leave = (e: PointerEvent): void => {
+    if (e.pointerType === 'mouse' && pointers.size === 0) on.hover?.(null);
+  };
+
+  // Safari's own pinch-zoom gesture events would fight ours, and right-click is ours too.
   const stopGesture = (e: Event): void => e.preventDefault();
 
   el.addEventListener('pointerdown', down);
   el.addEventListener('pointermove', move);
   el.addEventListener('pointerup', up);
   el.addEventListener('pointercancel', up);
+  el.addEventListener('pointerleave', leave);
   el.addEventListener('wheel', wheel, { passive: false });
   el.addEventListener('gesturestart', stopGesture);
+  el.addEventListener('contextmenu', stopGesture);
   return () => {
     el.removeEventListener('pointerdown', down);
     el.removeEventListener('pointermove', move);
     el.removeEventListener('pointerup', up);
     el.removeEventListener('pointercancel', up);
+    el.removeEventListener('pointerleave', leave);
     el.removeEventListener('wheel', wheel);
     el.removeEventListener('gesturestart', stopGesture);
+    el.removeEventListener('contextmenu', stopGesture);
   };
 }
