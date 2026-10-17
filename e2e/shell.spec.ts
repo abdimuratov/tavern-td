@@ -106,9 +106,22 @@ test('hotkeys drive pause, speed, Gem Quality and the menu', async ({ page }) =>
       if (text) seen.push(text);
     }).observe(document.body, { subtree: true, childList: true, characterData: true });
   });
+  const tickBefore = await page.evaluate(() => window.tavern!.controller.state.tick);
   await page.keyboard.press('q');
-  await expect.poll(() => page.evaluate(() => (window as unknown as { hintsSeen: string[] }).hintsSeen))
-    .toContain('Not enough gold');
+  try {
+    await expect.poll(() => page.evaluate(() => (window as unknown as { hintsSeen: string[] }).hintsSeen), { timeout: 15_000 })
+      .toContain('Not enough gold');
+  } catch (err) {
+    // CI has missed this twice while it passes locally: say whether ticks ran and the key reached the game.
+    const seen = await page.evaluate(() => {
+      const c = window.tavern!.controller;
+      return {
+        tickNow: c.state.tick, paused: c.paused, speed: c.speed, visibility: document.visibilityState,
+        lastCommands: c.log.slice(-3).map((l) => l.command.type),
+      };
+    });
+    throw new Error(`${(err as Error).message}\n${JSON.stringify({ tickBefore, ...seen })}`, { cause: err });
+  }
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('run-menu')).toBeVisible();
   // Keys don't reach the game while the menu is open.
