@@ -4,15 +4,11 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 
 ## 0. Status
 
-Planning finished on 2026-10-15. **Now: Phase 0.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
+Planning finished on 2026-10-15. **Now: Phase 1.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
-Phase 0 progress (2026-10-17):
-- Done: the web app shell, the sim ban list, unit and e2e tests (green in Chrome, WebKit and iPhone/Android emulation), and the Capacitor Android project with `pnpm apk`. The repo `abdimuratov/tavern-td` is public, and CI deploys it to https://abdimuratov.github.io/tavern-td/.
-- Done on the S24: `pnpm apk` installed JDK 21, the Android tools and the signing keystore (`~/.config/tavern-td`), then built and installed the first APK. The launcher icon cold-starts the app in landscape, and a tap on the board registers the right cell. Every asset ships inside the APK.
-- Left: open the S24 app once in airplane mode; check the exit bar on the Mac and the iPhone.
-- Pinned TypeScript to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
+Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
-- [ ] Phase 0: foundations
+- [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element
 - [ ] Phase 3: Original
