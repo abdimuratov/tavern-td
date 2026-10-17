@@ -20,6 +20,16 @@ export interface MapSpec {
    * Structures then never change their path. Absent on mazing Maps.
    */
   readonly route?: RouteSpec;
+  /**
+   * Several fixed routes, one per spawn (the Original). Each Wave group names
+   * the one its creeps take by index. A Map has `route` or `routes`, never both.
+   */
+  readonly routes?: readonly RouteSpec[];
+  /**
+   * Build Spots: the top-left cells of the BUILD_SPOT × BUILD_SPOT places a
+   * tower may stand. When present, towers stand only there. Absent where placement is free.
+   */
+  readonly buildSpots?: readonly Cell[];
 }
 
 export interface RouteSpec {
@@ -27,6 +37,12 @@ export interface RouteSpec {
   readonly points: readonly (readonly [x: number, y: number])[];
   /** A creep this close to the last point (along the route) has leaked; 0 by default. */
   readonly leakRadius?: number;
+  /**
+   * The air line: the polyline (world units, 2 or more points) flying creeps of
+   * this route follow from its spawn to the exit, at their own speed. Without
+   * one they fly straight between the waypoint centres.
+   */
+  readonly air?: readonly (readonly [x: number, y: number])[];
 }
 
 export interface CreepSpec {
@@ -176,6 +192,10 @@ export interface WaveGroup {
   readonly delay?: number;
   /** Replaces the creep spec's HP for this group. */
   readonly hp?: number;
+  /** Replaces the creep spec's bounty for this group (the Wave's bountyMult still applies). */
+  readonly bounty?: number;
+  /** Index of the Map's route (and air line) its creeps take; 0 by default. */
+  readonly route?: number;
 }
 
 export interface WaveSpec {

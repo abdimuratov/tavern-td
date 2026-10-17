@@ -1,11 +1,12 @@
-import type { MapSpec } from '../core/specs';
+import type { MapSpec, RouteSpec } from '../core/specs';
 import type { Creep, GameState } from '../core/state';
 import type { Point } from './grid';
 
-// Fixed routes (PLAN §2): on a Map with a `route`, ground creeps walk its
-// polyline and track the distance travelled, instead of following a flow
-// field. Towers stand beside the route, so nothing they do can change it.
-// Derived data lives in a cache keyed by the Map, like grid.ts's MapData.
+// Fixed routes (PLAN §2): on a Map with a `route` (or a `routes` list), ground
+// creeps walk its polyline and track the distance travelled, instead of
+// following a flow field. Towers stand beside the route, so nothing they do
+// can change it. A route may carry an air line, which its flying creeps follow
+// the same way. Derived data lives in a cache keyed by the Map, like grid.ts's MapData.
 
 export interface RouteData {
   readonly points: readonly Point[];
@@ -16,26 +17,54 @@ export interface RouteData {
   readonly leakAt: number;
 }
 
-const routeCache = new WeakMap<MapSpec, RouteData | null>();
+interface MapRoutes {
+  readonly ground: readonly RouteData[];
+  /** The air line of each route, null where a route has none. */
+  readonly air: readonly (RouteData | null)[];
+}
 
-/** A problem with the Map's route, or null when it has none or it is usable. */
-export function routeProblem(map: MapSpec): string | null {
-  const route = map.route;
-  if (route === undefined) return null;
-  const pts = route.points as unknown;
-  if (!Array.isArray(pts) || pts.length < 2) return 'route needs at least two points';
+const routeCache = new WeakMap<MapSpec, MapRoutes>();
+
+type Polyline = readonly (readonly [number, number])[];
+
+function routeSpecs(map: MapSpec): readonly RouteSpec[] {
+  if (map.routes !== undefined) return map.routes;
+  return map.route !== undefined ? [map.route] : [];
+}
+
+/** How many fixed routes the Map has: 0 on a mazing Map. */
+export function routeCount(map: MapSpec): number {
+  return routeSpecs(map).length;
+}
+
+function polylineProblem(name: string, pts: unknown): string | null {
+  if (!Array.isArray(pts) || pts.length < 2) return `${name} needs at least two points`;
   for (const p of pts as unknown[]) {
     if (!Array.isArray(p) || p.length !== 2 || !p.every((v) => typeof v === 'number' && Number.isFinite(v))) {
-      return 'route points must be [x, y] pairs of finite numbers';
+      return `${name} points must be [x, y] pairs of finite numbers`;
     }
   }
-  const leak = route.leakRadius ?? 0;
-  if (!(typeof leak === 'number' && Number.isFinite(leak) && leak >= 0)) return 'route leakRadius must be 0 or more';
-  if (leak >= routeLength(route.points)) return 'route leakRadius must be shorter than the route';
   return null;
 }
 
-function routeLength(points: readonly (readonly [number, number])[]): number {
+/** A problem with the Map's routes, or null when it has none or they are usable. */
+export function routeProblem(map: MapSpec): string | null {
+  if (map.route !== undefined && map.routes !== undefined) return 'a Map has route or routes, not both';
+  if (map.routes !== undefined && (!Array.isArray(map.routes) || map.routes.length < 1)) return 'routes needs at least one route';
+  const specs = routeSpecs(map);
+  for (let i = 0; i < specs.length; i++) {
+    const route = specs[i]!;
+    const name = specs.length > 1 ? `route ${i}` : 'route';
+    const problem = polylineProblem(name, route.points) ?? (route.air === undefined ? null : polylineProblem(`${name} air line`, route.air));
+    if (problem) return problem;
+    const leak = route.leakRadius ?? 0;
+    if (!(typeof leak === 'number' && Number.isFinite(leak) && leak >= 0)) return `${name} leakRadius must be 0 or more`;
+    if (leak >= polylineLength(route.points)) return `${name} leakRadius must be shorter than the route`;
+  }
+  return null;
+}
+
+function polylineLength(points: Polyline): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
     const dx = points[i]![0] - points[i - 1]![0];
@@ -45,24 +74,44 @@ function routeLength(points: readonly (readonly [number, number])[]): number {
   return total;
 }
 
-/** The Map's route, or null when its creeps follow flow fields. */
-export function routeData(map: MapSpec): RouteData | null {
+function polylineData(polyline: Polyline, leakRadius: number): RouteData {
+  const points = polyline.map(([x, y]) => ({ x, y }));
+  const cum = [0];
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i]!.x - points[i - 1]!.x;
+    const dy = points[i]!.y - points[i - 1]!.y;
+    cum.push(cum[i - 1]! + Math.sqrt(dx * dx + dy * dy));
+  }
+  const length = cum[cum.length - 1]!;
+  return { points, cum, length, leakAt: length - leakRadius };
+}
+
+function mapRoutes(map: MapSpec): MapRoutes {
   const cached = routeCache.get(map);
   if (cached !== undefined) return cached;
-  let data: RouteData | null = null;
-  if (map.route !== undefined) {
-    const points = map.route.points.map(([x, y]) => ({ x, y }));
-    const cum = [0];
-    for (let i = 1; i < points.length; i++) {
-      const dx = points[i]!.x - points[i - 1]!.x;
-      const dy = points[i]!.y - points[i - 1]!.y;
-      cum.push(cum[i - 1]! + Math.sqrt(dx * dx + dy * dy));
-    }
-    const length = cum[cum.length - 1]!;
-    data = { points, cum, length, leakAt: length - (map.route.leakRadius ?? 0) };
-  }
+  const specs = routeSpecs(map);
+  const data: MapRoutes = {
+    ground: specs.map((r) => polylineData(r.points, r.leakRadius ?? 0)),
+    air: specs.map((r) => (r.air === undefined ? null : polylineData(r.air, 0))),
+  };
   routeCache.set(map, data);
   return data;
+}
+
+/** Route `index` (0, the only one, by default), or null when the Map has no such route and its creeps follow flow fields. */
+export function routeData(map: MapSpec, index = 0): RouteData | null {
+  return mapRoutes(map).ground[index] ?? null;
+}
+
+/** The air line of route `index`, or null when it has none and its flyers fly between the waypoint centres. */
+export function airLineData(map: MapSpec, index = 0): RouteData | null {
+  return mapRoutes(map).air[index] ?? null;
+}
+
+/** The line a creep follows: its route's air line if it flies, its route if it walks; null when it follows neither. */
+export function creepLine(map: MapSpec, creep: Creep): RouteData | null {
+  const index = creep.route ?? 0;
+  return creep.air ? airLineData(map, index) : routeData(map, index);
 }
 
 /** The point `dist` along the route, clamped to its ends. */
@@ -81,15 +130,21 @@ export function routePoint(route: RouteData, dist: number): Point {
   return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
 }
 
-/** The route's corners in world units, spawn first and exit last, for the renderer's path line; empty without a route. */
-export function routePolyline(state: GameState): Point[] {
-  const route = routeData(state.map);
+/** Route `index`'s corners in world units, spawn first and exit last, for the renderer's path line; empty without one. */
+export function routePolyline(state: GameState, index = 0): Point[] {
+  const route = routeData(state.map, index);
   return route ? route.points.map((p) => ({ x: p.x, y: p.y })) : [];
 }
 
-/** Puts a route creep `dist` along the route (a spawn, a restart after a leak, a rewind). */
+/** Route `index`'s air line in world units, spawn first; empty without one. */
+export function airLinePolyline(state: GameState, index = 0): Point[] {
+  const line = airLineData(state.map, index);
+  return line ? line.points.map((p) => ({ x: p.x, y: p.y })) : [];
+}
+
+/** Puts a creep `dist` along its line (a spawn, a restart after a leak, a rewind, a split). */
 export function placeOnRoute(state: GameState, creep: Creep, dist: number): void {
-  const route = routeData(state.map);
+  const route = creepLine(state.map, creep);
   if (!route) return;
   const d = Math.max(0, Math.min(dist, route.length));
   const p = routePoint(route, d);

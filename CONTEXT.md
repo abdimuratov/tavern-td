@@ -212,9 +212,25 @@ _Avoid_: level (Tower Level owns that word), wave number, tier
 Ending a Break with "Send now" in the Original, which pays bonus gold for the seconds skipped. Element's "Send now" pays nothing.
 _Avoid_: rush, skip, send early
 
+**Route**:
+The fixed road ground creeps walk from a spawn to the exit on an Original Map. A Map has one per spawn, and each Wave group names the route it takes.
+_Avoid_: lane (Element's word), path, track
+
 **Air line**:
-The fixed line that flying creeps follow from spawn to exit on an Original Map, ignoring the route.
+The fixed line that flying creeps follow from spawn to exit on an Original Map, ignoring the route. Each route has its own.
 _Avoid_: flight path, air route, air lane
+
+**Targeting**:
+Which creep in range an Original tower attacks: First (nearest its exit, the default), Last, Strong (most HP) or Close. The player changes it freely; Poison towers also prefer creeps that aren't poisoned yet.
+_Avoid_: target mode (in player text), priority, aggro
+
+**Bounty pool**:
+The gold a Wave's creeps carry between them in the Original, set by its Threat and split by each creep's share of the Wave's HP. Creeps that another creep drops (a Bloater's Crawlers, a boss's brood) carry none.
+_Avoid_: kill gold, reward, loot
+
+**End-of-Wave bonus**:
+The gold the Original pays once every creep of a Wave is dead or leaked, set by its Threat.
+_Avoid_: clear bonus, wave reward, income
 
 **Damage type**:
 What kind of hit a tower deals in the Original: Pierce, Siege, Magic or Poison. A creep's armor type cuts some damage types and lets others through.

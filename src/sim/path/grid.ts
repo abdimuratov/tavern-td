@@ -1,4 +1,4 @@
-import { CELL } from '../core/constants';
+import { BUILD_SPOT, CELL } from '../core/constants';
 import type { MapSpec } from '../core/specs';
 import type { GameState } from '../core/state';
 import { getMode } from '../modes/registry';
@@ -55,7 +55,42 @@ export function validateMap(map: MapSpec): string | null {
     if (region.length < 1) return `waypoint region ${i} is empty`;
     if (!region.every(walkable)) return `waypoint region ${i} has a cell that is off the Map or unwalkable`;
   }
-  return routeProblem(map);
+  return routeProblem(map) ?? buildSpotProblem(map);
+}
+
+/** A problem with the Map's Build Spots: each covers buildable cells only, on the Map, without overlapping another. */
+function buildSpotProblem(map: MapSpec): string | null {
+  const spots = map.buildSpots;
+  if (spots === undefined) return null;
+  if (!Array.isArray(spots) || spots.length < 1) return 'buildSpots needs at least one Build Spot';
+  const taken = new Set<number>();
+  for (let i = 0; i < spots.length; i++) {
+    const [col, row] = spots[i]!;
+    const cells = footprintCells(map, cellOf(map, col, row), BUILD_SPOT);
+    if (cells.length === 0) return `Build Spot ${i} is off the Map`;
+    for (const c of cells) {
+      if (map.terrain[cellRow(map, c)]![cellCol(map, c)] !== '.') return `Build Spot ${i} covers a cell that isn't buildable`;
+      if (taken.has(c)) return `Build Spot ${i} overlaps another`;
+      taken.add(c);
+    }
+  }
+  return null;
+}
+
+/** The cells Build Spot `index` covers, its top-left first; empty when the Map has no such spot. */
+export function buildSpotCells(map: MapSpec, index: number): number[] {
+  const spot = Number.isInteger(index) && index >= 0 ? map.buildSpots?.[index] : undefined;
+  return spot ? footprintCells(map, cellOf(map, spot[0], spot[1]), BUILD_SPOT) : [];
+}
+
+/** The Build Spot covering cell (col, row), or -1 for none. Where a tap on the Map lands. */
+export function buildSpotAt(map: MapSpec, col: number, row: number): number {
+  const spots = map.buildSpots ?? [];
+  for (let i = 0; i < spots.length; i++) {
+    const [c, r] = spots[i]!;
+    if (col >= c && col < c + BUILD_SPOT && row >= r && row < r + BUILD_SPOT) return i;
+  }
+  return -1;
 }
 
 export function mapData(map: MapSpec): MapData {

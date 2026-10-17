@@ -25,7 +25,16 @@ Phase 3 started on 2026-10-18, again without waiting for the Phase 1 and 2 play-
 
 Phase 3 progress (2026-10-18):
 - Done: the design doc, [original-design.md](original-design.md). It covers the grim-war world and its 3 Regions, 10 creeps and 3 bosses, the 30 towers, Tower Levels and Perks, the Talent trees, the unlock order and a plan for each of the 12 Stages. You chose the grim tone, soft counters, overlapping Waves and scarce Stars. It drops §4's interest, because the early call is the Original's greed lever.
-- Left: the rules, the 12 Stages' content, the Stage-select screen and the balance bots, then a play-test on the Mac, the iPhone and the S24.
+- Done: the Original's deterministic rules ([original-design.md §14](original-design.md#14-filled-in-by-the-rules) lists what they assume):
+  - Engine: several routes per Map, each Wave group naming its own; an air line per route for flyers; 2 × 2 Build Spots.
+  - Towers: the 30 towers with Tier upgrades and Specialisations, First/Last/Strong/Close targeting, and every new effect (poison that prefers fresh creeps, Widow's Fang stacks, the ramping beam, the cloud, the bouncing bolt, freeze, Deadeye's armor-piercing). Damage types against armor types.
+  - Creeps: the 13 creeps, Shields, the Bloater's split, and the three bosses' enrage, brood and Shields with calls. Bosses take half slows and ignore stuns.
+  - Tower Levels with XP, Assists, Totem shares, Level bonuses and the 12 Perks.
+  - Economy and pacing: Threat, the bounty pool, the end-of-Wave bonus, Breaks from a Wave's last spawn, early-call gold, 70%/100% refunds, 20 lives, Stars and Difficulty.
+  - Progression as pure logic: Talent trees, Talents applied as Run settings, the unlock table, Star scoring and Stage Records.
+  - Content: Stage 1, The Mill Road, with its Map, 8 Build Spots, air line and 12 Waves.
+- Tested: 119 tests for the Original; the replay hash and snapshot tests pass, and WebKit and Chromium match Node on a fixed Original replay. A headless bot clears Stage 1 on Normal with Arrow and Cannon at Tiers 1–2: 3 Stars waiting out the Breaks, 3 calling early. It wins Easy (3 Stars) and Hard (2 Stars), and loses Insane during Wave 4. A tick takes about 6 µs.
+- Left: Stages 2–12, Campaign storage, the HUD and Stage-select screen, the balance bots (greedy, single-family, balanced) and their tuning, then a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

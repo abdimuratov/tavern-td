@@ -1,6 +1,6 @@
 // The game logic's public surface. Outer layers (render, ui, app) import from here only.
 
-export { TICK_RATE, CELL, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP } from './core/constants';
+export { TICK_RATE, CELL, BUILD_SPOT, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP } from './core/constants';
 export type { Json, Cell } from './core/types';
 export type {
   GameState, Creep, Tower, Projectile, Status, Difficulty, Phase, WaveState, ActiveWave, SpawnGroup,
@@ -25,10 +25,15 @@ export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rn
 
 export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 
-export { setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, type Point } from './path/grid';
+export {
+  setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, buildSpotCells, buildSpotAt,
+  type Point,
+} from './path/grid';
 export { routeCells, previewRoute, airRoute, pathDistance, nextCell } from './path/flow';
 export { placementError, wouldBlock, type PlacementError } from './path/block';
-export { routeData, routePoint, routePolyline, placeOnRoute, type RouteData } from './path/route';
+export {
+  routeData, airLineData, creepLine, routeCount, routePoint, routePolyline, airLinePolyline, placeOnRoute, type RouteData,
+} from './path/route';
 
 export {
   registerEffect, effectHandler,
@@ -38,7 +43,7 @@ export { rollChance } from './combat/effects';
 export { applyStatus, statusTicks } from './combat/status';
 export { creepMods, towerMods } from './combat/mods';
 export { armorMultiplier, typeMultiplier, damageCreep, killCreep, WC3_DAMAGE_TABLE } from './combat/damage';
-export { addTower, removeTower, setTowerSpec, resolveImpact } from './combat/towers';
+export { addTower, removeTower, setTowerSpec, resolveImpact, withBonus } from './combat/towers';
 export { spawnCreep, type SpawnOptions } from './combat/creeps';
 export { canHit, findCreep, findTower, closestCreep, nearestCreeps } from './combat/targeting';
 
@@ -47,3 +52,4 @@ export { earnGold, spendGold, canAfford, loseLives, gainLives } from './economy'
 // Game Modes. Importing the sim registers them.
 export * as gem from './modes/gem';
 export * as element from './modes/element';
+export * as original from './modes/original';

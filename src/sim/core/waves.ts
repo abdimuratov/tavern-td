@@ -1,5 +1,6 @@
 import { difficultyHp, removeGoneCreeps, spawnCreep } from '../combat/creeps';
 import { getMode, waveProblems } from '../modes/registry';
+import { routeCount } from '../path/route';
 import { TICK_RATE } from './constants';
 import type { SimEvent } from './events';
 import type { Sim } from './mode';
@@ -20,12 +21,16 @@ export function startNextWave(state: GameState, events: SimEvent[]): string | nu
   const spec = rules.waveFor ? rules.waveFor(index, state) : rules.waves?.[index];
   if (!spec) return 'no such Wave';
   const problems = waveProblems(rules, spec, `Wave ${index + 1}`);
+  const routes = routeCount(state.map);
+  for (const g of spec.groups) {
+    if (g.route !== undefined && g.route >= Math.max(1, routes)) problems.push(`Wave ${index + 1}: Map ${state.map.id} has no route ${g.route}`);
+  }
   if (problems.length > 0) throw new Error(`Game Mode ${rules.id}: ${problems.join('; ')}`);
 
   const hpScale = difficultyHp(rules, state.difficulty) * (spec.hpMult ?? 1);
   const groups: SpawnGroup[] = spec.groups.map((g) => {
     const cs = rules.creeps[g.creep]!;
-    return {
+    const group: SpawnGroup = {
       creep: g.creep,
       count: g.count,
       spawned: 0,
@@ -33,8 +38,11 @@ export function startNextWave(state: GameState, events: SimEvent[]): string | nu
       interval: g.interval * TICK_RATE,
       hp: Math.max(1, Math.round((g.hp ?? spec.hp ?? cs.hp) * hpScale)),
       speed: cs.speed * (spec.speedMult ?? 1),
-      bounty: cs.bounty * (spec.bountyMult ?? 1),
+      bounty: (g.bounty ?? cs.bounty) * (spec.bountyMult ?? 1),
     };
+    // Only groups that name a route carry one, so Runs on one-route Maps serialize as before.
+    if (g.route !== undefined) group.route = g.route;
+    return group;
   });
   const number = index + 1;
   state.wave.number = number;
@@ -52,7 +60,8 @@ export function runWaves(sim: Sim): void {
     for (const g of wave.groups) {
       while (g.spawned < g.count && Math.round(g.start + g.spawned * g.interval) <= state.tick) {
         g.spawned++;
-        spawnCreep(state, g.creep, { wave: wave.number, hp: g.hp, speed: g.speed, bounty: g.bounty }, events);
+        const opts = { wave: wave.number, hp: g.hp, speed: g.speed, bounty: g.bounty };
+        spawnCreep(state, g.creep, g.route === undefined ? opts : { ...opts, route: g.route }, events);
       }
     }
   }

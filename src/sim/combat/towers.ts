@@ -102,7 +102,7 @@ export function runTowers(sim: Sim): void {
     const spec = rules.towers[t.spec];
     const atk = spec?.attack;
     if (!spec || !atk) continue;
-    const mods = towerMods(t);
+    const mods = withBonus(towerMods(t), rules.towerBonus?.(state, t) ?? null);
     const range = atk.range + mods.range;
     const r2 = range * range;
     if (t.target !== 0) {
@@ -124,6 +124,12 @@ export function runTowers(sim: Sim): void {
     t.cd -= 1;
   }
   for (const t of towers) if (t.status.length > 0) tickDown(t.status);
+}
+
+/** A tower's statuses plus the Game Mode's bonus for it. */
+export function withBonus(mods: Readonly<TowerMods>, bonus: Readonly<TowerMods> | null): Readonly<TowerMods> {
+  if (bonus === null) return mods;
+  return { attackSpeed: mods.attackSpeed + bonus.attackSpeed, damage: mods.damage + bonus.damage, range: mods.range + bonus.range };
 }
 
 function dist2(t: Tower, c: Creep): number {

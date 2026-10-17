@@ -6,6 +6,9 @@ export const TICK_RATE = 30;
 /** One build cell in Warcraft III world units, so Classic ranges, speeds and radii port unchanged. */
 export const CELL = 64;
 
+/** Side of a Build Spot in cells: a tower on one covers BUILD_SPOT × BUILD_SPOT cells. */
+export const BUILD_SPOT = 2;
+
 /** WC3's "Combat – Armor Damage Reduction Multiplier". */
 export const DEFAULT_ARMOR_FACTOR = 0.06;
 

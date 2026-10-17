@@ -45,6 +45,8 @@ export interface Creep {
   status: Status[];
   /** Distance walked along the Map's route; only on Maps that have one, so other Runs serialize as before. */
   dist?: number;
+  /** Index of the route it walks (or whose air line it flies); only on Maps with a `routes` list. */
+  route?: number;
 }
 
 export interface Tower {
@@ -98,6 +100,8 @@ export interface SpawnGroup {
   /** World units per second, Wave multiplier included. */
   speed: number;
   bounty: number;
+  /** The route its creeps take; only when the Wave group names one. */
+  route?: number;
 }
 
 export interface ActiveWave {

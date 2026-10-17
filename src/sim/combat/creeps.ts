@@ -6,7 +6,7 @@ import { loseLives } from '../economy';
 import { getMode } from '../modes/registry';
 import { flow, type Flow } from '../path/flow';
 import { cellAt, mapData, type MapData } from '../path/grid';
-import { moveOnRoute, placeOnRoute, routeData, type RouteData } from '../path/route';
+import { creepLine, moveOnRoute, placeOnRoute, routeCount } from '../path/route';
 import { creepMods, speedFactor, tickCreepStatuses } from './mods';
 import { tickDown } from './status';
 
@@ -18,9 +18,11 @@ export interface SpawnOptions {
   /** World units per second; defaults to the spec's. */
   readonly speed?: number;
   readonly bounty?: number;
+  /** Index of the Map's route it takes (and whose air line it flies); 0 by default. */
+  readonly route?: number;
 }
 
-/** Puts a creep on the spawn cell. The Wave runner uses this; Game Modes can too (summons, splits). */
+/** Puts a creep on the spawn cell, or at the start of its route or air line. The Wave runner uses this; Game Modes can too (summons, splits). */
 export function spawnCreep(state: GameState, spec: string, opts: SpawnOptions, events: SimEvent[]): Creep {
   const rules = getMode(state.modeId);
   if (!Object.hasOwn(rules.creeps, spec)) throw new Error(`Game Mode ${rules.id} has no creep ${spec}`);
@@ -33,8 +35,13 @@ export function spawnCreep(state: GameState, spec: string, opts: SpawnOptions, e
     speed: (opts.speed ?? cs.speed) / TICK_RATE, bounty: opts.bounty ?? cs.bounty,
     air: cs.flying, seg: 0, status: [],
   };
-  // On a fixed route, ground creeps start at its first point.
-  if (!creep.air && routeData(state.map)) placeOnRoute(state, creep, 0);
+  const route = opts.route ?? 0;
+  if (state.map.routes !== undefined) {
+    if (!Number.isInteger(route) || route < 0 || route >= state.map.routes.length) throw new Error(`Map ${state.map.id} has no route ${route}`);
+    creep.route = route;
+  }
+  // On a fixed route, ground creeps start at its first point, and flyers at its air line's.
+  if (creepLine(state.map, creep)) placeOnRoute(state, creep, 0);
   state.creeps.push(creep);
   events.push({ type: 'spawn', creep: creep.id, spec, wave, x: creep.x, y: creep.y });
   rules.onSpawn?.(state, creep, events);
@@ -46,18 +53,19 @@ export function difficultyHp(rules: GameModeRules, difficulty: Difficulty): numb
 }
 
 /**
- * Regen, statuses, then movement. Ground creeps steer for the centre of the
- * flow field's next cell from the cell they are in, so they round corners
- * smoothly and re-route the moment the maze changes. Air creeps fly straight
- * between waypoint centres. Dead or departed creeps stay in the list (hp 0)
- * until the end of the tick, so lookups by id stay valid throughout.
+ * Regen, statuses, then movement. Ground creeps walk their fixed route, or
+ * steer for the centre of the flow field's next cell from the cell they are
+ * in, so they round corners smoothly and re-route the moment the maze changes.
+ * Air creeps follow their route's air line, or fly straight between waypoint
+ * centres. Dead or departed creeps stay in the list (hp 0) until the end of
+ * the tick, so lookups by id stay valid throughout.
  */
 export function runCreeps(sim: Sim): void {
   const { state, rules } = sim;
   const creeps = state.creeps;
   if (creeps.length === 0) return;
   const md = mapData(state.map);
-  const route = routeData(state.map);
+  const routed = routeCount(state.map) > 0;
   let fl: Flow | null = null;
   const n = creeps.length;
   for (let i = 0; i < n; i++) {
@@ -71,8 +79,9 @@ export function runCreeps(sim: Sim): void {
       let dist = c.speed * speedFactor(mods);
       // A minimum speed floors slows, never the creep's own base speed.
       if (spec?.minSpeed !== undefined && !mods.stunned) dist = Math.max(dist, Math.min(c.speed, spec.minSpeed / TICK_RATE));
-      const arrived = c.air ? moveAir(c, dist, md) : route ? moveOnRoute(route, c, dist) : moveGround(c, dist, md, (fl ??= flow(state)));
-      if (arrived) leak(sim, c, md, route, spec?.leakCost ?? 1);
+      const line = routed ? creepLine(state.map, c) : null;
+      const arrived = line ? moveOnRoute(line, c, dist) : c.air ? moveAir(c, dist, md) : moveGround(c, dist, md, (fl ??= flow(state)));
+      if (arrived) leak(sim, c, md, line !== null, spec?.leakCost ?? 1);
     }
     tickDown(c.status);
   }
@@ -133,13 +142,13 @@ function moveAir(c: Creep, dist: number, md: MapData): boolean {
   return false;
 }
 
-function leak(sim: Sim, c: Creep, md: MapData, route: RouteData | null, leakCost: number): void {
+function leak(sim: Sim, c: Creep, md: MapData, onLine: boolean, leakCost: number): void {
   const { state, rules, events } = sim;
   const outcome: LeakOutcome = rules.onLeak ? rules.onLeak(state, c, events) : { lives: leakCost, then: 'remove' };
   const restart = outcome.then === 'restart';
   events.push({ type: 'leak', creep: c.id, lives: outcome.lives, restart });
   loseLives(state, outcome.lives, events);
-  if (restart && route && !c.air) {
+  if (restart && onLine) {
     placeOnRoute(sim.state, c, 0);
   } else if (restart) {
     c.x = md.spawnX;

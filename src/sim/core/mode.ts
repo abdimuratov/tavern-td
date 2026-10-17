@@ -1,3 +1,4 @@
+import type { TowerMods } from '../combat/registry';
 import type { Command } from './commands';
 import type { SimEvent } from './events';
 import type { CreepSpec, DamageTable, MapSpec, TowerSpec, WaveSpec } from './specs';
@@ -70,6 +71,11 @@ export interface GameModeRules<M = unknown> {
   towerTarget?(state: GameState<M>, tower: Tower, range: number): Creep | null;
   /** Seconds between this tower's attacks before attack-speed bonuses; the spec's cooldown by default. */
   towerCooldown?(state: GameState<M>, tower: Tower): number | null;
+  /**
+   * Bonuses the Game Mode adds on top of a tower's statuses when it attacks,
+   * such as the Original's Tower Levels and Talents; null for none.
+   */
+  towerBonus?(state: GameState<M>, tower: Tower): Readonly<TowerMods> | null;
   /** After the bounty is paid. `tower` is the killer's id, 0 for none. */
   onKill?(state: GameState<M>, creep: Creep, tower: number, events: SimEvent[]): void;
   /** Default: lose the spec's leakCost (1) and remove the creep. */

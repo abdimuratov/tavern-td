@@ -322,3 +322,33 @@ The engine already has splash, slows that don't stack, poison, armor debuffs, st
 - **Bots:** greedy-DPS, single-family and balanced bots per Stage, to check that no single family clears a Stage from Stage 5 on (research §3) and to tune HP, gold and prices.
 
 **Later:** challenge versions of Stages that pay extra Stars (Phase 3, step 4), and maybe a hero tower.
+
+## 14. Filled in by the rules
+
+The rules session (2026-10-18) built §13 as written. Where this doc left a gap, it took the choice below and marked it `assumed` in the code. The bots and the play-test can overturn any of them.
+
+**Map and Waves**
+- A Map lists its routes, and a route carries its own air line, so Stages 7 and 11 give each spawn its own. Stages declare only routes and Build Spots; the terrain is painted from them.
+- A Wave's groups follow one another, each starting one gap after the last spawn of the group before, unless the group sets its own start.
+- Creeps that another creep drops (a Bloater's Crawlers, the Plague Mother's brood, the Riftlord's Hounds) appear just behind it on its route. They belong to its Wave, pay no bounty, and still give XP.
+- Stage 1's Waves follow the §10 recipe: 10 Ghouls' worth at first, 11 Hounds alone at Wave 5, then 1.0–1.5× mixes, and 1.63× for Wave 12.
+
+**Towers**
+- Projectile speeds: Arrows 1,600, Cannons 900, Thunder Mortar 600, Flak 1,400, Frost 1,200, Arcane 1,000, Poison 1,000, Deadeye 2,400. Beams, the Blizzard nova and lightning land at once.
+- Frost's slows last 2 s at every Tier.
+- The Arcane Lance's beam stays on its creep while it lives and is in range. A Shield blocks it once a second, not on every tick.
+- Prism and Arc jumps find the nearest unhit creep within 192.
+- The Plague Cauldron's cloud poisons creeps while they're inside, and the poison lingers 1 s after they leave.
+- Widow's Fang stacks count per creep: at most 5, whichever towers put them there. A new hit at 5 replaces the stack closest to running out.
+- Tower Levels, Talents and War Totem raise poison damage as they raise hits.
+- Deadeye Perch and Storm Totem start at Strong. An upgrade keeps the player's targeting. A tower still on its old default takes the new tower's default.
+- A Totem's Level points go to its percentage auras, not War Totem's armor. Storm Totem's lightning also gains +3% damage per Level. Rally adds 8% range to every Totem's aura.
+- Spellbreaker applies to all Magic, and Brittle to any slow. Frost Nova fires only with a creep in range, and War Drums only while creeps are on the Map.
+- Echo's second bolt and Double Charge's second shell hit as hard as the first. Heartseeker's crit and a rolled crit don't stack.
+
+**Creeps and economy**
+- A Shield is 10% of a Ghoul's HP at the Wave's Threat in this Run, so Difficulty scales it too.
+- Bounties split to the hundredth of a gold; whole gold is paid as it adds up.
+- "Spent since the current Break began" counts from the latest Break's start until the next one begins. The time before Wave 1 counts as a Break, and refunds round down.
+- Talent discounts round to whole gold.
+- A Run takes Stages finished as a Run setting, which sets its unlocks: the Stage before it by default. Talents are checked for shape only (known ids, one per row, rows in order); the Stage-select screen checks Stars and open trees.
