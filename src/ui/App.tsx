@@ -1,4 +1,7 @@
-import { lastTap, pendingUpdate, portrait, tapCount } from './state';
+import { useEffect, useState } from 'preact/hooks';
+import { lastTap, offlineReady, pendingUpdate, portrait, tapCount } from './state';
+
+const OFFLINE_TOAST_MS = 5000;
 
 function Hud() {
   const cell = lastTap.value;
@@ -36,10 +39,24 @@ function UpdateToast() {
   );
 }
 
+/** Shown once, on the first launch that finishes precaching, then hides itself. */
+function OfflineReadyToast() {
+  const ready = offlineReady.value;
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (!ready) return;
+    const id = setTimeout(() => setShown(false), OFFLINE_TOAST_MS);
+    return () => clearTimeout(id);
+  }, [ready]);
+  if (!ready || !shown) return null;
+  return <div class="toast" data-testid="offline-ready">Ready to play offline.</div>;
+}
+
 export function App() {
   return (
     <>
       <Hud />
+      <OfflineReadyToast />
       <UpdateToast />
       {portrait.value && <RotateScreen />}
     </>

@@ -1,12 +1,21 @@
 import { registerSW } from 'virtual:pwa-register';
 
+export interface ServiceWorkerHandlers {
+  /** The first install finished: the app now opens with no network. */
+  onOfflineReady(): void;
+  /** A new version has been deployed; calling `reload` activates it and reloads. */
+  onUpdate(reload: () => void): void;
+}
+
 /**
- * Precaches the app for offline play. When a new version has been deployed,
- * `onUpdate` receives a function that activates it and reloads.
+ * Precaches the app for offline play. Each installed copy (a Dock or Home
+ * Screen app) has its own storage, so each one precaches on its first online
+ * launch.
  */
-export function registerServiceWorker(onUpdate: (reload: () => void) => void): void {
+export function registerServiceWorker(on: ServiceWorkerHandlers): void {
   if (__PLATFORM__ !== 'web' || !('serviceWorker' in navigator)) return;
   const update = registerSW({
-    onNeedRefresh: () => onUpdate(() => void update(true)),
+    onOfflineReady: () => on.onOfflineReady(),
+    onNeedRefresh: () => on.onUpdate(() => void update(true)),
   });
 }

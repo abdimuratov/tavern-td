@@ -55,15 +55,17 @@ test('the manifest makes it installable', async ({ page, request }) => {
   expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true);
 });
 
-test('opens offline once the service worker is installed', async ({ page, context, browserName }) => {
-  test.skip(browserName !== 'chromium', 'Playwright only exposes service workers in Chromium');
+test('opens offline once the service worker is installed', async ({ page, context }) => {
   await page.goto('./');
+  // The first install announces itself: an installed app that never got this far can't open offline.
+  await expect(page.getByTestId('offline-ready')).toHaveText('Ready to play offline.');
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
   // Reload once so the page is controlled and the precache is complete.
   await page.reload();
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await expect(page.getByTestId('offline-ready')).toBeHidden();
 
   await context.setOffline(true);
   await page.reload();

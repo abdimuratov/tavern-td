@@ -4,7 +4,7 @@ import { setupNative, tapHaptic } from '../platform/native';
 import { registerServiceWorker } from '../platform/pwa';
 import { isPortrait, watchViewport } from '../platform/viewport';
 import { App } from '../ui/App';
-import { lastTap, pendingUpdate, portrait, tapCount } from '../ui/state';
+import { lastTap, offlineReady, pendingUpdate, portrait, tapCount } from '../ui/state';
 
 async function boot(): Promise<void> {
   const boardHost = document.getElementById('board');
@@ -12,7 +12,10 @@ async function boot(): Promise<void> {
   if (!boardHost || !uiHost) throw new Error('index.html is missing #board or #ui');
 
   void setupNative();
-  registerServiceWorker((reload) => { pendingUpdate.value = reload; });
+  registerServiceWorker({
+    onOfflineReady: () => { offlineReady.value = true; },
+    onUpdate: (reload) => { pendingUpdate.value = reload; },
+  });
   render(h(App, {}), uiHost);
 
   const board = await createBoard(boardHost, {
