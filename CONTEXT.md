@@ -40,6 +40,14 @@ _Avoid_: high score, achievement, stats
 One group of creeps sent along the path in a single go; a Run is a fixed sequence of Waves.
 _Avoid_: level, round (Classics often say "level 51" when they mean a Wave)
 
+**Checkpoint**:
+A region of the Map that ground and air creeps must pass through in order on their way from the spawn to the exit.
+_Avoid_: waypoint (in player-facing text), node, flag
+
+**Aura**:
+A tower's effect on everything of one kind within a radius, such as faster attacks for nearby towers or less armor for nearby creeps.
+_Avoid_: field, zone, buff area
+
 **Block**:
 A placement that would leave creeps no path from spawn to exit. Every Game Mode rejects it.
 _Avoid_: wall-off, seal
@@ -65,6 +73,14 @@ _Avoid_: stone, wall, blocker
 **Recipe**:
 A fixed combination of specific gems that fuses into a special tower, such as Silver or Star Ruby.
 _Avoid_: combo, craft, fusion
+
+**Slate**:
+A support structure made from one Normal gem plus one specific Flawed gem in the same Draft. Creeps walk over it, and it leaves no Rock behind.
+_Avoid_: rune, tablet, totem
+
+**Damage Test**:
+The armored boss that arrives with Gem's Wave 50; how much damage it takes is the Run's score.
+_Avoid_: level 51, final boss, dummy
 
 ### Progression (Original only)
 
