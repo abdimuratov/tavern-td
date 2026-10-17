@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { checkRun, readCode, SAVE_VERSION, SaveProblem, writeCode, type SaveRules } from '../src/app/saves';
 import { encodeSave } from '../src/platform/savecode';
 import { hashState, snapshot, type GameState } from '../src/sim';
+import { ELEMENT_UI } from '../src/ui/modes/element';
 import { GEM_UI } from '../src/ui/modes/gem';
+import { buildAt, newElementRun, run, send as sendElement } from './sim/element/helpers';
 import { finishWave, newGemRun, OPEN_SPOTS, send } from './sim/gem/helpers';
 
 const RULES: SaveRules = { playable: (id) => id === 'gem', validState: (s) => GEM_UI.validSave!(s) };
@@ -69,5 +71,45 @@ describe('save codes for Runs', () => {
     expect(await why(await encodeSave({ v: 1, state: savedRun() }))).toMatch(/older version/);
     expect(await why(await encodeSave([1, 2, 3]))).toMatch(/isn't a Tavern TD save code/);
     expect(await why(await encodeSave({ v: SAVE_VERSION, state: { ...savedRun(), modeId: 'nope' } }))).toMatch(/Game Mode/);
+  });
+});
+
+const BOTH: SaveRules = {
+  playable: (id) => id === 'gem' || id === 'element',
+  validState: (s) => (s.modeId === 'element' ? ELEMENT_UI : GEM_UI).validSave!(s),
+};
+
+/** An Element Run mid-Wave, with towers building and firing, creeps on the Lane and projectiles in flight. */
+function elementMidWave(): GameState {
+  const state = newElementRun({ length: 'express', picks: 'allPick', seed: 5 });
+  sendElement(state, { type: 'element.summon', element: 'water' });
+  buildAt(state, 'basic_arrow_tower', 17, 18);
+  buildAt(state, 'water_tower', 17, 22);
+  sendElement(state, { type: 'element.sendNow' });
+  run(state, 420);
+  expect(state.creeps.length).toBeGreaterThan(0);
+  return JSON.parse(snapshot(state)) as GameState;
+}
+
+describe('Element saves', () => {
+  it('accept an Element Run and hand back the same state', () => {
+    const data = elementMidWave();
+    expect(hashState(checkRun(data, BOTH))).toBe(hashState(data));
+  });
+
+  it('round-trip through a save code exactly', async () => {
+    const state = elementMidWave();
+    const back = await readCode(await writeCode(state), BOTH);
+    expect(hashState(back)).toBe(hashState(state));
+    expect(ELEMENT_UI.optionsOf!(back)).toEqual({ picks: 'allPick', length: 'express' });
+  });
+
+  it('refuse unknown towers and a damaged Element state', () => {
+    const towers = elementMidWave();
+    towers.towers[0]!.spec = 'meteor_tower';
+    expect(problem(() => checkRun(towers, BOTH))).toMatch(/towers or creeps/);
+    const mode = elementMidWave();
+    (mode.mode as { levels: Record<string, number> }).levels['water'] = 9;
+    expect(problem(() => checkRun(mode, BOTH))).toMatch(/damaged/);
   });
 });

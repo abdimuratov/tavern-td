@@ -1,5 +1,5 @@
 import type { ShootVariant } from '../platform/audio';
-import { fnv1a, type CreepSpec, type GameModeRules, type TowerSpec } from '../sim';
+import { fnv1a, type Creep, type CreepSpec, type GameModeRules, type GameState, type SimEvent, type TowerSpec } from '../sim';
 
 /** Shapes drawn into the atlas at boot. Each is white with a dark outline, so a tint colours it. */
 export type Shape =
@@ -34,6 +34,12 @@ export interface TowerLook {
   readonly shot: number;
   /** Its attack sound. */
   readonly sound: ShootVariant;
+  /** A ring around the shape split into one segment per colour, such as the Elements a tower is made of. */
+  readonly ring?: readonly number[];
+  /** Small dots along the footprint's lower edge, such as the tower's level. */
+  readonly pips?: number;
+  /** Radius of the ring its hits splash, in world units, when its effects don't say. */
+  readonly splash?: number;
 }
 
 export interface CreepLook {
@@ -41,6 +47,56 @@ export interface CreepLook {
   readonly color: number;
   /** Of a cell's width. */
   readonly size: number;
+  /** A small dark symbol inside the body, such as a Trait's. */
+  readonly mark?: Shape;
+}
+
+/** How a creep's statuses show. Return the same object for the same look: the renderer compares them by identity. */
+export interface CreepStatusLook {
+  /** Mixed halfway into the creep's colour; null keeps its own. */
+  readonly tint: number | null;
+  readonly alpha: number;
+  /** Of its usual size. */
+  readonly scale: number;
+}
+
+/** Something a Game Mode draws on the board besides towers and creeps, such as a tornado. */
+export interface BoardExtra {
+  readonly x: number;
+  readonly y: number;
+  /** World units across. */
+  readonly size: number;
+  readonly glyph: 'ring' | 'glow' | 'swirl' | Shape;
+  readonly color: number;
+  readonly alpha: number;
+  /** Turns per second, for a swirl. */
+  readonly spin?: number;
+}
+
+/** A short effect for a Game Mode's own event, such as a pulse ring. */
+export interface EffectCue {
+  readonly kind: 'ring' | 'flash' | 'burst';
+  readonly x: number;
+  readonly y: number;
+  readonly color: number;
+  /** World units: a ring's radius, a flash's or burst's size. */
+  readonly size: number;
+  /** Milliseconds. */
+  readonly ms?: number;
+  readonly alpha?: number;
+}
+
+/** The ground's colours, for a Game Mode whose Map should read differently, such as Element's Lane and plots. */
+export interface TerrainLook {
+  readonly buildable?: number;
+  readonly walkable?: number;
+  readonly blocked?: number;
+  readonly blockedRim?: number;
+  readonly gridLine?: number;
+  /** A lighter edge where buildable ground meets anything else, so plots read as raised. */
+  readonly plotRim?: number;
+  /** False hides the dashed air line, for Maps no creep flies over. */
+  readonly airLine?: boolean;
 }
 
 /**
@@ -51,6 +107,13 @@ export interface CreepLook {
 export interface ModeLook {
   tower(id: string, spec: TowerSpec): TowerLook;
   creep(id: string, spec: CreepSpec): CreepLook;
+  /** A creep's look under its statuses, or null for none. Called after each tick for every creep with a status. */
+  creepStatus?(creep: Creep): CreepStatusLook | null;
+  /** What to draw besides towers and creeps, re-read after every tick. Return a shared empty list when there's nothing. */
+  extras?(state: GameState): readonly BoardExtra[];
+  /** Effects for the Game Mode's own events. */
+  effects?(event: Extract<SimEvent, { type: 'mode' }>, state: GameState): readonly EffectCue[] | null;
+  readonly terrain?: TerrainLook;
 }
 
 /** Saturated enough to read on the dark ground, distinct from the red ghost and the route line. */
@@ -93,10 +156,32 @@ export const DEFAULT_LOOK: ModeLook = {
   },
 };
 
+const SLOWED: CreepStatusLook = { tint: 0x8fd0ff, alpha: 1, scale: 1 };
+const POISONED: CreepStatusLook = { tint: 0x9de07a, alpha: 1, scale: 1 };
+const STUNNED: CreepStatusLook = { tint: 0xffe27a, alpha: 1, scale: 1 };
+
+/** The core's statuses: a stunned creep reads yellow, a slowed one blue, a poisoned one green. */
+export function defaultCreepStatus(c: Creep): CreepStatusLook | null {
+  let out: CreepStatusLook | null = null;
+  for (let i = 0; i < c.status.length; i++) {
+    const kind = c.status[i]!.kind;
+    if (kind === 'stun') return STUNNED;
+    if (kind === 'slow') out = SLOWED;
+    else if (kind === 'poison' && out === null) out = POISONED;
+  }
+  return out;
+}
+
+const NO_EXTRAS: readonly BoardExtra[] = [];
+
 /** Looks per spec id, resolved on first use. A spec the Game Mode doesn't know gets a plain grey shape. */
 export interface LookCache {
   tower(id: string): TowerLook;
   creep(id: string): CreepLook;
+  creepStatus(c: Creep): CreepStatusLook | null;
+  extras(state: GameState): readonly BoardExtra[];
+  effects(event: Extract<SimEvent, { type: 'mode' }>, state: GameState): readonly EffectCue[] | null;
+  readonly terrain: TerrainLook;
 }
 
 export function createLookCache(rules: GameModeRules, look: Partial<ModeLook> = {}): LookCache {
@@ -123,5 +208,9 @@ export function createLookCache(rules: GameModeRules, look: Partial<ModeLook> = 
       }
       return l;
     },
+    creepStatus: look.creepStatus ?? defaultCreepStatus,
+    extras: look.extras ?? (() => NO_EXTRAS),
+    effects: look.effects ?? (() => null),
+    terrain: look.terrain ?? {},
   };
 }

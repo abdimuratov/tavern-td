@@ -102,6 +102,18 @@ export function RowButton(p: RowButtonProps) {
   );
 }
 
+function WaveStat({ s }: { s: PlaySession }) {
+  void revision.value;
+  const custom = s.ui.waveLabel ? s.ui.waveLabel(s.view) : undefined;
+  if (custom === null) return null;
+  return (
+    <span class="stat" title="Wave">
+      <span class="muted">{custom?.label ?? 'Wave'}</span>
+      <span data-testid="wave">{custom ? custom.value : `${waveNumber.value}/${waveTotal.value}`}</span>
+    </span>
+  );
+}
+
 function Stats({ s }: { s: PlaySession }) {
   return (
     <div class="stats">
@@ -115,10 +127,7 @@ function Stats({ s }: { s: PlaySession }) {
           <span data-testid="lives">{lives}</span>
         </span>
       )}
-      <span class="stat" title="Wave">
-        <span class="muted">Wave</span>
-        <span data-testid="wave">{waveNumber.value}/{waveTotal.value}</span>
-      </span>
+      <WaveStat s={s} />
     </div>
   );
 }
@@ -171,13 +180,23 @@ function WavePreviewList({ s }: { s: PlaySession }) {
           <li key={w.number}>
             <span class="num">{w.number}</span>
             <span class="groups">
-              {w.groups.map((g, i) => (
+              {w.groups.map((g, i) => (g.swatch === undefined && !g.traits ? (
                 <span key={i} class="group">
                   {g.name} <span class="muted">×{g.count}</span>
                   {g.air && <span class="tag air">Air</span>}
                   {g.boss && <span class="tag boss">{g.tag ?? 'Boss'}</span>}
                 </span>
-              ))}
+              ) : (
+                // A long name gives way before the tags do: the Trait matters more than the name.
+                <span key={i} class="group rich" title={g.about}>
+                  {g.swatch !== undefined && <span class="dot" style={{ background: hex(g.swatch) }} />}
+                  <span class="name">{g.name}</span>
+                  <span class="muted">×{g.count}</span>
+                  {g.air && <span class="tag air">Air</span>}
+                  {g.boss && <span class="tag boss">{g.tag ?? 'Boss'}</span>}
+                  {g.traits?.map((t) => <span key={t} class="tag trait">{t}</span>)}
+                </span>
+              )))}
             </span>
           </li>
         ))}
@@ -268,6 +287,8 @@ function ModeActions({ s }: { s: PlaySession }) {
 
 function StartWave({ s }: { s: PlaySession }) {
   void revision.value;
+  const Footer = s.ui.Footer;
+  if (Footer) return <Footer s={s} />;
   if (s.ui.showStartWave === false) return null;
   const state = s.view.state;
   const p = phase.value;
@@ -298,7 +319,7 @@ export function Hud({ s }: { s: PlaySession }) {
   // Once the Run is over only the outcome is left to show; the end card has the buttons.
   const over = phase.value === 'won' || phase.value === 'lost';
   return (
-    <aside class={`hud interactive${selected.value && !over ? ' has-selection' : ''}`} data-testid="hud">
+    <aside class={`hud interactive mode-${s.ui.modeId}${selected.value && !over ? ' has-selection' : ''}`} data-testid="hud">
       <Stats s={s} />
       {!over && <Controls s={s} />}
       {Status && <Status s={s} />}

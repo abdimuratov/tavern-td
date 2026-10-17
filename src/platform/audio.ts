@@ -2,7 +2,8 @@ import { DEFAULT_SETTINGS, type Settings } from './storage';
 
 export type SoundName =
   | 'place' | 'rock' | 'merge' | 'upgrade' | 'shoot' | 'hit' | 'splash' | 'kill'
-  | 'leak' | 'waveStart' | 'waveEnd' | 'click' | 'error' | 'win' | 'lose';
+  | 'leak' | 'waveStart' | 'waveEnd' | 'click' | 'error' | 'win' | 'lose'
+  | 'levelUp' | 'summon' | 'resource' | 'rise';
 
 /** Attack sounds for `shoot`, named after the kinds of tower that fire them. */
 export type ShootVariant = 'arrow' | 'cannon' | 'frost' | 'arcane' | 'poison';
@@ -34,7 +35,7 @@ export interface Sound {
   jitter?: number;
 }
 
-const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
+const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5, E6 = 1318.5;
 const G4 = 392, FS4 = 369.99, F4 = 349.23;
 
 function notes(wave: Wave, freqs: readonly number[], step: number, dur: number, gain: number, from = 0): Tone[] {
@@ -139,6 +140,32 @@ export const SOUNDS: Readonly<Record<SoundName, Sound>> = {
       ...notes('square', [C5, E5, G5], 0.11, 0.14, 0.16),
       { wave: 'square', freq: C6, at: 0.33, dur: 0.55, gain: 0.14 },
       { wave: 'triangle', freq: C5, at: 0.33, dur: 0.6, gain: 0.3 },
+    ],
+  },
+  /** An Element gains a level: a rising arpeggio that ends high. */
+  levelUp: {
+    important: true,
+    tones: [
+      ...notes('square', [G4, C5, E5, G5], 0.06, 0.09, 0.15),
+      { wave: 'triangle', freq: C6, at: 0.24, dur: 0.32, gain: 0.26 },
+    ],
+  },
+  /** Something called onto the board, such as an Elemental: a low swell. */
+  summon: {
+    important: true,
+    tones: [
+      { wave: 'sawtooth', freq: 110, slide: 220, dur: 0.38, gain: 0.12 },
+      { wave: 'triangle', freq: 220, slide: 440, at: 0.05, dur: 0.34, gain: 0.2 },
+    ],
+  },
+  /** A resource arrives or comes back: a bright two-note chime. */
+  resource: { important: true, tones: notes('triangle', [E6, C6 * 1.5], 0.06, 0.12, 0.22) },
+  /** Something gets back up: a hollow slide upward. */
+  rise: {
+    jitter: 0.05,
+    tones: [
+      { wave: 'triangle', freq: 180, slide: 520, dur: 0.22, gain: 0.2 },
+      { wave: 'noise', filter: 'highpass', freq: 2500, slide: 4000, dur: 0.12, gain: 0.06 },
     ],
   },
   lose: {

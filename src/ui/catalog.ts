@@ -1,5 +1,6 @@
 import { DEFAULT_DIFFICULTY_HP, getMode, hasMode, type Difficulty } from '../sim';
 import type { ModeUi } from './mode-ui';
+import { ELEMENT_UI } from './modes/element';
 import { GEM_UI } from './modes/gem';
 
 /** A Game Mode as the main menu lists it. Only those with a `ui` can be played yet. */
@@ -14,7 +15,7 @@ export interface CatalogEntry {
 
 export const CATALOG: readonly CatalogEntry[] = [
   { id: 'gem', name: 'Gem', origin: 'Gem TD', blurb: 'Draft five gems, keep one, and maze the rest as Rocks.', ui: GEM_UI },
-  { id: 'element', name: 'Element', origin: 'Element TD', blurb: 'Unlock elements and fuse their towers.' },
+  { id: 'element', name: 'Element', origin: 'Element TD', blurb: 'Raise six Elements with Lumber and fuse their towers beside one long Lane.', ui: ELEMENT_UI },
   { id: 'original', name: 'Original', origin: 'Our own Campaign', blurb: 'Hand-made Stages, Stars and Talents.' },
   { id: 'maul', name: 'Maul', origin: 'Wintermaul', blurb: 'Pick a Race and maze an open field.' },
 ];
@@ -29,6 +30,8 @@ export const DIFFICULTY_NAME: Readonly<Record<Difficulty, string>> = {
 
 /** What a Difficulty does to this Game Mode's creeps, from its own HP table. */
 export function difficultyAbout(modeId: string, d: Difficulty): string {
+  const own = catalogEntry(modeId)?.ui?.difficultyAbout;
+  if (own) return own(d);
   if (d === 'normal') return "The Classic's own numbers";
   const table = (hasMode(modeId) ? getMode(modeId).difficultyHp : undefined) ?? DEFAULT_DIFFICULTY_HP;
   const change = Math.round((table[d] - 1) * 100);

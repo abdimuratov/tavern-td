@@ -31,7 +31,7 @@ The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scale
 _Avoid_: level, challenge
 
 **Record**:
-The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win.
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare.
 _Avoid_: high score, achievement, stats
 
 **Save code**:
@@ -109,6 +109,10 @@ _Avoid_: essence point, pure lumber
 **Express**:
 Element's short Run: 30 Waves with more starting gold and Lumber, instead of the Full 55.
 _Avoid_: quick mode, short (the Classic's own "Short" is a different start)
+
+**All Pick** / **All Random**:
+How a Run raises its Elements, chosen at New Run. In All Pick you choose what each Lumber summons; in All Random each Lumber goes to a random Element in an order drawn at the start, and selling refunds everything.
+_Avoid_: pick mode, random mode, draft (Gem's word)
 
 ### Gem (Gem TD rules)
 

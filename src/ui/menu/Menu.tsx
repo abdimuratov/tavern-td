@@ -1,11 +1,22 @@
+import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { loadRecords, type ModeRecord } from '../../platform/storage';
 import { DIFFICULTIES, type Difficulty } from '../../sim';
 import { CATALOG, catalogEntry, DIFFICULTY_NAME, difficultyAbout, type CatalogEntry } from '../catalog';
 import { ago, clock, num } from '../format';
+import type { RecordBoard, RunChoices } from '../mode-ui';
 import { appActions, savedRuns, type CodeCheck, type SavedRunInfo } from '../state';
 import { SettingsPanel } from './Settings';
+
+/** The New Run choices last picked per Game Mode, so a second Run starts from them. */
+const lastChoices = signal<Readonly<Record<string, RunChoices>>>({});
+
+function choicesFor(entry: CatalogEntry | undefined): RunChoices {
+  const specs = entry?.ui?.runOptions ?? [];
+  const last = entry ? lastChoices.value[entry.id] : undefined;
+  return Object.fromEntries(specs.map((o) => [o.id, last?.[o.id] ?? o.default]));
+}
 
 type Page =
   | { readonly name: 'main' }
@@ -35,7 +46,7 @@ function Sheet({ title, onBack, children, wide }: { title: string; onBack(): voi
 }
 
 function savedLine(info: SavedRunInfo & { ok: true }): string {
-  return `Wave ${info.wave} · ${DIFFICULTY_NAME[info.difficulty]} · ${ago(info.savedAt)}`;
+  return [`Wave ${info.wave}`, info.options, DIFFICULTY_NAME[info.difficulty], ago(info.savedAt)].filter(Boolean).join(' · ');
 }
 
 function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) {
@@ -43,7 +54,7 @@ function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) 
   return (
     <section class="mode-card" data-testid={`mode-${entry.id}`}>
       <div class="mode-title">
-        <span class="gem-icon" aria-hidden="true" />
+        <span class={`mode-icon ${entry.id}`} aria-hidden="true" />
         <div>
           <h2>{entry.name}</h2>
           <div class="muted">{entry.origin}</div>
@@ -90,7 +101,7 @@ function MainPage({ go }: { go(page: Page): void }) {
         <nav class="menu-list side">
           <button type="button" class="btn" data-testid="records" onClick={() => go({ name: 'records' })}>Records</button>
           <button type="button" class="btn" data-testid="settings-button" onClick={() => go({ name: 'settings' })}>Settings</button>
-          <button type="button" class="btn" data-testid="howto-button" onClick={() => go({ name: 'howto', modeId: 'gem' })}>How to play</button>
+          <button type="button" class="btn" data-testid="howto-button" onClick={() => go({ name: 'howto', modeId: playable[0]?.id ?? 'gem' })}>How to play</button>
           <button type="button" class="btn" data-testid="import" onClick={() => go({ name: 'import' })}>Import save code</button>
         </nav>
       </div>
@@ -98,24 +109,67 @@ function MainPage({ go }: { go(page: Page): void }) {
   );
 }
 
-function useRecords(modeId: string): Record<Difficulty, ModeRecord> | null {
+function useRecords(modeId: string, board?: string): Record<Difficulty, ModeRecord> | null {
   const [records, setRecords] = useState<Record<Difficulty, ModeRecord> | null>(null);
   useEffect(() => {
     let live = true;
-    void loadRecords(modeId).then((r) => live && setRecords(r));
+    setRecords(null);
+    void loadRecords(modeId, board).then((r) => live && setRecords(r));
     return () => {
       live = false;
     };
-  }, [modeId]);
+  }, [modeId, board]);
   return records;
+}
+
+/** A New Run choice as a row of buttons, such as All Pick or All Random. */
+function OptionRow({ label, choices, value, testid, onPick }: {
+  label: string;
+  choices: readonly { readonly id: string; readonly label: string; readonly about: string }[];
+  value: string;
+  testid: string;
+  onPick(id: string): void;
+}) {
+  return (
+    <div class="run-option">
+      <span class="option-label">{label}</span>
+      <div class="seg" role="group" aria-label={label}>
+        {choices.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            class={`btn${value === c.id ? ' active' : ''}`}
+            aria-pressed={value === c.id}
+            title={c.about}
+            data-testid={`${testid}-${c.id}`}
+            onClick={() => onPick(c.id)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): void; confirm(c: Confirm): void }) {
   const entry = catalogEntry(modeId);
-  const records = useRecords(modeId);
+  const ui = entry?.ui;
+  const choices = choicesFor(entry);
+  const boardId = ui?.recordBoard?.(choices);
+  const board = ui?.recordBoards?.find((b) => b.id === boardId);
+  const records = useRecords(modeId, boardId);
+  /** "Wave 12", or the board's own words past its fixed Waves, such as "Boss 3". */
+  const bestText = (n: number): string => {
+    const w = board?.wave ? board.wave(n) : String(n);
+    return /^\d/.test(w) ? `Wave ${w}` : w;
+  };
   const saved = savedRuns.value[modeId];
+  const pick = (id: string, value: string): void => {
+    lastChoices.value = { ...lastChoices.value, [modeId]: { ...choices, [id]: value } };
+  };
   const start = (d: Difficulty): void => {
-    const run = (): void => appActions.value?.newRun(modeId, d);
+    const run = (): void => appActions.value?.newRun(modeId, d, choices);
     if (saved?.ok) {
       confirm({
         title: 'Start a new Run?',
@@ -125,8 +179,16 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
       });
     } else run();
   };
+  const options = ui?.runOptions ?? [];
   return (
     <Sheet title={`New ${entry?.name ?? modeId} Run`} onBack={back}>
+      {options.length > 0 && (
+        <div class="run-options" data-testid="run-options">
+          {options.map((o) => (
+            <OptionRow key={o.id} label={o.label} choices={o.choices} value={choices[o.id] ?? o.default} testid={`option-${o.id}`} onPick={(v) => pick(o.id, v)} />
+          ))}
+        </div>
+      )}
       <div class="difficulties">
         {DIFFICULTIES.map((d) => {
           const best = records?.[d].bestWave ?? 0;
@@ -134,7 +196,7 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
             <button key={d} type="button" class={`btn difficulty${d === 'normal' ? ' primary' : ''}`} data-testid={`difficulty-${d}`} onClick={() => start(d)}>
               <span class="name">{DIFFICULTY_NAME[d]}</span>
               <span class="about">{difficultyAbout(modeId, d)}</span>
-              <span class="best-wave">{best > 0 ? `Best: Wave ${best}` : 'Not played yet'}</span>
+              <span class="best-wave">{best > 0 ? `Best: ${bestText(best)}` : 'Not played yet'}</span>
             </button>
           );
         })}
@@ -143,11 +205,12 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
   );
 }
 
-function RecordsTable({ modeId }: { modeId: string }) {
-  const records = useRecords(modeId);
+function RecordsTable({ modeId, board }: { modeId: string; board?: RecordBoard }) {
+  const records = useRecords(modeId, board?.id);
   if (!records) return <p class="muted">Loading…</p>;
+  const wave = (n: number): string => (board?.wave ? board.wave(n) : String(n));
   return (
-    <table class="records" data-testid={`records-${modeId}`}>
+    <table class="records" data-testid={board ? `records-${modeId}-${board.id}` : `records-${modeId}`}>
       <thead>
         <tr><th>Difficulty</th><th>Best Wave</th><th>Score</th><th>Fastest win</th><th>Runs</th><th>Won</th></tr>
       </thead>
@@ -157,7 +220,7 @@ function RecordsTable({ modeId }: { modeId: string }) {
           return (
             <tr key={d}>
               <th>{DIFFICULTY_NAME[d]}</th>
-              <td>{r.bestWave > 0 ? r.bestWave : '–'}</td>
+              <td>{r.bestWave > 0 ? wave(r.bestWave) : '–'}</td>
               <td>{r.bestScore > 0 ? num(r.bestScore) : '–'}</td>
               <td>{r.fastestWin !== null ? clock(r.fastestWin) : '–'}</td>
               <td>{r.played}</td>
@@ -179,7 +242,13 @@ function RecordsPage({ back }: { back(): void }) {
             {e.name} <span class="muted">{e.origin}</span>
             {!e.ui?.result && <span class="tag soon">Coming later</span>}
           </h2>
-          {e.ui?.result && <RecordsTable modeId={e.id} />}
+          {e.ui?.result && !e.ui.recordBoards && <RecordsTable modeId={e.id} />}
+          {e.ui?.result && e.ui.recordBoards?.map((b) => (
+            <div key={b.id} class="records-board">
+              <h3>{b.name}</h3>
+              <RecordsTable modeId={e.id} board={b} />
+            </div>
+          ))}
         </section>
       ))}
     </Sheet>
@@ -228,7 +297,7 @@ function ImportPage({ back, confirm }: { back(): void; confirm(c: Confirm): void
         <button type="button" class="btn" disabled={busy || code.trim() === ''} data-testid="import-load" onClick={() => void load()}>Check code</button>
         {check?.ok && (
           <button type="button" class="btn primary" data-testid="import-continue" onClick={() => go(check)}>
-            Continue {catalogEntry(check.modeId)?.name} · Wave {check.wave} · {DIFFICULTY_NAME[check.difficulty]}
+            Continue {catalogEntry(check.modeId)?.name} · Wave {check.wave} · {check.options ? `${check.options} · ` : ''}{DIFFICULTY_NAME[check.difficulty]}
           </button>
         )}
       </div>
@@ -274,7 +343,29 @@ export function Menu() {
     case 'settings': body = <Sheet title="Settings" onBack={back}><SettingsPanel /></Sheet>; break;
     case 'howto': {
       const HowTo = catalogEntry(page.modeId)?.ui?.HowTo;
-      body = <Sheet title={`How to play ${catalogEntry(page.modeId)?.name ?? ''}`} onBack={back} wide>{HowTo ? <HowTo /> : null}</Sheet>;
+      const modes = CATALOG.filter((e) => e.ui?.HowTo);
+      body = (
+        <Sheet title={`How to play ${catalogEntry(page.modeId)?.name ?? ''}`} onBack={back} wide>
+          {modes.length > 1 && (
+            <div class="seg howto-modes" role="tablist" aria-label="Game Mode">
+              {modes.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  role="tab"
+                  class={`btn${e.id === page.modeId ? ' active' : ''}`}
+                  aria-selected={e.id === page.modeId}
+                  data-testid={`howto-${e.id}`}
+                  onClick={() => setPage({ name: 'howto', modeId: e.id })}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {HowTo ? <HowTo /> : null}
+        </Sheet>
+      );
       break;
     }
     case 'import': body = <ImportPage back={back} confirm={setConfirm} />; break;

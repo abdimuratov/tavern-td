@@ -2,7 +2,12 @@ import { CanvasSource, Rectangle, Texture } from 'pixi.js';
 import { SHAPES, type Shape } from './look';
 
 /** Extra sprites besides the tintable shapes. */
-export type Glyph = 'plate' | 'shadow' | 'glow' | 'ring' | 'white' | 'brackets';
+export type Glyph = 'plate' | 'shadow' | 'glow' | 'ring' | 'white' | 'brackets' | 'arc2' | 'arc3' | 'arc6' | 'swirl';
+
+/** The ring segment glyph for a ring split into `n` colours; segment i is the glyph turned by i/n of a turn. */
+export function arcGlyph(n: number): Glyph {
+  return n <= 1 ? 'ring' : n === 2 ? 'arc2' : n === 3 ? 'arc3' : 'arc6';
+}
 
 export interface Atlas {
   shape(s: Shape): Texture;
@@ -49,6 +54,20 @@ function solid(g: CanvasRenderingContext2D, outline = 7): void {
 }
 
 const UP = -Math.PI / 2;
+
+/** One of `n` segments of a thick ring, starting at the top and running clockwise, with a hair of gap to the next. */
+function arc(n: number): Draw {
+  return (g) => {
+    const gap = n >= 6 ? 0.1 : 0.07;
+    const a0 = UP + gap / 2;
+    const a1 = UP + (Math.PI * 2) / n - gap / 2;
+    g.beginPath();
+    g.arc(0, 0, R * 0.98, a0, a1);
+    g.arc(0, 0, R * 0.7, a1, a0, true);
+    g.closePath();
+    solid(g, 4);
+  };
+}
 const ROCK = [1, 0.86, 0.97, 0.8, 0.95, 0.88, 1, 0.83, 0.92];
 
 /** A cut gem from above: an n-sided girdle, a table in the middle and a facet line from each table corner. */
@@ -215,6 +234,27 @@ const GLYPH_DRAW: Readonly<Record<Glyph, Draw>> = {
     g.lineWidth = R * 0.16;
     g.strokeStyle = '#ffffff';
     g.stroke();
+  },
+  arc2: arc(2),
+  arc3: arc(3),
+  arc6: arc(6),
+  swirl: (g) => {
+    // Three curved arms around an eye: a whirlwind seen from above.
+    g.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      const turn = (k * Math.PI * 2) / 3;
+      g.beginPath();
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24;
+        const a = turn + t * Math.PI * 1.25;
+        const r = R * (0.18 + 0.78 * t);
+        if (i === 0) g.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+        else g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      g.lineWidth = R * 0.2;
+      g.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      g.stroke();
+    }
   },
 };
 

@@ -31,7 +31,7 @@ export async function draftCount(page: Page): Promise<number> {
 
 /** From the main menu into a fresh Gem Run. */
 export async function newGemRun(page: Page, difficulty: 'easy' | 'normal' | 'hard' | 'insane' = 'normal'): Promise<void> {
-  await page.getByTestId('new-run').click();
+  await page.getByTestId('mode-gem').getByTestId('new-run').click();
   await page.getByTestId(`difficulty-${difficulty}`).click();
   await expect(page.getByTestId('gem-step')).toHaveText(/Place gem 1 of 5/);
   await page.waitForFunction(() => !!window.tavern);
@@ -60,4 +60,37 @@ export async function finishWave(page: Page): Promise<{ tick: number; gold: numb
     await window.tavern!.flush();
     return saved;
   });
+}
+
+/** From the main menu into a fresh Element Run with these choices. */
+export async function newElementRun(
+  page: Page,
+  o: { picks: 'allPick' | 'allRandom'; length: 'full' | 'express'; difficulty: 'easy' | 'normal' | 'hard' | 'insane' },
+): Promise<void> {
+  await page.getByTestId('mode-element').getByTestId('new-run').click();
+  await page.getByTestId(`option-picks-${o.picks}`).click();
+  await page.getByTestId(`option-length-${o.length}`).click();
+  await page.getByTestId(`difficulty-${o.difficulty}`).click();
+  await expect(page.getByTestId('element-status')).toBeVisible();
+  await page.waitForFunction(() => !!window.tavern);
+}
+
+export async function towerSpecs(page: Page): Promise<string[]> {
+  return page.evaluate(() => window.tavern!.controller.state.towers.map((t) => t.spec));
+}
+
+/** Picks a tower in the build menu and builds it with its top-left at (col, row): a click, or tap then tap again. */
+export async function buildTower(page: Page, action: string, col: number, row: number): Promise<void> {
+  const before = (await towerSpecs(page)).length;
+  const button = page.locator(`[data-action="build-${action}"]`);
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  const [wx, wy] = spotCorner(col, row);
+  const p = await worldPoint(page, wx, wy);
+  if (touch()) {
+    await tapAt(page, p.x, p.y);
+    await expect(page.getByTestId('hint')).toHaveText(/tap again to build/);
+  }
+  await tapAt(page, p.x, p.y);
+  await expect.poll(async () => (await towerSpecs(page)).length).toBe(before + 1);
 }

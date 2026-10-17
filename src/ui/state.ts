@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import { DEFAULT_SETTINGS, type RecordUpdate, type Settings } from '../platform/storage';
 import type { Difficulty, Phase } from '../sim';
 import type { Hotkeys } from './hotkeys';
-import type { ModeUi, RunView } from './mode-ui';
+import type { ModeUi, RunChoices, RunView } from './mode-ui';
 
 export const portrait = signal(false);
 /** True once the service worker's first install has finished. */
@@ -20,7 +20,7 @@ export interface PlaySession {
   startWave(): void;
   setSpeed(speed: Speed): void;
   togglePause(): void;
-  /** A fresh Run of the same Game Mode and Difficulty. */
+  /** A fresh Run of the same Game Mode, Difficulty and choices. */
   restart(): void;
   /** Clears the ghost and the selection, as Esc does. */
   cancel(): void;
@@ -47,6 +47,8 @@ export const waveTotal = signal(0);
 export const phase = signal<Phase>('build');
 export const speed = signal<Speed>(1);
 export const paused = signal(false);
+/** The Run's time in quarter seconds, for countdowns: it changes four times a game second, not every frame. */
+export const runClock = signal(0);
 /** The selected structure's id, 0 for none. */
 export const selected = signal(0);
 /** Bumped when anything the mode's buttons or the selected panel show may have changed. */
@@ -67,13 +69,17 @@ export const runMenu = signal<RunMenuPage | null>(null);
 /** How the Run ended, for the end screen. `update` arrives once the Record is merged. */
 export interface RunEnd {
   readonly won: boolean;
-  readonly wave: number;
-  readonly totalWaves: number;
+  /** The line under Victory or Defeat. */
+  readonly summary: string;
+  /** The Wave reached, as shown. */
+  readonly wave: string;
   /** Null for modes without a score. */
   readonly score: number | null;
   /** The winning time in seconds, null for a loss. */
   readonly seconds: number | null;
   readonly difficulty: Difficulty;
+  /** The Run's other choices in a few words, such as "Express", for Play again; '' for none. */
+  readonly options: string;
   readonly update: RecordUpdate | null;
 }
 export const runEnd = signal<RunEnd | null>(null);
@@ -85,7 +91,11 @@ export const screen = signal<'boot' | 'menu' | 'play'>('boot');
 
 /** A Run saved for Continue, or why the save can't be used. */
 export type SavedRunInfo =
-  | { readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly savedAt: number }
+  | {
+    readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly savedAt: number;
+    /** The Run's other choices in a few words, such as "Express"; '' for none. */
+    readonly options: string;
+  }
   | { readonly ok: false; readonly modeId: string; readonly problem: string };
 
 /** Saved Runs by Game Mode id, refreshed whenever the main menu opens. */
@@ -93,12 +103,15 @@ export const savedRuns = signal<Readonly<Record<string, SavedRunInfo>>>({});
 
 /** A pasted save code, checked: what it holds, or why it can't be loaded. */
 export type CodeCheck =
-  | { readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly gold: number; start(): void }
+  | {
+    readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly gold: number;
+    readonly options: string; start(): void;
+  }
   | { readonly ok: false; readonly message: string };
 
 /** What the menus ask of the app. The app fills it in at boot. */
 export interface AppActions {
-  newRun(modeId: string, difficulty: Difficulty): void;
+  newRun(modeId: string, difficulty: Difficulty, choices?: RunChoices): void;
   continueRun(modeId: string): void;
   checkCode(code: string): Promise<CodeCheck>;
   /** Saves and applies new settings at once. */

@@ -1,6 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { airRoute, CELL, type GameState, type MapSpec } from '../sim';
 import { cellsBox } from './footprint';
+import type { TerrainLook } from './look';
 
 export const TERRAIN_COLORS = {
   background: 0x12100e,
@@ -23,21 +24,23 @@ export interface Terrain {
 }
 
 /** The Map's ground, drawn once per Run: terrain, grid, spawn, numbered checkpoints, the exit and the air line. */
-export function buildTerrain(state: GameState): Terrain {
+export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain {
   const map = state.map;
+  const colors = { ...TERRAIN_COLORS, ...look };
   const root = new Container();
   const ground = new Graphics();
-  drawGround(ground, map);
+  drawGround(ground, map, colors);
+  if (look.plotRim !== undefined) drawPlotRims(ground, map, look.plotRim);
   root.addChild(ground);
 
   const grid = new Graphics();
   for (let c = 1; c < map.cols; c++) grid.moveTo(c * CELL, 0).lineTo(c * CELL, map.rows * CELL);
   for (let r = 1; r < map.rows; r++) grid.moveTo(0, r * CELL).lineTo(map.cols * CELL, r * CELL);
-  grid.stroke({ color: TERRAIN_COLORS.gridLine, width: 1.5, alpha: 0.7 });
+  grid.stroke({ color: colors.gridLine, width: 1.5, alpha: 0.7 });
   root.addChild(grid);
 
   const marks = new Graphics();
-  drawAirLine(marks, state);
+  if (look.airLine !== false) drawAirLine(marks, state);
   const labels: Text[] = [];
   map.waypoints.forEach((region, i) => {
     const exit = i === map.waypoints.length - 1;
@@ -64,8 +67,8 @@ export function buildTerrain(state: GameState): Terrain {
 }
 
 /** Runs of equal terrain merged into one rect each, so a big Map is a few hundred rects, not thousands. */
-function drawGround(g: Graphics, map: MapSpec): void {
-  const fills: Record<string, number> = { '.': TERRAIN_COLORS.buildable, ',': TERRAIN_COLORS.walkable, '#': TERRAIN_COLORS.blocked };
+function drawGround(g: Graphics, map: MapSpec, colors: typeof TERRAIN_COLORS): void {
+  const fills: Record<string, number> = { '.': colors.buildable, ',': colors.walkable, '#': colors.blocked };
   for (const ch of ['.', ',', '#']) {
     for (let r = 0; r < map.rows; r++) {
       const line = map.terrain[r]!;
@@ -88,7 +91,25 @@ function drawGround(g: Graphics, map: MapSpec): void {
       if (map.terrain[r]![c] === '#') g.roundRect(c * CELL + 8, r * CELL + 8, CELL - 16, CELL - 16, 10);
     }
   }
-  g.fill(TERRAIN_COLORS.blockedRim);
+  g.fill(colors.blockedRim);
+}
+
+/** A light edge on each side of buildable ground that meets something else, so plots read as raised. */
+function drawPlotRims(g: Graphics, map: MapSpec, color: number): void {
+  const W = 5;
+  const buildable = (c: number, r: number): boolean => r >= 0 && r < map.rows && c >= 0 && c < map.cols && map.terrain[r]![c] === '.';
+  for (let r = 0; r < map.rows; r++) {
+    for (let c = 0; c < map.cols; c++) {
+      if (!buildable(c, r)) continue;
+      const x = c * CELL;
+      const y = r * CELL;
+      if (!buildable(c, r - 1)) g.rect(x, y, CELL, W);
+      if (!buildable(c, r + 1)) g.rect(x, y + CELL - W, CELL, W);
+      if (!buildable(c - 1, r)) g.rect(x, y, W, CELL);
+      if (!buildable(c + 1, r)) g.rect(x + CELL - W, y, W, CELL);
+    }
+  }
+  g.fill({ color, alpha: 0.9 });
 }
 
 function drawAirLine(g: Graphics, state: GameState): void {

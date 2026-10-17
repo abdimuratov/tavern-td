@@ -16,6 +16,11 @@ Phase 1 progress (2026-10-17):
 
 Phase 2 started on 2026-10-17 without waiting for that play-test, as you asked. The Phase 1 box stays open until the play-test is done.
 
+Phase 2 progress (2026-10-17):
+- Done: Element's rules are ported ([element-td-rules.md](research/element-td-rules.md)), and Element is playable from the main menu. New Run asks for All Pick or All Random, Full or Express, and Difficulty. Autosave, Continue, save codes, How to play and Records all work, with Records kept apart for Full and Express. The e2e test plays a Wave and resumes it in all four browsers.
+- Left: play a full Run, autosave and resume it on the Mac, the iPhone and the S24.
+- Watch in play-testing: at fit zoom a tower is ~18 pt on a phone, so placing wants a pinch first; a second tap within 26 pt of the Ghost still builds it.
+
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element

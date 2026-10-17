@@ -148,6 +148,21 @@ describe('Records', () => {
     expect((await storage.loadRecord('element', 'easy')).bestWave).toBe(4);
   });
 
+  it('keeps boards apart within a Difficulty, under keys that leave a board-less Record where it was', async () => {
+    const kv = memoryStore();
+    const { storage } = setup(kv);
+    await storage.recordResult('gem', 'normal', { wave: 12, score: 5, won: false, seconds: 1 });
+    await storage.recordResult('element', 'normal', { wave: 30, score: 900, won: true, seconds: 600 }, 'express');
+    await storage.recordResult('element', 'normal', { wave: 20, score: 400, won: false, seconds: 900 }, 'full');
+    expect([...kv.data.keys()].filter((k) => k.startsWith('record/')).sort()).toEqual([
+      'record/element/express/normal', 'record/element/full/normal', 'record/gem/normal',
+    ]);
+    expect((await storage.loadRecords('element', 'express')).normal).toMatchObject({ bestWave: 30, won: 1, fastestWin: 600 });
+    expect((await storage.loadRecord('element', 'normal', 'full')).bestWave).toBe(20);
+    expect((await storage.loadRecord('element', 'normal')).played).toBe(0);
+    expect((await storage.loadRecord('gem', 'normal')).bestWave).toBe(12);
+  });
+
   it('counts results that arrive together', async () => {
     const { storage } = setup();
     await Promise.all([

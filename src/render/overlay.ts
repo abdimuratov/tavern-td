@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
-import { CELL, type MapSpec } from '../sim';
+import { CELL, type MapSpec, type Point } from '../sim';
 import { ATLAS_UNIT, type Atlas } from './atlas';
 import type { Box } from './footprint';
 import type { TowerLook } from './look';
@@ -33,6 +33,8 @@ const INVALID = 0xf0503c;
 const WHITE = 8;
 /** An arrowhead every this many route cells shows which way creeps walk. */
 const ARROW_EVERY = 4;
+/** On a fixed route, an arrowhead every this many world units. */
+const ARROW_SPACING = ARROW_EVERY * CELL;
 
 /**
  * The placement and selection layer: the route line, range circles, the ghost
@@ -93,6 +95,35 @@ export class Overlay {
       const uy = dy / len;
       const s = width * 1.5;
       g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+    }
+    g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
+  }
+
+  /** A fixed route through world points: the same line and arrowheads, spaced by distance along it. */
+  setRoutePath(points: readonly Point[], style: RouteStyle): void {
+    const g = this.route;
+    g.clear();
+    if (points.length < 2) return;
+    const { color, alpha, width } = ROUTE[style];
+    g.moveTo(points[0]!.x, points[0]!.y);
+    for (let i = 1; i < points.length; i++) g.lineTo(points[i]!.x, points[i]!.y);
+    g.stroke({ color, alpha, width, cap: 'round', join: 'round' });
+    const s = width * 1.5;
+    let next = ARROW_SPACING / 2;
+    let walked = 0;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1]!;
+      const b = points[i]!;
+      const len = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+      if (len === 0) continue;
+      const ux = (b.x - a.x) / len;
+      const uy = (b.y - a.y) / len;
+      for (; next <= walked + len; next += ARROW_SPACING) {
+        const ax = a.x + ux * (next - walked);
+        const ay = a.y + uy * (next - walked);
+        g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+      }
+      walked += len;
     }
     g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
   }

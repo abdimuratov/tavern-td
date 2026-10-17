@@ -4,11 +4,13 @@ import { draftCount, newGemRun, OPEN_SPOTS, placeDraft, spotCorner, tapAt, touch
 // The app boots into the main menu. These check the play screen itself on a
 // fresh Gem Run: taps and clicks, ghosts, pan, the HUD, hotkeys, and the shell.
 
-test('the main menu lists the Game Modes, with Gem playable', async ({ page }) => {
+test('the main menu lists the Game Modes, with Gem and Element playable', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByTestId('menu')).toBeVisible();
   await expect(page.getByTestId('mode-gem')).toContainText('Gem TD');
-  for (const id of ['element', 'original', 'maul']) await expect(page.getByTestId(`mode-${id}`)).toContainText('Coming later');
+  await expect(page.getByTestId('mode-element')).toContainText('Element TD');
+  await expect(page.getByTestId('mode-element').getByTestId('new-run')).toBeVisible();
+  for (const id of ['original', 'maul']) await expect(page.getByTestId(`mode-${id}`)).toContainText('Coming later');
   await expect(page.getByTestId('continue')).toBeHidden();
 });
 

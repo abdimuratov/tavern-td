@@ -7,6 +7,7 @@ import { type Camera, type Size, clamp, fitCamera, pan, screenToWorld, zoomAt } 
 import { Effects } from './effects';
 import { Entities } from './entities';
 import { attachGestures, type PointerKind } from './gestures';
+import { Extras } from './extras';
 import { createLookCache, type LookCache, type ModeLook } from './look';
 import { Marks, type BoardMark } from './marks';
 import { Overlay, type GhostView, type RouteStyle, type SelectionView } from './overlay';
@@ -29,6 +30,8 @@ export interface Board {
   /** Once per display frame. `alpha` is how far between the last two ticks to draw; `dt` is real milliseconds. */
   render(alpha: number, dt: number): void;
   setRoute(cells: readonly number[] | null, style: RouteStyle): void;
+  /** The route as a line through world points, for Maps whose creeps walk a fixed route. */
+  setRoutePath(points: readonly Point[], style: RouteStyle): void;
   setGhost(ghost: GhostView | null): void;
   setSelection(sel: SelectionView | null): void;
   /** The Game Mode's marks on structures; the list replaces the last one. */
@@ -76,8 +79,11 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   const layers = {
     halos: new Container(),
     plates: new Container(),
+    rings: new Container(),
     towers: new Container(),
+    pips: new Container(),
     ground: new Container(),
+    creepMarks: new Container(),
     projectiles: new Container(),
     shadows: new Container(),
     air: new Container(),
@@ -87,11 +93,14 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   const effectsUnder = new Container();
   const effectsOver = new Container();
   const marksLayer = new Container();
+  const extrasLayer = new Container();
   world.addChild(
-    terrainLayer, overlay.under, effectsUnder, layers.halos, layers.plates, layers.towers, marksLayer, overlay.over, layers.ground,
-    layers.projectiles, layers.shadows, layers.air, layers.barBacks, layers.bars, effectsOver,
+    terrainLayer, overlay.under, effectsUnder, layers.halos, layers.plates, layers.rings, layers.towers, layers.pips, marksLayer,
+    overlay.over, layers.ground, layers.creepMarks, layers.projectiles, layers.shadows, layers.air, extrasLayer,
+    layers.barBacks, layers.bars, effectsOver,
   );
   const marks = new Marks(atlas, marksLayer);
+  const extras = new Extras(atlas, extrasLayer);
   let showGrid = true;
 
   let rules: GameModeRules | null = null;
@@ -144,6 +153,8 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   });
 
   function splashRadius(spec: string): number {
+    const own = looks.tower(spec).splash;
+    if (own !== undefined) return own;
     const effects = rules?.towers[spec]?.attack?.effects;
     if (!effects) return 0;
     let r = 0;
@@ -204,6 +215,14 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
           if (t) effects.flash(t.x, t.y, looks.tower(e.spec).color, CELL * 1.4, 320);
           break;
         }
+        case 'mode': {
+          for (const cue of looks.effects(e, state) ?? []) {
+            if (cue.kind === 'ring') effects.ring(cue.x, cue.y, cue.color, cue.size, cue.ms, cue.alpha);
+            else if (cue.kind === 'flash') effects.flash(cue.x, cue.y, cue.color, cue.size, cue.ms);
+            else effects.burst(cue.x, cue.y, cue.color, cue.size);
+          }
+          break;
+        }
         default:
           break;
       }
@@ -225,7 +244,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
           terrainLayer.removeChild(terrain.root);
           terrain.root.destroy({ children: true });
         }
-        terrain = buildTerrain(state);
+        terrain = buildTerrain(state, looks.terrain);
         terrainLayer.addChild(terrain.root);
         worldSize = { width: map.cols * CELL, height: map.rows * CELL };
         apply(fitCamera(screen, worldSize));
@@ -235,20 +254,24 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
       overlay.setSelection(null);
       marks.set([]);
       entities.sync(state);
+      extras.set(looks.extras(state));
     },
     afterStep(state, events) {
       showEvents(state, events);
       entities.sync(state);
+      extras.set(looks.extras(state));
     },
     render(alpha, dt) {
       entities.draw(alpha);
       effects.update(dt);
       marks.update(dt);
+      extras.update(dt);
       app.render();
     },
     setRoute(cells, style) {
       if (map) overlay.setRoute(map, cells, style);
     },
+    setRoutePath: (points, style) => overlay.setRoutePath(points, style),
     worldToClient(p) {
       const r = app.canvas.getBoundingClientRect();
       return { x: r.left + cam.x + p.x * cam.scale, y: r.top + cam.y + p.y * cam.scale };

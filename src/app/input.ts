@@ -1,8 +1,8 @@
 import type { Board } from '../render/board';
-import { cellAtPoint, cellsBox, sameCells, towerCells } from '../render/footprint';
+import { boxCentre, cellAtPoint, cellsBox, sameCells, towerCells } from '../render/footprint';
 import type { PointerKind } from '../render/gestures';
 import {
-  CELL, findTower, getMode, placementError, previewRoute, routeCells, towerMods,
+  CELL, findTower, getMode, placementError, previewRoute, routeCells, routePolyline, towerMods,
   type GameState, type Point, type SimEvent, type Tower,
 } from '../sim';
 import type { ModeUi, Placement, RunView } from '../ui/mode-ui';
@@ -99,6 +99,14 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
   function flushRoute(): void {
     if (!routeWanted) return;
     const s = state();
+    // A fixed route never changes, so it is drawn as the line creeps walk.
+    const line = routePolyline(s);
+    if (line.length >= 2) {
+      routeWanted = null;
+      routeShown = [];
+      board.setRoutePath(line, 'current');
+      return;
+    }
     const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null && ghost.placement.route !== false
       ? previewRoute(s, ghost.placement.cells) : null;
     routeWanted = null;
@@ -120,14 +128,25 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     hint.value = { text: ghost.by === 'mouse' ? what : `${what}: tap again to build`, tone: 'ok' };
   }
 
-  function flash(text: string, tone: HintTone): void {
-    flashUntil = performance.now() + FLASH_MS;
+  function flash(text: string, tone: HintTone, ms = FLASH_MS): void {
+    flashUntil = performance.now() + ms;
     hint.value = { text: sentence(text), tone };
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => {
       flashUntil = 0;
       updateHint();
-    }, FLASH_MS);
+    }, ms);
+  }
+
+  /** Whether a touch at `p` confirms the ghost: on its cells, or within its tap slop on screen. */
+  function onGhost(g: Ghost, p: Point, cell: number): boolean {
+    if (g.placement.cells.includes(cell)) return true;
+    const slop = g.placement.tapSlop;
+    if (!slop) return false;
+    const c = boxCentre(cellsBox(state().map, g.placement.cells));
+    const a = board.worldToClient(p);
+    const b = board.worldToClient(c);
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) <= slop * slop;
   }
 
   function setGhost(next: Ghost | null): void {
@@ -223,7 +242,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
         if (g) confirm(g);
         return;
       }
-      if (ghost && ghost.by !== 'mouse' && ghost.placement.cells.includes(cell)) {
+      if (ghost && ghost.by !== 'mouse' && onGhost(ghost, p, cell)) {
         const now = evaluate(ghost.p, kind);
         if (now) confirm(now);
         else setGhost(null);

@@ -3,6 +3,7 @@ import { setHapticsEnabled } from '../platform/native';
 import { loadRun, saveSettings, type Settings } from '../platform/storage';
 import type { Difficulty, GameState } from '../sim';
 import { CATALOG, catalogEntry, type CatalogEntry } from '../ui/catalog';
+import type { RunChoices } from '../ui/mode-ui';
 import { appActions, savedRuns, screen, settings, type CodeCheck, type SavedRunInfo } from '../ui/state';
 import { startPlay, type Play, type PlayTarget } from './game';
 import { checkRun, readCode, SAVE_VERSION, SaveProblem, type SaveRules } from './saves';
@@ -24,8 +25,18 @@ export function newSeed(): number {
   return Math.floor(Math.random() * 0x100000000) >>> 0;
 }
 
-function targetFor(entry: CatalogEntry, difficulty: Difficulty): PlayTarget {
-  return { ui: entry.ui!, runOptions: () => ({ mode: entry.id, seed: newSeed(), difficulty }) };
+function targetFor(entry: CatalogEntry, difficulty: Difficulty, choices: RunChoices = {}): PlayTarget {
+  const options = Object.keys(choices).length > 0 ? { options: { ...choices } } : {};
+  return { ui: entry.ui!, runOptions: () => ({ mode: entry.id, seed: newSeed(), difficulty, ...options }) };
+}
+
+/** The choices a saved Run was started with, so "Play again" keeps them. */
+function choicesOf(entry: CatalogEntry, state: GameState): RunChoices {
+  return entry.ui?.optionsOf?.(state) ?? {};
+}
+
+function optionsLine(entry: CatalogEntry | undefined, state: GameState): string {
+  return entry?.ui?.optionsText?.(choicesOf(entry, state)) ?? '';
 }
 
 interface Loaded {
@@ -49,7 +60,8 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
     }
     try {
       const state = checkRun(saved.data, RULES);
-      return { info: { ok: true, modeId, wave: state.wave.number, difficulty: state.difficulty, savedAt: saved.savedAt }, state };
+      const options = optionsLine(catalogEntry(modeId), state);
+      return { info: { ok: true, modeId, wave: state.wave.number, difficulty: state.difficulty, savedAt: saved.savedAt, options }, state };
     } catch (err) {
       const why = err instanceof SaveProblem ? err.message : 'It is damaged.';
       return { info: { ok: false, modeId, problem: `Your saved Run can't be continued. ${why}` } };
@@ -118,9 +130,9 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
   }
 
   appActions.value = {
-    newRun(modeId, difficulty) {
+    newRun(modeId, difficulty, choices) {
       const entry = catalogEntry(modeId);
-      if (entry?.ui) void begin(targetFor(entry, difficulty), { save: true });
+      if (entry?.ui) void begin(targetFor(entry, difficulty, choices), { save: true });
     },
     continueRun(modeId) {
       void (async () => {
@@ -130,7 +142,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
           await refreshSaves();
           return;
         }
-        await begin(targetFor(entry, loaded.state.difficulty), { initial: loaded.state, save: false });
+        await begin(targetFor(entry, loaded.state.difficulty, choicesOf(entry, loaded.state)), { initial: loaded.state, save: false });
       })();
     },
     async checkCode(code): Promise<CodeCheck> {
@@ -143,7 +155,8 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
           wave: state.wave.number,
           difficulty: state.difficulty,
           gold: state.gold,
-          start: () => void begin(targetFor(entry, state.difficulty), { initial: state, save: true }),
+          options: optionsLine(entry, state),
+          start: () => void begin(targetFor(entry, state.difficulty, choicesOf(entry, state)), { initial: state, save: true }),
         };
       } catch (err) {
         return { ok: false, message: err instanceof SaveProblem ? err.message : "That code can't be loaded." };

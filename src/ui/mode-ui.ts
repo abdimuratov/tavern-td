@@ -3,7 +3,7 @@ import type { HapticKind } from '../platform/native';
 import type { SoundName } from '../platform/audio';
 import type { RunResult } from '../platform/storage';
 import type { ModeLook, TowerLook } from '../render/look';
-import { getMode, type Command, type GameState, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
+import { getMode, type Command, type Difficulty, type GameState, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
 import type { Hint, HintTone, PlaySession } from './state';
 
 /** What a Game Mode's UI sees of the Run it is attached to. */
@@ -16,8 +16,8 @@ export interface RunView {
   refresh(): void;
   /** Selects a structure by id (0 clears), as a tap on it would. */
   select(id: number): void;
-  /** A short message over the board for a moment, such as "Recipe ready". */
-  say(text: string, tone?: HintTone): void;
+  /** A short message over the board for a moment (`ms`, about 2 s by default), such as "Recipe ready". */
+  say(text: string, tone?: HintTone, ms?: number): void;
 }
 
 /** What a ghost looks like when there's no tower spec to take it from. */
@@ -41,6 +41,12 @@ export interface Placement {
   readonly route?: boolean;
   /** The ghost's look when `spec` is absent. */
   readonly look?: GhostLook;
+  /**
+   * On touch, a second tap this many CSS pixels from the ghost's centre still
+   * builds it, however far the board is zoomed out. Without it the tap must
+   * land on the ghost's own cells.
+   */
+  readonly tapSlop?: number;
 }
 
 /** A HUD button. Its key is bound while it is on screen, WC3-style. */
@@ -77,12 +83,47 @@ export interface WavePreviewGroup {
   readonly boss: boolean;
   /** The boss tag's text, such as Gem's "Damage Test"; "Boss" by default. */
   readonly tag?: string;
+  /** A colour dot before the name, such as the creep's Element. */
+  readonly swatch?: number;
+  /** Small tags after the name, such as Element's Traits. */
+  readonly traits?: readonly string[];
+  /** Everything else about the group, for a tooltip. */
+  readonly about?: string;
 }
 
 export interface WavePreview {
   /** 1-based. */
   readonly number: number;
   readonly groups: readonly WavePreviewGroup[];
+}
+
+/** One choice a New Run asks for besides Difficulty, such as Element's Length. */
+export interface RunOptionSpec {
+  readonly id: string;
+  readonly label: string;
+  readonly choices: readonly { readonly id: string; readonly label: string; readonly about: string }[];
+  readonly default: string;
+}
+
+/** A Run's choices by RunOptionSpec id. */
+export type RunChoices = Readonly<Record<string, string>>;
+
+/** Records kept apart within one Game Mode and Difficulty, because their results don't compare (Element's Full and Express). */
+export interface RecordBoard {
+  readonly id: string;
+  readonly name: string;
+  /** A Wave number as the Records table shows it, such as "Boss 3" past Element's 55. */
+  wave?(n: number): string;
+}
+
+/** The end card's words, for a Run whose end the core's defaults don't describe. */
+export interface EndText {
+  /** Won, by the Game Mode's own measure: Element's Full is won once Wave 55 is cleared, though the boss Waves go on. */
+  readonly won: boolean;
+  /** One line under Victory or Defeat. */
+  readonly summary: string;
+  /** The Wave reached, as the card shows it. */
+  readonly wave: string;
 }
 
 /**
@@ -100,6 +141,24 @@ export interface ModeUi {
   readonly showLives?: boolean;
   /** False hides the start-Wave button, for modes that start Waves themselves. */
   readonly showStartWave?: boolean;
+  /** The HUD's Wave readout, such as "3/55" or "Boss 2"; null hides it. Default: number/total. */
+  waveLabel?(view: RunView): { readonly label: string; readonly value: string } | null;
+  /** What a Difficulty does, for the New Run page, when the rules keep it in their own tables. */
+  difficultyAbout?(difficulty: Difficulty): string;
+  /** Choices a New Run asks for besides Difficulty, in order. */
+  readonly runOptions?: readonly RunOptionSpec[];
+  /** The choices a Run was started with, so Continue's "Play again" keeps them. */
+  optionsOf?(state: GameState): RunChoices;
+  /** The choices in a few words, such as "Express · All Random", for Continue and the end card. */
+  optionsText?(choices: RunChoices): string;
+  /** The Record boards it keeps, when its Records split within a Difficulty. */
+  readonly recordBoards?: readonly RecordBoard[];
+  /** The board a Run with these choices counts toward. */
+  recordBoard?(choices: RunChoices): string;
+  /** The end card's words; the core's defaults otherwise. */
+  endText?(state: GameState): EndText;
+  /** Re-read marks at least every this many ticks, for marks that change without an event (a build finishing). */
+  readonly marksEvery?: number;
   /** What the pointer at world point `p` would build, or null when nothing can be built there now. */
   placement?(view: RunView, p: Point): Placement | null;
   /** Buttons for the selected structure, such as Sell or Keep. */
@@ -134,6 +193,8 @@ export interface ModeUi {
   readonly Actions?: ComponentType<ModeHudProps>;
   /** Replaces the selected structure's stats and buttons. */
   readonly Panel?: ComponentType<ModePanelProps>;
+  /** Replaces the start-Wave button at the bottom of the HUD, such as Element's Send now with the Break countdown. */
+  readonly Footer?: ComponentType<ModeHudProps>;
   /** The mode's one-screen how-to-play. */
   readonly HowTo?: ComponentType;
 }

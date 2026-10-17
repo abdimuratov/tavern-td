@@ -172,6 +172,20 @@ html, body {
 }
 .tag.air { background: #2b4a66; color: #bfe0ff; }
 .tag.boss { background: #6a2a24; color: #ffc2b8; }
+.tag.trait { background: #3a3128; color: #e6d6bc; }
+.waves .group.rich { display: flex; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; }
+.waves .group.rich .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.waves .group.rich .muted, .waves .group.rich .tag { flex: none; margin-left: 0; }
+.waves .group.rich .dot { flex: none; margin-right: 0; align-self: center; }
+.waves .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-radius: 50%;
+  vertical-align: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
 
 .middle {
   flex: 1;
@@ -489,18 +503,29 @@ textarea.code[readonly] { font-size: 12px; }
 .mode-card .note { margin: 6px 0 0; color: var(--error); }
 .btn.continue { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.15; }
 .btn.continue .detail { font-size: 11px; font-weight: 500; }
-.gem-icon {
+.mode-icon {
   width: 34px;
   height: 34px;
   flex: none;
   background: linear-gradient(135deg, #f0c8ff, #a86bff 45%, #46e2ea);
   clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
 }
+/* Element: a hexagon of its six colours, in the cycle's order. */
+.mode-icon.element {
+  background: conic-gradient(from 0deg, #3d9bff 0 60deg, #ff5a2a 60deg 120deg, #48cc4a 120deg 180deg, #c08a52 180deg 240deg, #ffd23f 240deg 300deg, #a463ff 300deg 360deg);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
 .later { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
 .later li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px dashed var(--line); }
 .tag.soon { background: var(--button); color: var(--muted); }
 
 .difficulties { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.run-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 12px; margin-bottom: 10px; }
+.run-option { display: flex; align-items: center; gap: 10px; }
+.run-option .option-label { flex: none; width: 66px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
+.run-option .seg .btn { font-size: 13.5px; }
+.howto-modes { max-width: 320px; margin-bottom: 10px; }
+.records-board h3 { margin: 6px 0 2px; font-size: 12px; font-weight: 650; color: var(--muted); }
 .btn.difficulty { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 68px; padding: 8px 14px; text-align: left; }
 .difficulty .name { font-size: 16px; font-weight: 750; }
 .difficulty .about { font-size: 12.5px; }
@@ -570,10 +595,239 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .run-over .card { padding: 14px 20px; }
   .run-over h1 { font-size: 24px; }
 }
+/* ---------- Element ---------- */
+.el-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 1;
+  color: #15100b;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.el-pips { display: inline-flex; gap: 2px; }
+.el-pips span { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); }
+.el-pips span.on { background: #fff4d8; }
+.lumber, .essence { display: inline-block; flex: none; vertical-align: -1px; }
+.lumber { width: 12px; height: 8px; border-radius: 3px; background: linear-gradient(#b07a45, #7a4f28); box-shadow: inset -3px 0 0 #d8a874; }
+.essence { width: 9px; height: 9px; margin: 0 2px; transform: rotate(45deg); background: linear-gradient(135deg, #ffffff, #c7b6ff 55%, #8f6bff); }
+.count { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+
+.el-status { gap: 3px; }
+.el-interest { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.el-interest.paused { color: var(--error); }
+.btn.el-elements {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 0 22px 0 6px;
+}
+.btn.el-elements.ready { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.el-elements .chips { display: flex; gap: 2px; }
+.el-elements .chip { display: flex; flex-direction: column; align-items: center; gap: 3px; opacity: 0.38; }
+.el-elements .chip.on { opacity: 1; }
+.el-elements .res { display: flex; gap: 5px; align-items: center; font-size: 12px; }
+.el-elements .key { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.draw { display: inline-flex; align-items: center; gap: 2px; font-size: 10.5px; color: var(--muted); }
+.draw .el-dot { width: 12px; height: 12px; font-size: 7.5px; }
+
+.el-build { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.btn.el-build-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 3px 2px;
+  font-size: 10.5px;
+  line-height: 1.1;
+}
+.el-build-btn .swatch { width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.el-build-btn.single .swatch { border-radius: 50%; }
+.el-build-btn.periodic { grid-column: 1 / -1; flex-direction: row; gap: 6px; }
+.el-build-btn .label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.el-build-btn .detail { font-size: 10px; color: var(--muted); }
+.el-build-btn.active .detail { color: #3b2a12; }
+.el-build-btn.locked { opacity: 0.5; }
+.el-build-btn .key { position: absolute; top: 2px; right: 2px; }
+.lock { width: 9px; height: 10px; display: block; }
+
+.el-tower { display: grid; gap: 4px; min-width: 0; }
+.el-kind { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: -2px; }
+.el-kind .what {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--muted);
+  pointer-events: none;
+}
+/* The details toggle only matters where the panel can't show everything at once. */
+.el-kind .what .info { display: none; }
+.dots { display: inline-flex; gap: 1px; }
+.btn.el-sell { position: relative; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 22px 0 9px; font-size: 12px; font-weight: 650; }
+.el-sell .detail { font-weight: 500; }
+.el-sell .key { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.el-progress { position: relative; height: 16px; border-radius: 4px; overflow: hidden; background: var(--button); }
+.el-progress .bar { position: absolute; inset: 0 auto 0 0; background: #6b5630; }
+.el-progress .text { position: relative; display: block; font-size: 10.5px; line-height: 16px; text-align: center; font-weight: 650; }
+.el-upgrades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.btn.el-up {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px 6px;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.el-up .line { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-right: 14px; }
+.el-up .dots .el-dot { width: 11px; height: 11px; font-size: 7px; }
+.el-up .label { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.el-up .detail { display: inline-flex; align-items: center; gap: 2px; font-size: 10.5px; color: var(--muted); }
+.el-up .why { color: var(--error); display: inline-flex; align-items: center; }
+.el-up .key { position: absolute; right: 3px; top: 3px; }
+.el-needs { display: inline-flex; gap: 4px; color: var(--error); font-weight: 700; }
+.el-needs .need { display: inline-flex; align-items: center; gap: 1px; }
+.el-needs .el-dot { width: 11px; height: 11px; font-size: 7px; }
+.el-locked { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; font-size: 10.5px; }
+.el-locked .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.el-statline { display: none; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel dl.el-stats { margin: 2px 0 0; grid-template-columns: 1fr 1fr; }
+.panel dl.el-stats dd { display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; }
+.el-stats .el-dot { width: 11px; height: 11px; font-size: 7px; }
+
+.btn.el-send { flex-direction: column; gap: 0; line-height: 1.1; position: relative; }
+.btn.el-send .detail { font-size: 11px; font-weight: 600; }
+.btn.el-send .key { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+.el-wave-info {
+  min-height: 44px;
+  flex-direction: column;
+  border-radius: 8px;
+  background: #221c16;
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.15;
+}
+.el-wave-info .muted { font-size: 11px; font-weight: 500; }
+
+.modal.el-panel-modal { width: min(600px, 100%); }
+.el-panel-modal header { gap: 10px; }
+.el-panel-modal .el-res { display: flex; gap: 12px; margin-right: auto; font-size: 12.5px; color: var(--muted); }
+.el-panel-modal p { font-size: 12px; }
+.el-summon-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-bottom: 6px; }
+.btn.el-summon-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 3px 20px 3px 8px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.15;
+}
+.el-summon-btn .line { display: flex; align-items: center; gap: 5px; }
+.el-summon-btn .label { font-weight: 700; }
+.el-summon-btn .sub { font-size: 10.5px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.el-summon-btn .sub.why { color: var(--error); }
+.el-summon-btn .key { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
+.el-draws { list-style: none; margin: 0 0 6px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px 10px; font-size: 12.5px; }
+.el-draws li { display: flex; align-items: center; gap: 5px; }
+.el-draws .when { min-width: 82px; color: var(--muted); font-size: 11.5px; }
+.el-cycle { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; margin: 6px 0 0 !important; font-size: 11.5px; }
+.el-cycle .arrow { margin: 0 2px; color: var(--muted); }
+
 /* Hotkey badges mean nothing without a keyboard, and a phone needs the room. */
 @media (hover: none) {
   .key { display: none; }
   .btn.option { padding-right: 8px; }
+  .btn.el-sell, .btn.el-elements, .btn.el-summon-btn { padding-right: 6px; }
+  .el-up .line { padding-right: 0; }
+}
+@media (max-height: 520px) {
+  /* The Wave preview's heading costs a line Element's build menu needs. */
+  .hud.mode-element .waves h2 { display: none; }
+  .hud.mode-element { gap: 5px; }
+  .el-kind .what { pointer-events: auto; cursor: pointer; }
+  .el-kind .what .info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    font-style: italic;
+  }
+  .el-kind .what[aria-pressed='true'] .info { background: var(--accent); border-color: var(--accent); color: #1b140c; }
+  /* Upgrades or details, one at a time. */
+  .el-tower:not(.details) dl.el-stats, .el-tower:not(.details) .abilities { display: none; }
+  .el-tower.details .el-upgrades, .el-tower.details .el-locked, .el-tower.details .el-statline, .el-tower.details .el-progress { display: none; }
+  .el-tower:not(.details) .el-statline { display: block; }
+  .el-tower.details .abilities { display: grid; }
+  .panel dl.el-stats .row { justify-content: space-between; gap: 6px; }
+  .panel dl.el-stats dt { white-space: nowrap; }
+  .panel dl.el-stats dd { text-align: right; }
+  /* Short of room, a locked upgrade shows only what it needs; its name is in the tooltip and the How to play. */
+  .el-locked .chip .name { display: none; }
+  .el-locked .chip { padding: 0 5px; }
+  /* Five or more upgrades on offer: three narrower columns, names over two lines, no stat line. */
+  .el-tower.many .el-upgrades { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .el-tower.many .btn.el-up { padding: 2px 3px; gap: 1px; overflow-wrap: normal; }
+  .el-tower.many .el-up .label {
+    white-space: normal;
+    font-size: 9.5px;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    line-height: 1.1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .el-tower.many .el-up .detail { font-size: 9.5px; }
+  .el-tower.many .el-up .detail .coin { display: none; }
+  .el-tower.many .el-up .dots .el-dot { width: 9px; height: 9px; font-size: 6px; }
+  .el-tower.many:not(.details) .el-statline { display: none; }
+  .modal.el-panel-modal { padding: 8px 12px 10px; }
+  .el-panel-modal p { margin: 2px 0 6px; }
 }
 @media (min-height: 700px) and (min-width: 1000px) {
   .menu-head h1 { font-size: 40px; }

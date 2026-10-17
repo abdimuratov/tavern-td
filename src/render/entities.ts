@@ -1,8 +1,8 @@
 import type { Container, Sprite } from 'pixi.js';
 import { CELL, type Creep, type GameState, type Projectile, type Tower } from '../sim';
-import { ATLAS_UNIT, type Atlas } from './atlas';
+import { arcGlyph, ATLAS_UNIT, type Atlas } from './atlas';
 import { cellsBox, towerCells } from './footprint';
-import type { CreepLook, LookCache, TowerLook } from './look';
+import type { CreepLook, CreepStatusLook, LookCache, TowerLook } from './look';
 import { ObjectPool, SpritePool } from './pool';
 
 /**
@@ -13,8 +13,11 @@ import { ObjectPool, SpritePool } from './pool';
 export interface EntityLayers {
   halos: Container;
   plates: Container;
+  rings: Container;
   towers: Container;
+  pips: Container;
   ground: Container;
+  creepMarks: Container;
   projectiles: Container;
   shadows: Container;
   air: Container;
@@ -36,8 +39,9 @@ interface CreepView {
   size: number;
   /** Last HP fraction and status shown, so sprites change only when they do. */
   hp: number;
-  status: number;
+  status: CreepStatusLook | null;
   body: Sprite | null;
+  mark: Sprite | null;
   shadow: Sprite | null;
   barBack: Sprite | null;
   barFill: Sprite | null;
@@ -49,6 +53,8 @@ interface TowerView {
   halo: Sprite | null;
   plate: Sprite | null;
   top: Sprite | null;
+  ring: Sprite[];
+  pips: Sprite[];
 }
 
 interface ShotView {
@@ -68,23 +74,6 @@ const BAR_H = 5;
 const WHITE = 8;
 const SHADOW_DROP = 14;
 
-const STATUS_NONE = 0;
-const STATUS_SLOW = 1;
-const STATUS_POISON = 2;
-const STATUS_STUN = 3;
-const STATUS_TINT = [0xffffff, 0x8fd0ff, 0x9de07a, 0xffe27a];
-
-function statusOf(c: Creep): number {
-  let out = STATUS_NONE;
-  for (let i = 0; i < c.status.length; i++) {
-    const kind = c.status[i]!.kind;
-    if (kind === 'stun') return STATUS_STUN;
-    if (kind === 'slow') out = STATUS_SLOW;
-    else if (kind === 'poison' && out === STATUS_NONE) out = STATUS_POISON;
-  }
-  return out;
-}
-
 /** Halfway between a creep's colour and its status colour, so a slowed creep reads blue whatever its own colour. */
 function mix(a: number, b: number): number {
   const r = (((a >> 16) & 255) + ((b >> 16) & 255)) >> 1;
@@ -92,6 +81,12 @@ function mix(a: number, b: number): number {
   const bl = ((a & 255) + (b & 255)) >> 1;
   return (r << 16) | (g << 8) | bl;
 }
+
+/** A creep mark's colour: dark, so it reads on every body colour. */
+const MARK_TINT = 0x17110c;
+/** A mark's size, of the body's. */
+const MARK_SIZE = 0.52;
+const PIP_SIZE = 0.13;
 
 function hpColour(frac: number): number {
   return frac > 0.5 ? 0x6fdc5a : frac > 0.25 ? 0xf2c14e : 0xf0503c;
@@ -113,9 +108,9 @@ export class Entities {
 
   private readonly creepViews = new ObjectPool<CreepView>(() => ({
     id: 0, spec: '', look: { shape: 'circle', color: 0, size: 0 }, air: false,
-    px: 0, py: 0, x: 0, y: 0, size: 0, hp: 1, status: 0, body: null, shadow: null, barBack: null, barFill: null,
+    px: 0, py: 0, x: 0, y: 0, size: 0, hp: 1, status: null, body: null, mark: null, shadow: null, barBack: null, barFill: null,
   }));
-  private readonly towerViews = new ObjectPool<TowerView>(() => ({ id: 0, spec: '', halo: null, plate: null, top: null }));
+  private readonly towerViews = new ObjectPool<TowerView>(() => ({ id: 0, spec: '', halo: null, plate: null, top: null, ring: [], pips: [] }));
   private readonly shotViews = new ObjectPool<ShotView>(() => ({ id: 0, spec: '', px: 0, py: 0, x: 0, y: 0, sprite: null }));
 
   private readonly ground: SpritePool;
@@ -125,7 +120,10 @@ export class Entities {
   private readonly bars: SpritePool;
   private readonly halos: SpritePool;
   private readonly plates: SpritePool;
+  private readonly rings: SpritePool;
   private readonly tops: SpritePool;
+  private readonly pips: SpritePool;
+  private readonly marks: SpritePool;
   private readonly projectiles: SpritePool;
 
   constructor(private readonly atlas: Atlas, layers: EntityLayers, private looks: LookCache) {
@@ -136,7 +134,10 @@ export class Entities {
     this.bars = new SpritePool(layers.bars, atlas.glyph('white'));
     this.halos = new SpritePool(layers.halos, atlas.glyph('glow'));
     this.plates = new SpritePool(layers.plates, atlas.glyph('plate'));
+    this.rings = new SpritePool(layers.rings, atlas.glyph('ring'));
     this.tops = new SpritePool(layers.towers, atlas.shape('square'));
+    this.pips = new SpritePool(layers.pips, atlas.shape('circle'));
+    this.marks = new SpritePool(layers.creepMarks, atlas.shape('circle'));
     this.projectiles = new SpritePool(layers.projectiles, atlas.glyph('glow'));
   }
 
@@ -177,6 +178,7 @@ export class Entities {
       const x = v.px + (v.x - v.px) * alpha;
       const y = v.py + (v.y - v.py) * alpha;
       v.body!.position.set(x, y);
+      if (v.mark) v.mark.position.set(x, y);
       if (v.shadow) v.shadow.position.set(x + SHADOW_DROP * 0.6, y + SHADOW_DROP);
       if (v.barBack) {
         const top = y - v.size * 0.62 - (v.air ? 6 : 0);
@@ -232,12 +234,20 @@ export class Entities {
     v.py = v.y = c.y;
     v.size = look.size * CELL;
     v.hp = 1;
-    v.status = STATUS_NONE;
+    v.status = null;
     const body = (c.air ? this.air : this.ground).acquire(this.atlas.shape(look.shape));
     body.tint = look.color;
     body.scale.set(v.size / ATLAS_UNIT);
     body.position.set(c.x, c.y);
     v.body = body;
+    if (look.mark) {
+      const mark = this.marks.acquire(this.atlas.shape(look.mark));
+      mark.tint = MARK_TINT;
+      mark.alpha = 0.85;
+      mark.scale.set((v.size * MARK_SIZE) / ATLAS_UNIT);
+      mark.position.set(c.x, c.y);
+      v.mark = mark;
+    }
     if (c.air) {
       const shadow = this.shadows.acquire();
       shadow.scale.set((v.size * 0.9) / ATLAS_UNIT);
@@ -258,6 +268,7 @@ export class Entities {
         v.barFill = this.bars.acquire();
         v.barFill.anchor.set(0, 0.5);
         v.barFill.scale.y = BAR_H / WHITE;
+        v.barBack.alpha = v.barFill.alpha = v.status?.alpha ?? 1;
         v.hp = 1;
       }
       if (Math.abs(frac - v.hp) > 0.004 || v.barFill!.tint === 0xffffff) this.setBar(v, frac);
@@ -265,10 +276,23 @@ export class Entities {
       // Regenerated to full: show it full rather than stuck where it was.
       this.setBar(v, 1);
     }
-    const status = c.status.length === 0 ? STATUS_NONE : statusOf(c);
+    const status = c.status.length === 0 ? null : this.looks.creepStatus(c);
     if (status !== v.status) {
       v.status = status;
-      v.body!.tint = status === STATUS_NONE ? v.look.color : mix(v.look.color, STATUS_TINT[status]!);
+      const body = v.body!;
+      body.tint = status === null || status.tint === null ? v.look.color : mix(v.look.color, status.tint);
+      const alpha = status?.alpha ?? 1;
+      const scale = status?.scale ?? 1;
+      body.alpha = alpha;
+      body.scale.set((v.size * scale) / ATLAS_UNIT);
+      if (v.mark) {
+        v.mark.alpha = 0.85 * alpha;
+        v.mark.scale.set((v.size * MARK_SIZE * scale) / ATLAS_UNIT);
+      }
+      if (v.barBack) {
+        v.barBack.alpha = alpha;
+        v.barFill!.alpha = alpha;
+      }
     }
   }
 
@@ -280,13 +304,15 @@ export class Entities {
 
   private releaseCreep(v: CreepView): void {
     if (v.body) (v.air ? this.air : this.ground).release(v.body);
+    if (v.mark) this.marks.release(v.mark);
     if (v.shadow) this.shadows.release(v.shadow);
     if (v.barBack) {
       this.barBacks.release(v.barBack);
       v.barFill!.anchor.set(0.5);
       this.bars.release(v.barFill!);
     }
-    v.body = v.shadow = v.barBack = v.barFill = null;
+    v.body = v.mark = v.shadow = v.barBack = v.barFill = null;
+    v.status = null;
     this.creepViews.release(v);
   }
 
@@ -340,17 +366,42 @@ export class Entities {
       plate.position.set(t.x, t.y);
       v.plate = plate;
     }
+    const ring = look.ring ?? [];
+    if (ring.length > 0) {
+      const glyph = this.atlas.glyph(arcGlyph(ring.length));
+      for (let i = 0; i < ring.length; i++) {
+        const seg = this.rings.acquire(glyph);
+        seg.tint = ring[i]!;
+        seg.scale.set((span * 0.8) / ATLAS_UNIT);
+        seg.rotation = (i * Math.PI * 2) / ring.length;
+        seg.position.set(t.x, t.y);
+        v.ring.push(seg);
+      }
+    }
     const top = this.tops.acquire(this.atlas.shape(look.shape));
     top.tint = look.color;
     top.scale.set((span * look.size) / ATLAS_UNIT);
     top.position.set(t.x, t.y);
     v.top = top;
+    const pips = look.pips ?? 0;
+    for (let i = 0; i < pips; i++) {
+      // A row centred on the plate's lower edge, below any ring.
+      const pip = this.pips.acquire();
+      pip.tint = 0xfff4d8;
+      pip.scale.set((span * PIP_SIZE) / ATLAS_UNIT);
+      pip.position.set(t.x + (i - (pips - 1) / 2) * span * 0.16, t.y + span * 0.41);
+      v.pips.push(pip);
+    }
   }
 
   private releaseSprites(v: TowerView): void {
     if (v.halo) this.halos.release(v.halo);
     if (v.plate) this.plates.release(v.plate);
     if (v.top) this.tops.release(v.top);
+    for (const s of v.ring) this.rings.release(s);
+    for (const s of v.pips) this.pips.release(s);
+    v.ring.length = 0;
+    v.pips.length = 0;
     v.halo = v.plate = v.top = null;
   }
 

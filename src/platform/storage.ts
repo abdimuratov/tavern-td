@@ -86,10 +86,15 @@ export interface AppStorage {
   clearRun(modeId: string): Promise<boolean>;
   /** Whether to offer Continue. */
   hasRun(modeId: string): Promise<boolean>;
-  loadRecord(modeId: string, difficulty: Difficulty): Promise<ModeRecord>;
-  loadRecords(modeId: string): Promise<Record<Difficulty, ModeRecord>>;
+  /**
+   * `board` keeps Records apart within one Game Mode and Difficulty when their
+   * results don't compare, such as Element's Full and Express. Without one the
+   * Record is the Game Mode's only one, as Gem's is.
+   */
+  loadRecord(modeId: string, difficulty: Difficulty, board?: string): Promise<ModeRecord>;
+  loadRecords(modeId: string, board?: string): Promise<Record<Difficulty, ModeRecord>>;
   /** Merges a finished Run into its Record. Calls are queued, so two quick results both count. */
-  recordResult(modeId: string, difficulty: Difficulty, result: RunResult): Promise<RecordUpdate>;
+  recordResult(modeId: string, difficulty: Difficulty, result: RunResult, board?: string): Promise<RecordUpdate>;
   loadSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<boolean>;
   /** Best effort; resolves to whether storage is persistent. Safe to call any number of times. */
@@ -103,7 +108,9 @@ interface StoredRun {
 }
 
 const runKey = (modeId: string): string => `run/${modeId}`;
-const recordKey = (modeId: string, difficulty: Difficulty): string => `record/${modeId}/${difficulty}`;
+/** `record/gem/normal`; with a board, `record/element/express/normal`. */
+const recordKey = (modeId: string, difficulty: Difficulty, board?: string): string =>
+  board ? `record/${modeId}/${board}/${difficulty}` : `record/${modeId}/${difficulty}`;
 const SETTINGS_KEY = 'settings';
 
 /** Every call resolves; failures are logged and reported as false, undefined or defaults. */
@@ -172,17 +179,17 @@ export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): 
     }
   }
 
-  async function loadRecord(modeId: string, difficulty: Difficulty): Promise<ModeRecord> {
-    return toRecord(await read(recordKey(modeId, difficulty)));
+  async function loadRecord(modeId: string, difficulty: Difficulty, board?: string): Promise<ModeRecord> {
+    return toRecord(await read(recordKey(modeId, difficulty, board)));
   }
 
-  async function loadRecords(modeId: string): Promise<Record<Difficulty, ModeRecord>> {
-    const entries = await Promise.all(DIFFICULTIES.map(async (d) => [d, await loadRecord(modeId, d)] as const));
+  async function loadRecords(modeId: string, board?: string): Promise<Record<Difficulty, ModeRecord>> {
+    const entries = await Promise.all(DIFFICULTIES.map(async (d) => [d, await loadRecord(modeId, d, board)] as const));
     return Object.fromEntries(entries) as Record<Difficulty, ModeRecord>;
   }
 
-  async function mergeResult(modeId: string, difficulty: Difficulty, result: RunResult): Promise<RecordUpdate> {
-    const prev = await loadRecord(modeId, difficulty);
+  async function mergeResult(modeId: string, difficulty: Difficulty, result: RunResult, board?: string): Promise<RecordUpdate> {
+    const prev = await loadRecord(modeId, difficulty, board);
     const wave = count(result.wave);
     const score = count(result.score);
     const seconds = Number.isFinite(result.seconds) && result.seconds > 0 ? result.seconds : null;
@@ -198,12 +205,12 @@ export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): 
       played: prev.played + 1,
       won: prev.won + (result.won ? 1 : 0),
     };
-    const saved = await write(recordKey(modeId, difficulty), record);
+    const saved = await write(recordKey(modeId, difficulty, board), record);
     return { record, improved, saved };
   }
 
-  function recordResult(modeId: string, difficulty: Difficulty, result: RunResult): Promise<RecordUpdate> {
-    const update = recordQueue.then(() => mergeResult(modeId, difficulty, result));
+  function recordResult(modeId: string, difficulty: Difficulty, result: RunResult, board?: string): Promise<RecordUpdate> {
+    const update = recordQueue.then(() => mergeResult(modeId, difficulty, result, board));
     recordQueue = update.catch(() => undefined);
     return update;
   }

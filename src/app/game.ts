@@ -8,8 +8,9 @@ import type { BoardMark } from '../render/marks';
 import { CELL, findTower, TICK_RATE, type Command, type GameState, type RunOptions, type SimEvent } from '../sim';
 import { createHotkeys, keyName } from '../ui/hotkeys';
 import type { ModeUi, RunView } from '../ui/mode-ui';
+import { defaultEndText } from '../ui/RunEnd';
 import {
-  gold, hint, lives, paused, phase, revision, runEnd, runMenu, session, speed, waveNumber, waveTotal,
+  gold, hint, lives, paused, phase, revision, runClock, runEnd, runMenu, session, speed, waveNumber, waveTotal,
   type RunEnd, type Speed,
 } from '../ui/state';
 import { createRunController, type AutosaveReason, type RunController } from './controller';
@@ -86,7 +87,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     send: (command) => controller.send(command),
     refresh: () => input?.refresh(),
     select: (id) => input?.select(id),
-    say: (text, tone = 'info') => input?.flash(text, tone),
+    say: (text, tone = 'info', ms) => input?.flash(text, tone, ms),
   };
   const feedback = createFeedback({ play, haptic }, () => board.looks, () => ui);
   input = createInput({ controller, board, ui, view, feedback });
@@ -99,6 +100,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     waveNumber.value = s.wave.number;
     waveTotal.value = s.wave.total;
     phase.value = s.phase;
+    runClock.value = Math.floor((s.tick * 4) / TICK_RATE);
     paused.value = controller.paused;
     speed.value = controller.speed;
     if (dirty) {
@@ -121,19 +123,21 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
   /** Records the finished Run and shows the end screen; the Record's "new best" arrives once it is merged. */
   const ended = (s: GameState): void => {
     const result = ui.result?.(s) ?? null;
-    const won = s.phase === 'won';
+    const text = ui.endText?.(s) ?? defaultEndText(s);
+    const choices = ui.optionsOf?.(s) ?? {};
     const end: RunEnd = {
-      won,
-      wave: s.wave.number,
-      totalWaves: s.wave.total,
+      won: text.won,
+      summary: text.summary,
+      wave: text.wave,
       score: result ? result.score : null,
-      seconds: won ? result?.seconds ?? s.tick / TICK_RATE : null,
+      seconds: text.won ? result?.seconds ?? s.tick / TICK_RATE : null,
       difficulty: s.difficulty,
+      options: ui.optionsText?.(choices) ?? '',
       update: null,
     };
     runEnd.value = end;
     if (!result) return;
-    void recordResult(s.modeId, s.difficulty, result).then((update) => {
+    void recordResult(s.modeId, s.difficulty, result, ui.recordBoard?.(choices)).then((update) => {
       if (runEnd.value === end) runEnd.value = { ...end, update };
     });
   };
@@ -153,7 +157,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     feedback.events(s, events);
     inp.afterStep(s, events);
     ui.onEvents?.(view, events);
-    let marks = false;
+    let marks = ui.marksEvery !== undefined && s.tick % ui.marksEvery === 0;
     for (const e of events) {
       if (!dirty && HUD_EVENTS.has(e.type)) dirty = true;
       if (MARK_EVENTS.has(e.type)) marks = true;

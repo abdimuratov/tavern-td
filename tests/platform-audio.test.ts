@@ -104,7 +104,7 @@ function unlocked() {
 
 const ALL_NAMES: SoundName[] = [
   'place', 'rock', 'merge', 'upgrade', 'shoot', 'hit', 'splash', 'kill',
-  'leak', 'waveStart', 'waveEnd', 'click', 'error', 'win', 'lose',
+  'leak', 'waveStart', 'waveEnd', 'click', 'error', 'win', 'lose', 'levelUp', 'summon', 'resource', 'rise',
 ];
 const VARIANTS = Object.keys(SHOOT_VARIANTS) as ShootVariant[];
 
