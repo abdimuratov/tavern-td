@@ -127,3 +127,32 @@ test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }
   await expect.poll(() => towerSpecs(page)).toEqual([]);
   await expect(page.getByTestId('gold')).toHaveText('250');
 });
+
+test('an Original save code exported mid-Wave imports back to the same Run', async ({ page }) => {
+  await page.goto('./');
+  await newOriginalRun(page, 'hard');
+  await buildOnSpot(page, 5, 'cannon');
+  await page.getByTestId('send-now').click();
+  await page.evaluate(() => window.tavern!.controller.fastForward(300));
+
+  await page.getByTestId('menu-button').click();
+  await page.getByTestId('export').click();
+  const box = page.getByTestId('export-code');
+  await expect(box).toHaveValue(/^TTD1\./);
+  const code = await box.inputValue();
+  const before = await page.evaluate(() => JSON.stringify(window.tavern!.controller.state));
+
+  await page.keyboard.press('Escape');
+  await page.getByTestId('quit').click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.getByTestId('import').click();
+  await page.getByTestId('import-code').fill(code);
+  await page.getByTestId('import-load').click();
+  await expect(page.getByTestId('import-continue')).toContainText('Original · Wave 1 · The Mill Road · Hard');
+  await page.getByTestId('import-continue').click();
+  await page.getByTestId('confirm-yes').click();
+  await expect(page.getByTestId('paused')).toBeVisible();
+  const after = await page.evaluate(() => JSON.stringify(window.tavern!.controller.state));
+  expect(after).toBe(before);
+  await expect(page.getByTestId('original-status')).toBeVisible();
+});

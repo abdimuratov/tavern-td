@@ -99,11 +99,14 @@ export function OriginalPanel({ s, tower }: ModePanelProps) {
         <FamilyIcon family={a.family} />
         <span class="what">{FAMILY_NAME[a.family]} · {tierName(a.tier)}</span>
         <TierPips tier={a.tier} />
-        <span class={`or-level${a.level >= 5 ? ' gold' : ''}`} data-testid="tower-level" title="Tower Level: kills and Assists raise it this Run">Lv {a.level}</span>
+        <button type="button" class="btn danger or-sell" title={`Sell for ${a.sellValue} gold (S)`} data-action="sell" onClick={press(s, sell)}>
+          Sell <span class="detail" data-testid="sell-value">+{num(a.sellValue)}</span>
+          <span class="key">S</span>
+        </button>
       </div>
-      <div class="or-xp" title={a.nextXp === null ? 'Tower Level 10, the most' : `${a.xp} of ${a.nextXp} XP for Level ${a.level + 1}`}>
+      <div class={`or-xp${a.level >= 5 ? ' gold' : ''}`} title={a.nextXp === null ? 'Tower Level 10, the most' : `Kills and Assists raise the Tower Level this Run: ${a.xp} of ${a.nextXp} XP for Level ${a.level + 1}`}>
         <span class="bar" style={{ width: `${Math.round(share * 100)}%` }} />
-        <span class="text">{a.nextXp === null ? 'Level 10' : `${num(Math.floor(a.xp))} / ${a.nextXp} XP`}</span>
+        <span class="text"><b data-testid="tower-level">Lv {a.level}</b>{a.nextXp === null ? ' · the most' : ` · ${num(Math.floor(a.xp))} / ${a.nextXp} XP`}</span>
       </div>
       {a.upgrades.length > 0 && (
         <div class="or-upgrades" data-testid="upgrades">
@@ -111,10 +114,6 @@ export function OriginalPanel({ s, tower }: ModePanelProps) {
         </div>
       )}
       {a.targeting !== null && <TargetingRow s={s} tower={tower.id} current={a.targeting} />}
-      <button type="button" class="btn danger or-sell" title={`Sell for ${a.sellValue} gold (S)`} data-action="sell" onClick={press(s, sell)}>
-        Sell <span class="detail" data-testid="sell-value">+{num(a.sellValue)}</span>
-        <span class="key">S</span>
-      </button>
       <dl class="or-stats">
         {rows.map(([k, v]) => <div key={k} class="row"><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>

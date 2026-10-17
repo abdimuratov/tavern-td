@@ -872,8 +872,9 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .or-tower { display: grid; gap: 5px; min-width: 0; }
 .or-kind { display: flex; align-items: center; gap: 6px; margin-top: -2px; font-size: 11.5px; color: var(--muted); }
 .or-kind .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.or-kind .or-level { margin-left: auto; flex: none; padding: 1px 6px; border-radius: 4px; background: var(--button); color: var(--text); font-weight: 800; }
-.or-kind .or-level.gold { background: #6b5320; color: #ffe08a; }
+/* The Level outgrows white at 5, as its number on the board does. */
+.or-xp.gold .bar { background: #8a6a24; }
+.or-xp.gold b { color: #ffe08a; }
 .or-crest { padding: 0 5px; border-radius: 3px; background: #6b5320; color: #ffe08a; font-size: 9.5px; font-weight: 800; text-transform: uppercase; }
 .or-xp { position: relative; height: 15px; border-radius: 4px; overflow: hidden; background: var(--button); }
 .or-xp .bar { position: absolute; inset: 0 auto 0 0; background: #6b5630; }
@@ -883,7 +884,7 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .or-targeting .seg { gap: 3px; }
 .or-targeting .seg .btn { min-height: 36px; font-size: 10.5px; }
 .or-targeting .key { margin-left: 2px; }
-.btn.or-sell { position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 22px 0 9px; font-size: 12px; font-weight: 650; }
+.btn.or-sell { position: relative; flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 22px 0 9px; font-size: 12px; font-weight: 650; }
 .or-sell .detail { font-weight: 500; }
 .or-sell .key { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
 .panel dl.or-stats { margin: 0; grid-template-columns: 1fr 1fr; }
@@ -1079,6 +1080,8 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .difficulties.compact .difficulty .about { display: none; }
   .hud.mode-original .waves h2 { display: none; }
   .or-targeting > .muted { display: none; }
+  /* The shape and pips already say what it is; the room goes to Sell. */
+  .or-kind .what { display: none; }
   .hud.mode-original { gap: 5px; }
   .or-tower dl.or-stats, .or-tower .abilities { display: none; }
 }

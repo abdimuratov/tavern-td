@@ -241,8 +241,10 @@ const GLYPH_DRAW: Readonly<Record<Glyph, Draw>> = {
     g.stroke();
   },
   white: (g) => {
+    // A block in the middle only: filling the slot to its edge bled into the next slot's mipmaps,
+    // drawing a line beside a shrunken ring.
     g.fillStyle = '#ffffff';
-    g.fillRect(-SLOT / 2, -SLOT / 2, SLOT, SLOT);
+    g.fillRect(-R * 0.5, -R * 0.5, R, R);
   },
   brackets: (g) => {
     // Four corner marks: something placed but not settled yet.
