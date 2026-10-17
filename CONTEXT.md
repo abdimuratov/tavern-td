@@ -68,6 +68,40 @@ _Avoid_: maze abuse, re-routing
 In Maul, the builder chosen at the start of a Run, which fixes the set of towers you can build.
 _Avoid_: builder, faction, class
 
+**Leak**:
+A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again.
+_Avoid_: escape, breach, pass
+
+**Trait**:
+A rule that changes how one Wave's creeps behave, such as fast, heal, undead or mechanical.
+_Avoid_: ability, modifier, perk
+
+### Element (Element TD rules)
+
+**Element**:
+One of Element's six damage and creep types: Water, Fire, Nature, Earth, Light and Dark. Each deals 200% to the next in that cycle and 50% to the one before, and the player raises each from level 0 to 3 during a Run.
+_Avoid_: school, colour, affinity
+
+**Composite**:
+Damage or a creep with no Element. Composite damage deals 100% to everything, and Elements deal 90% to composite creeps.
+_Avoid_: neutral, physical, normal
+
+**Lumber**:
+Element's second resource. You get one at the start and more every few Waves, and you spend it to summon an Elemental or buy a Pure Essence.
+_Avoid_: wood, element point, token
+
+**Elemental**:
+The creep that one Lumber summons; killing it raises that Element by one level.
+_Avoid_: guardian, summon, element boss
+
+**Pure Essence**:
+A rare resource that, together with gold, buys a Pure tower or the Periodic tower.
+_Avoid_: essence point, pure lumber
+
+**Express**:
+Element's short Run: 30 Waves with more starting gold and Lumber, instead of the Full 55.
+_Avoid_: quick mode, short (the Classic's own "Short" is a different start)
+
 ### Gem (Gem TD rules)
 
 **Draft**:

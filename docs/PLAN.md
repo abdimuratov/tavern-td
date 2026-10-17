@@ -4,7 +4,7 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 
 ## 0. Status
 
-Planning finished on 2026-10-15. **Now: Phase 1.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
+Planning finished on 2026-10-15. **Now: Phase 2.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
 Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
@@ -13,6 +13,8 @@ Phase 1 progress (2026-10-17):
 - Done: Gem is ported from Gem TD+ ([gem-td-rules.md](research/gem-td-rules.md)) and playable from the main menu. The WebKit, Chromium and Node replay hashes match. A headless bot reaches Wave 10–21.
 - Left: play a full Run, autosave and resume it on the Mac, the iPhone and the S24. Real-device checks are still owed for the iPhone notch side, the clipboard fallback for save codes, and Android haptics.
 - Watch in play-testing: at fit zoom a gem is ~10 px on a phone, so placing needs a pinch first.
+
+Phase 2 started on 2026-10-17 without waiting for that play-test, as you asked. The Phase 1 box stays open until the play-test is done.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
@@ -119,12 +121,13 @@ Every phase ends the same way. All tests pass, the deterministic replay is green
 5. **Polish:** sound effects, Android haptics, settings, a one-screen "how to play".
 
 ### Phase 2: Element
-Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD) (wavedata, gamesettings, interest, tooltips).
-- **Path:** a fixed route, faithful to the WC3 version.
-- **Towers:** arrow and cannon to start. Lumber every 5 Waves summons an elemental, and killing it unlocks that element. Element levels 1–3 unlock single, dual and triple towers; Pure Essence and the Periodic tower are included.
-- **Combat:** the 6-element damage cycle (200% / 50%) and creep traits: fast, heal, mech, undead, image, regen, swarm, bulky.
-- **Economy:** 2% interest every 15 s, 50 lives, a 250-gold start.
-- **Modes:** All Pick and All Random elements, 55 Waves or 30-Wave Express.
+Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule and number is in [element-td-rules.md](research/element-td-rules.md).
+- **Path:** the port's walled lane with 12 corners, rotated to a 56 × 40 landscape Map. Towers stand on plots beside it, so they never Block, and a leaked creep walks the route again.
+- **Towers:** 2 × 2. Arrow and Cannon to start. Lumber summons an Elemental, and killing it raises that Element a level. How many different Elements you hold unlocks single, dual and triple towers, and each Element's level (1–3) unlocks that tower's levels. Pure Essence buys the Pure towers and the Periodic tower.
+- **Combat:** the 6-Element damage cycle (200% / 50%, 90% into Composite) and the Traits the Waves use: fast, heal, mechanical, undead, regen, bulky, vengeance and time lapse.
+- **Economy:** 2% interest every 15 s (a leak pauses it until the Wave is cleared), 50 lives, a 250-gold start, no end-of-Wave gold.
+- **Modes:** All Pick and All Random Elements, each in Full (55 Waves, then endless boss Waves for score) or Express (30 Waves).
+- **Our choices where the port is unclear:** fast creeps get a 1 s haste every 3 s, creeps follow the lane's centre line, Easy is HP × 0.75, and a "send now" button in every break pays no bonus.
 
 ### Phase 3: Original (the Campaign)
 1. **Design doc first** (`docs/original-design.md`): the world and its 3 regions, the creep roster (about 12 types: armoured, magic-resistant, fast, swarm, flying, regenerating, splitting, shielded, bosses), the 30 towers, Talent trees and a rough plan for each of the 12 Stages.
