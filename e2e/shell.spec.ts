@@ -95,9 +95,20 @@ test('hotkeys drive pause, speed, Gem Quality and the menu', async ({ page }) =>
   await expect(page.getByTestId('paused')).toBeHidden();
   await page.keyboard.press('2');
   await expect(page.getByTestId('speed-2')).toHaveAttribute('aria-pressed', 'true');
-  // 10 gold can't buy Gem Quality 1 (20), and the game says so.
+  // 10 gold can't buy Gem Quality 1 (20), and the game says so. The message
+  // flashes for 1.8 s, which a busy CI runner can miss between polls, so
+  // record every text the hint shows instead.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { hintsSeen: string[] }).hintsSeen = seen;
+    new MutationObserver(() => {
+      const text = document.querySelector('[data-testid="hint"]')?.textContent;
+      if (text) seen.push(text);
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
   await page.keyboard.press('q');
-  await expect(page.getByTestId('hint')).toHaveText('Not enough gold');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { hintsSeen: string[] }).hintsSeen))
+    .toContain('Not enough gold');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('run-menu')).toBeVisible();
   // Keys don't reach the game while the menu is open.
