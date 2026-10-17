@@ -1,6 +1,7 @@
 import { CELL } from '../core/constants';
 import type { MapSpec } from '../core/specs';
 import type { GameState } from '../core/state';
+import { getMode } from '../modes/registry';
 
 export interface Point {
   readonly x: number;
@@ -141,9 +142,45 @@ export function cellAt(md: MapData, x: number, y: number): number {
   return row * md.cols + col;
 }
 
-/** Cells creeps can walk right now: walkable terrain with nothing built on it. */
-export function openCells(md: MapData, grid: readonly number[]): Uint8Array {
+/**
+ * Cells creeps can walk right now: walkable terrain with nothing built on it,
+ * or with only a structure creeps walk over (an id in `walkOver`).
+ */
+export function openCells(md: MapData, grid: readonly number[], walkOver?: ReadonlySet<number>): Uint8Array {
   const open = new Uint8Array(md.size);
-  for (let i = 0; i < md.size; i++) open[i] = md.walkable[i] === 1 && grid[i] === 0 ? 1 : 0;
+  const over = walkOver !== undefined && walkOver.size > 0 ? walkOver : null;
+  for (let i = 0; i < md.size; i++) {
+    const id = grid[i]!;
+    open[i] = md.walkable[i] === 1 && (id === 0 || (over !== null && over.has(id))) ? 1 : 0;
+  }
   return open;
+}
+
+/** Ids of the structures whose spec is walkable: they hold their cells but creeps walk over them. */
+export function walkOverIds(state: GameState): Set<number> {
+  const ids = new Set<number>();
+  if (state.towers.length === 0) return ids;
+  const towers = getMode(state.modeId).towers;
+  for (const t of state.towers) if (towers[t.spec]?.walkable === true) ids.add(t.id);
+  return ids;
+}
+
+/**
+ * The cells of a `size`×`size` footprint anchored (top-left) at `anchor`, anchor
+ * first and row by row; empty when any of them would be off the Map.
+ */
+export function footprintCells(map: MapSpec, anchor: number, size = 1): number[] {
+  if (!Number.isInteger(anchor) || anchor < 0 || anchor >= map.cols * map.rows || !Number.isInteger(size) || size < 1) return [];
+  const col = cellCol(map, anchor);
+  const row = cellRow(map, anchor);
+  if (col + size > map.cols || row + size > map.rows) return [];
+  const cells: number[] = [];
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) cells.push((row + r) * map.cols + col + c);
+  return cells;
+}
+
+/** World position of the centre of a `size`×`size` footprint anchored at `anchor`. */
+export function footprintCentre(map: MapSpec, anchor: number, size = 1): Point {
+  const col = cellCol(map, anchor);
+  return { x: (col + size / 2) * CELL, y: (cellRow(map, anchor) + size / 2) * CELL };
 }

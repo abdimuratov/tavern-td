@@ -42,6 +42,7 @@ registerEffect<SplashEffect>({
   validate(e) {
     const bands = e.bands as unknown;
     if (!Array.isArray(bands) || bands.length < 1 || bands.length > 3) return 'splash needs 1 to 3 bands';
+    if (e.targets !== undefined && e.targets !== 'ground' && e.targets !== 'air' && e.targets !== 'both') return 'splash targets must be ground, air or both';
     let last = 0;
     for (const band of bands as readonly (readonly [number, number])[]) {
       const [radius, factor] = band;
@@ -56,10 +57,11 @@ registerEffect<SplashEffect>({
     const bands = e.bands;
     const outer = bands[bands.length - 1]![0];
     const outer2 = outer * outer;
+    const layer = e.targets ?? impact.attack.targets;
     const n = creeps.length;
     for (let i = 0; i < n; i++) {
       const c = creeps[i]!;
-      if (c === impact.target || c.hp <= 0 || !canHit(impact.attack.targets, c)) continue;
+      if (c === impact.target || c.hp <= 0 || !canHit(layer, c)) continue;
       const dx = c.x - impact.x;
       const dy = c.y - impact.y;
       const d2 = dx * dx + dy * dy;

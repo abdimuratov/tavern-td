@@ -37,17 +37,19 @@ export const WC3_DAMAGE_TABLE: DamageTable = {
 /**
  * Deals damage and handles the kill. With an attack type the damage table and
  * armor apply; with null (poison and other damage over time) it lands as is.
- * Returns the damage dealt.
+ * A damage-taken status scales either. Returns the damage dealt.
  */
 export function damageCreep(sim: Sim, creep: Creep, amount: number, attackType: string | null, tower: number, kind: HitKind): number {
   if (creep.hp <= 0 || amount <= 0) return 0;
   let dealt = amount;
+  const mods = creepMods(creep);
   if (attackType !== null) {
     const spec = sim.rules.creeps[creep.spec];
-    const armor = (spec?.armor ?? 0) + creepMods(creep).armor;
+    const armor = (spec?.armor ?? 0) + mods.armor;
     dealt *= typeMultiplier(sim.rules.damageTable, attackType, spec?.armorType ?? '')
       * armorMultiplier(armor, sim.rules.armorFactor ?? DEFAULT_ARMOR_FACTOR);
   }
+  if (mods.damageTaken !== 0) dealt *= 1 + mods.damageTaken;
   creep.hp -= dealt;
   if (kind !== 'dot') sim.events.push({ type: 'hit', creep: creep.id, tower, damage: dealt, kind });
   if (creep.hp <= 0) killCreep(sim, creep, tower);

@@ -48,6 +48,10 @@ _Avoid_: waypoint (in player-facing text), node, flag
 A tower's effect on everything of one kind within a radius, such as faster attacks for nearby towers or less armor for nearby creeps.
 _Avoid_: field, zone, buff area
 
+**Ghost**:
+The see-through preview of a structure before it is built: green where it can go, red with the reason where it can't, with the route it would make drawn alongside.
+_Avoid_: preview tower, cursor, shadow
+
 **Block**:
 A placement that would leave creeps no path from spawn to exit. Every Game Mode rejects it.
 _Avoid_: wall-off, seal
@@ -77,6 +81,22 @@ _Avoid_: combo, craft, fusion
 **Slate**:
 A support structure made from one Normal gem plus one specific Flawed gem in the same Draft. Creeps walk over it, and it leaves no Rock behind.
 _Avoid_: rune, tablet, totem
+
+**Special**:
+The tower a Recipe makes, such as Malachite; gold buys it up its line's Tiers, such as Vivid then Mighty Malachite.
+_Avoid_: combo tower, legendary, unique
+
+**Gem Quality**:
+Gem's research, from 0 to 8, that sets the odds of each gem quality (Chipped to Perfect) in the Draft.
+_Avoid_: chance level, luck, gem level
+
+**Extra Chance**:
+A gold fee, open at Gem Quality 8, that biases one round's Draft toward a chosen gem type or Slate.
+_Avoid_: reroll, bias, target buy
+
+**Kill Step**:
+A Gem tower's kill count in tens, from 1 to 11; several Specials and Slates hit harder at higher Kill Steps.
+_Avoid_: kill level, rank, veterancy
 
 **Damage Test**:
 The armored boss that arrives with Gem's Wave 50; how much damage it takes is the Run's score.

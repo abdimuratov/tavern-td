@@ -29,6 +29,8 @@ export interface CreepSpec {
   readonly leakCost?: number;
   /** HP regained per second. */
   readonly regen?: number;
+  /** World units per second that slows can't push it below (WC3's minimum move speed), or its base speed if lower; a stun still stops it. */
+  readonly minSpeed?: number;
 }
 
 export interface AttackSpec {
@@ -43,6 +45,11 @@ export interface AttackSpec {
   /** World units per second; 0 hits instantly. */
   readonly projectileSpeed: number;
   readonly effects?: readonly EffectSpec[];
+  /**
+   * WC3 dice: `count` dice of 1…`sides` on top of a base of `damage[0] − count`, so
+   * the roll clusters in the middle. Absent: one uniform roll over `damage`.
+   */
+  readonly dice?: readonly [count: number, sides: number];
 }
 
 export interface TowerSpec {
@@ -51,12 +58,18 @@ export interface TowerSpec {
   /** Absent for structures that only shape the maze, such as Rocks. */
   readonly attack?: AttackSpec;
   readonly auras?: readonly AuraSpec[];
+  /** Side of the square of cells it covers, anchored at its top-left cell; 1 by default. */
+  readonly footprint?: number;
+  /** Creeps walk over it (Gem's slates): it takes build space but never shapes the maze. */
+  readonly walkable?: boolean;
 }
 
 /** WC3 splash: each creep takes the factor of the smallest band it stands in (full, medium, small). */
 export interface SplashEffect {
   readonly kind: 'splash';
   readonly bands: readonly (readonly [radius: number, factor: number])[];
+  /** Which creeps the splash can hit; the attack's own targets by default (WC3 artillery often splashes ground only). */
+  readonly targets?: TargetLayer;
 }
 
 /** Move-speed fraction removed. Slows with the same key don't stack: the strongest applies. */

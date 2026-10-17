@@ -16,6 +16,8 @@ export function restore(json: string): GameState {
   if (typeof state.modeId !== 'string' || typeof state.tick !== 'number' || !lists.every(Array.isArray)) {
     throw new Error('Snapshot is missing parts of the state');
   }
+  // Saves from before footprints: every tower covered just its anchor cell.
+  for (const t of state.towers!) if (!Array.isArray(t.cells)) t.cells = [t.cell];
   return state as GameState;
 }
 

@@ -4,7 +4,8 @@ import type { Sim } from '../core/mode';
 import { nextFloat, nextInt } from '../core/rng';
 import type { AttackSpec, EffectSpec, TowerSpec } from '../core/specs';
 import type { Creep, GameState, Projectile, Tower } from '../core/state';
-import { cellCentre } from '../path/grid';
+import { getMode } from '../modes/registry';
+import { footprintCells, footprintCentre } from '../path/grid';
 import { damageCreep } from './damage';
 import { cooldownTicks, towerMods } from './mods';
 import { effectHandler, type Attack, type Impact, type Shot, type TowerMods } from './registry';
@@ -14,31 +15,43 @@ import { canHit, closestCreep, findCreep } from './targeting';
 const NO_EFFECTS: readonly EffectSpec[] = [];
 
 // Structure helpers for Game Mode commands. They don't validate: run
-// placementError first. Every grid change bumps pathVersion.
+// placementError on the footprint first. Every grid change bumps pathVersion.
 
+/**
+ * Builds a structure with its footprint's top-left at `cell`. It covers the
+ * spec's footprint (1×1 by default), every cell of which goes on the grid, and
+ * stands at the footprint's centre.
+ */
 export function addTower(state: GameState, spec: string, cell: number, events: SimEvent[]): Tower {
-  const { x, y } = cellCentre(state.map, cell);
-  const tower: Tower = { id: state.nextId++, spec, cell, x, y, cd: 0, target: 0, kills: 0, status: [] };
+  const size = getMode(state.modeId).towers[spec]?.footprint ?? 1;
+  const cells = footprintCells(state.map, cell, size);
+  if (cells.length === 0) cells.push(cell);
+  const { x, y } = footprintCentre(state.map, cell, cells.length === 1 ? 1 : size);
+  const tower: Tower = { id: state.nextId++, spec, cell, cells, x, y, cd: 0, target: 0, kills: 0, status: [] };
   state.towers.push(tower);
-  state.grid[cell] = tower.id;
+  for (const c of cells) state.grid[c] = tower.id;
   state.pathVersion++;
   events.push({ type: 'placed', tower: tower.id, spec, cell });
   return tower;
 }
 
-/** Removes a structure and frees its cell. Its projectiles in flight still land. */
+/** Removes a structure and frees its cells. Its projectiles in flight still land. */
 export function removeTower(state: GameState, id: number, events: SimEvent[]): boolean {
   const i = state.towers.findIndex((t) => t.id === id);
   if (i < 0) return false;
   const tower = state.towers[i]!;
   state.towers.splice(i, 1);
-  if (state.grid[tower.cell] === id) state.grid[tower.cell] = 0;
+  for (const c of tower.cells) if (state.grid[c] === id) state.grid[c] = 0;
   state.pathVersion++;
   events.push({ type: 'removed', tower: id, spec: tower.spec, cell: tower.cell });
   return true;
 }
 
-/** Turns a structure into another spec in place (a Draft gem into a Rock, a merge, an upgrade); the maze is unchanged. */
+/**
+ * Turns a structure into another spec in place (a Draft gem into a Rock, a merge,
+ * an upgrade). The footprint stays; if the new spec's `walkable` differs, the
+ * caller bumps `state.pathVersion` so routes rebuild.
+ */
 export function setTowerSpec(tower: Tower, spec: string, events: SimEvent[]): void {
   const from = tower.spec;
   tower.spec = spec;
@@ -117,8 +130,15 @@ function dist2(t: Tower, c: Creep): number {
   return dx * dx + dy * dy;
 }
 
-function rollDamage(sim: Sim, [min, max]: readonly [number, number]): number {
+function rollDamage(sim: Sim, atk: AttackSpec): number {
+  const [min, max] = atk.damage;
   if (max <= min) return min;
+  if (atk.dice) {
+    const [count, sides] = atk.dice;
+    let total = min - count;
+    for (let i = 0; i < count; i++) total += nextInt(sim.state.rng, 1, sides);
+    return total;
+  }
   if (Number.isInteger(min) && Number.isInteger(max)) return nextInt(sim.state.rng, min, max);
   return min + nextFloat(sim.state.rng) * (max - min);
 }
@@ -130,7 +150,7 @@ function fire(sim: Sim, tower: Tower, spec: TowerSpec, atk: AttackSpec, mods: Re
   const effects = atk.effects ?? NO_EFFECTS;
   for (const e of effects) effectHandler(e.kind)?.onAttack?.(e, attack, sim);
   for (const target of attack.targets) {
-    const shot: Shot = { tower, attack: atk, target, damage: rollDamage(sim, atk.damage) * (1 + mods.damage), crit: 1 };
+    const shot: Shot = { tower, attack: atk, target, damage: rollDamage(sim, atk) * (1 + mods.damage), crit: 1 };
     for (const e of effects) effectHandler(e.kind)?.onLaunch?.(e, shot, sim);
     if (atk.projectileSpeed <= 0) {
       events.push({ type: 'fire', tower: tower.id, target: target.id, projectile: 0 });

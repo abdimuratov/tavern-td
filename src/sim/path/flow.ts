@@ -1,6 +1,6 @@
 import type { GameState } from '../core/state';
 import { placementError } from './block';
-import { mapData, openCells, type MapData, type Point } from './grid';
+import { mapData, openCells, walkOverIds, type MapData, type Point } from './grid';
 
 // One flow field per route segment: the octile distance from every cell to that
 // segment's waypoint region, plus the downhill neighbour to step to. Fields are
@@ -29,7 +29,7 @@ export function flow(state: GameState): Flow {
   const cached = flows.get(state);
   if (cached && cached.version === state.pathVersion && cached.map === state.map) return cached;
   const md = mapData(state.map);
-  const built: Flow = { version: state.pathVersion, map: state.map, ...fields(md, openCells(md, state.grid)) };
+  const built: Flow = { version: state.pathVersion, map: state.map, ...fields(md, openCells(md, state.grid, walkOverIds(state))) };
   flows.set(state, built);
   return built;
 }
@@ -192,7 +192,7 @@ export function routeCells(state: GameState): number[] {
 export function previewRoute(state: GameState, cells: readonly number[]): number[] | null {
   if (placementError(state, cells) !== null) return null;
   const md = mapData(state.map);
-  const open = openCells(md, state.grid);
+  const open = openCells(md, state.grid, walkOverIds(state));
   for (const c of cells) open[c] = 0;
   return trace(md, fields(md, open).next);
 }

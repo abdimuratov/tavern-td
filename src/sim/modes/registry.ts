@@ -43,6 +43,12 @@ function attackProblems(name: string, a: AttackSpec): string[] {
   if (!finite(a.range, 0)) out.push(`${name}: range must be 0 or more`);
   if (!finite(a.projectileSpeed, 0)) out.push(`${name}: projectileSpeed must be 0 or more`);
   if (!LAYERS.includes(a.targets)) out.push(`${name}: targets must be ground, air or both`);
+  if (a.dice !== undefined) {
+    const [count, sides] = a.dice;
+    if (!Number.isInteger(count) || !Number.isInteger(sides) || count < 1 || sides < 1 || min + count * (sides - 1) !== max) {
+      out.push(`${name}: dice must be whole [count, sides] that span damage exactly`);
+    }
+  }
   for (const e of a.effects ?? []) {
     const h = effectHandler(e.kind);
     if (!h) out.push(`${name}: unknown effect kind ${e.kind}`);
@@ -68,8 +74,9 @@ function auraProblems(name: string, a: AuraSpec): string[] {
 function creepProblems(name: string, c: CreepSpec): string[] {
   const ok = finite(c.hp, 0) && c.hp > 0 && finite(c.armor, -Infinity) && finite(c.speed, 0) && finite(c.bounty, -Infinity)
     && typeof c.flying === 'boolean' && typeof c.armorType === 'string'
-    && (c.leakCost === undefined || finite(c.leakCost, 0)) && (c.regen === undefined || finite(c.regen, 0));
-  return ok ? [] : [`creep ${name}: hp, armor, armorType, speed, flying, bounty, leakCost or regen is malformed`];
+    && (c.leakCost === undefined || finite(c.leakCost, 0)) && (c.regen === undefined || finite(c.regen, 0))
+    && (c.minSpeed === undefined || finite(c.minSpeed, 0));
+  return ok ? [] : [`creep ${name}: hp, armor, armorType, speed, flying, bounty, leakCost, regen or minSpeed is malformed`];
 }
 
 export function waveProblems(rules: GameModeRules, wave: WaveSpec, label: string): string[] {
@@ -85,6 +92,7 @@ export function waveProblems(rules: GameModeRules, wave: WaveSpec, label: string
 function contentProblems(rules: GameModeRules): string[] {
   const out: string[] = [];
   for (const [id, t] of Object.entries(rules.towers) as [string, TowerSpec][]) {
+    if (t.footprint !== undefined && (!Number.isInteger(t.footprint) || t.footprint < 1)) out.push(`tower ${id}: footprint must be a whole number of 1 or more`);
     if (t.attack) out.push(...attackProblems(`tower ${id}`, t.attack));
     for (const a of t.auras ?? []) out.push(...auraProblems(`tower ${id}`, a));
   }

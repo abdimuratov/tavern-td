@@ -1,5 +1,5 @@
 import type { GameState } from '../core/state';
-import { cellAt, mapData, openCells, type MapData } from './grid';
+import { cellAt, mapData, openCells, walkOverIds, type MapData } from './grid';
 
 export type PlacementError = 'out of bounds' | 'unbuildable' | 'occupied' | 'creep in the way' | 'blocks the path';
 
@@ -30,7 +30,7 @@ function blockError(state: GameState, md: MapData, cells: readonly number[]): 'c
   for (const creep of state.creeps) {
     if (creep.hp > 0 && !creep.air && cells.includes(cellAt(md, creep.x, creep.y))) return 'creep in the way';
   }
-  const open = openCells(md, state.grid);
+  const open = openCells(md, state.grid, walkOverIds(state));
   for (const c of cells) if (c >= 0 && c < md.size) open[c] = 0;
 
   // With no corner cutting, 8-way reachability equals 4-way reachability, so

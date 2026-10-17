@@ -4,13 +4,13 @@ import type { Creep, Tower } from '../core/state';
 import { effectHandler, type CreepMods, type TowerMods } from './registry';
 import { isStrongest } from './status';
 
-const NO_CREEP_MODS: Readonly<CreepMods> = Object.freeze({ slow: 0, armor: 0, stunned: false });
+const NO_CREEP_MODS: Readonly<CreepMods> = Object.freeze({ slow: 0, armor: 0, stunned: false, damageTaken: 0 });
 const NO_TOWER_MODS: Readonly<TowerMods> = Object.freeze({ attackSpeed: 0, damage: 0, range: 0 });
 
 export function creepMods(creep: Creep): Readonly<CreepMods> {
   const list = creep.status;
   if (list.length === 0) return NO_CREEP_MODS;
-  const mods: CreepMods = { slow: 0, armor: 0, stunned: false };
+  const mods: CreepMods = { slow: 0, armor: 0, stunned: false, damageTaken: 0 };
   for (let i = 0; i < list.length; i++) {
     const s = list[i]!;
     const h = effectHandler(s.kind);

@@ -25,7 +25,7 @@ export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rn
 
 export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 
-export { setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, type Point } from './path/grid';
+export { setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, type Point } from './path/grid';
 export { routeCells, previewRoute, airRoute, pathDistance, nextCell } from './path/flow';
 export { placementError, wouldBlock, type PlacementError } from './path/block';
 
@@ -42,3 +42,6 @@ export { spawnCreep, type SpawnOptions } from './combat/creeps';
 export { canHit, findCreep, findTower, closestCreep, nearestCreeps } from './combat/targeting';
 
 export { earnGold, spendGold, canAfford, loseLives, gainLives } from './economy';
+
+// Game Modes. Importing the sim registers them.
+export * as gem from './modes/gem';

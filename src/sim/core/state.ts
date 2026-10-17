@@ -48,7 +48,11 @@ export interface Creep {
 export interface Tower {
   id: number;
   spec: string;
+  /** Anchor cell: the top-left of its footprint. */
   cell: number;
+  /** Every cell its footprint covers, the anchor first, row by row. */
+  cells: number[];
+  /** Footprint centre. */
   x: number;
   y: number;
   /** Ticks until it may attack. Fractional, so cooldowns that aren't whole ticks average out. */

@@ -45,6 +45,8 @@ export interface CreepMods {
   /** Added to the spec's armor. */
   armor: number;
   stunned: boolean;
+  /** Extra fraction of all damage it takes (Gem's Dark Emerald stun: 0.2). */
+  damageTaken: number;
 }
 
 export interface TowerMods {

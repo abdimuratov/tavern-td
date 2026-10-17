@@ -62,7 +62,10 @@ export function runCreeps(sim: Sim): void {
     if (spec?.regen && c.hp < c.maxHp) c.hp = Math.min(c.maxHp, c.hp + spec.regen / TICK_RATE);
     tickCreepStatuses(sim, c);
     if (c.hp > 0) {
-      const dist = c.speed * speedFactor(creepMods(c));
+      const mods = creepMods(c);
+      let dist = c.speed * speedFactor(mods);
+      // A minimum speed floors slows, never the creep's own base speed.
+      if (spec?.minSpeed !== undefined && !mods.stunned) dist = Math.max(dist, Math.min(c.speed, spec.minSpeed / TICK_RATE));
       const arrived = c.air ? moveAir(c, dist, md) : moveGround(c, dist, md, (fl ??= flow(state)));
       if (arrived) leak(sim, c, md, spec?.leakCost ?? 1);
     }
