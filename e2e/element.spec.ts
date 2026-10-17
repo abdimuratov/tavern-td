@@ -6,6 +6,10 @@ import { buildTower, finishWave, newElementRun, towerSpecs } from './app';
 // and Continue. The Wave itself is run to its end through the debug handle;
 // everything before it goes through the UI.
 
+// Each test plays a whole Wave through the debug handle, which takes most of
+// the default 30 s on CI's single slow worker.
+test.describe.configure({ timeout: 60_000 });
+
 test('an Element Run builds, sends a Wave, autosaves and continues paused', async ({ page }) => {
   await page.goto('./');
   await newElementRun(page, { picks: 'allPick', length: 'express', difficulty: 'normal' });

@@ -17,7 +17,7 @@ export interface RouteData {
   readonly leakAt: number;
 }
 
-interface MapRoutes {
+export interface MapRoutes {
   readonly ground: readonly RouteData[];
   /** The air line of each route, null where a route has none. */
   readonly air: readonly (RouteData | null)[];
@@ -110,8 +110,17 @@ export function airLineData(map: MapSpec, index = 0): RouteData | null {
 
 /** The line a creep follows: its route's air line if it flies, its route if it walks; null when it follows neither. */
 export function creepLine(map: MapSpec, creep: Creep): RouteData | null {
+  return lineOf(mapRoutes(map), creep);
+}
+
+/** Every route and air line of a Map, for loops that look up many creeps' lines in one tick. */
+export function mapLines(map: MapSpec): MapRoutes {
+  return mapRoutes(map);
+}
+
+export function lineOf(lines: MapRoutes, creep: Creep): RouteData | null {
   const index = creep.route ?? 0;
-  return creep.air ? airLineData(map, index) : routeData(map, index);
+  return (creep.air ? lines.air[index] : lines.ground[index]) ?? null;
 }
 
 /** The point `dist` along the route, clamped to its ends. */

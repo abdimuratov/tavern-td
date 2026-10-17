@@ -6,7 +6,7 @@ import { loseLives } from '../economy';
 import { getMode } from '../modes/registry';
 import { flow, type Flow } from '../path/flow';
 import { cellAt, mapData, type MapData } from '../path/grid';
-import { creepLine, moveOnRoute, placeOnRoute, routeCount } from '../path/route';
+import { creepLine, lineOf, mapLines, moveOnRoute, placeOnRoute, routeCount } from '../path/route';
 import { creepMods, speedFactor, tickCreepStatuses } from './mods';
 import { tickDown } from './status';
 
@@ -65,7 +65,7 @@ export function runCreeps(sim: Sim): void {
   const creeps = state.creeps;
   if (creeps.length === 0) return;
   const md = mapData(state.map);
-  const routed = routeCount(state.map) > 0;
+  const lines = routeCount(state.map) > 0 ? mapLines(state.map) : null;
   let fl: Flow | null = null;
   const n = creeps.length;
   for (let i = 0; i < n; i++) {
@@ -79,7 +79,7 @@ export function runCreeps(sim: Sim): void {
       let dist = c.speed * speedFactor(mods);
       // A minimum speed floors slows, never the creep's own base speed.
       if (spec?.minSpeed !== undefined && !mods.stunned) dist = Math.max(dist, Math.min(c.speed, spec.minSpeed / TICK_RATE));
-      const line = routed ? creepLine(state.map, c) : null;
+      const line = lines ? lineOf(lines, c) : null;
       const arrived = line ? moveOnRoute(line, c, dist) : c.air ? moveAir(c, dist, md) : moveGround(c, dist, md, (fl ??= flow(state)));
       if (arrived) leak(sim, c, md, line !== null, spec?.leakCost ?? 1);
     }
