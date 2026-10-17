@@ -196,3 +196,45 @@ describe('settings', () => {
     expect(await storage.loadSettings()).toEqual({ ...DEFAULT_SETTINGS, volume: 1, showGrid: false });
   });
 });
+
+describe('the Original\'s Campaign', () => {
+  it('starts empty and keeps what a change writes, apart from Run saves', async () => {
+    const kv = memoryStore();
+    const { storage } = setup(kv);
+    expect(await storage.loadCampaign()).toEqual({ stages: {}, talents: [] });
+    const update = await storage.updateCampaign((c) => ({ ...c, stages: { 1: { stars: 2, hardest: 'normal', fastest: 412.5 } } }));
+    expect(update).toMatchObject({ before: { stages: {} }, after: { stages: { 1: { stars: 2 } } }, saved: true });
+    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 2, hardest: 'normal', fastest: 412.5 } }, talents: [] });
+    expect(await storage.hasRun('original')).toBe(false);
+    expect([...kv.data.keys()]).toEqual(['campaign/original']);
+  });
+
+  it('applies changes that arrive together one after another', async () => {
+    const { storage } = setup();
+    await Promise.all([
+      storage.updateCampaign((c) => ({ ...c, stages: { ...c.stages, 1: { stars: 3, hardest: 'easy', fastest: null } } })),
+      storage.updateCampaign((c) => ({ ...c, talents: ['fletching'] })),
+    ]);
+    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 3, hardest: 'easy', fastest: null } }, talents: ['fletching'] });
+  });
+
+  it('drops damaged Stage Records one by one, and Talents nobody could hold all at once', async () => {
+    const kv = memoryStore();
+    kv.data.set('campaign/original', {
+      stages: {
+        1: { stars: 3, hardest: 'insane', fastest: 300 },
+        2: { stars: 9 },
+        x: { stars: 1 },
+        3: { stars: 1, hardest: 'impossible', fastest: -4 },
+      },
+      talents: ['fletching', 'long-draw'],
+    });
+    const { storage } = setup(kv);
+    expect(await storage.loadCampaign()).toEqual({
+      stages: { 1: { stars: 3, hardest: 'insane', fastest: 300 }, 3: { stars: 1, hardest: null, fastest: null } },
+      talents: [],
+    });
+    kv.data.set('campaign/original', 'garbage');
+    expect(await storage.loadCampaign()).toEqual({ stages: {}, talents: [] });
+  });
+});

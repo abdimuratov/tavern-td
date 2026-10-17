@@ -1,5 +1,5 @@
 import { createStore, del, get, set, type UseStore } from 'idb-keyval';
-import { DIFFICULTIES, type Difficulty } from '../sim';
+import { DIFFICULTIES, original, type Difficulty } from '../sim';
 
 /** The three IndexedDB calls this module needs, so tests can back it with a Map. */
 export interface KeyValueStore {
@@ -70,6 +70,27 @@ export const EMPTY_RECORD: Readonly<ModeRecord> = {
   won: 0,
 };
 
+/**
+ * The Original's Campaign, kept apart from Run saves: a save code holds a
+ * Run, never the Campaign. Stars earned, Stages finished and the unlocks all
+ * follow from the Stage Records.
+ */
+export interface CampaignProgress {
+  /** Stage Records by Stage number. A Stage has one once it is won. */
+  stages: Record<string, original.StageRecord>;
+  /** The Talents held, chosen on the Stage-select screen. */
+  talents: string[];
+}
+
+export const EMPTY_CAMPAIGN: Readonly<CampaignProgress> = { stages: {}, talents: [] };
+
+export interface CampaignUpdate {
+  readonly before: CampaignProgress;
+  readonly after: CampaignProgress;
+  /** False if the new Campaign could not be written; `after` still holds for this screen. */
+  readonly saved: boolean;
+}
+
 export interface StorageOptions {
   now?: () => number;
   /** Asks the browser not to evict our data. Called once, before the first write. */
@@ -97,6 +118,12 @@ export interface AppStorage {
   recordResult(modeId: string, difficulty: Difficulty, result: RunResult, board?: string): Promise<RecordUpdate>;
   loadSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<boolean>;
+  loadCampaign(): Promise<CampaignProgress>;
+  /**
+   * Reads the Campaign, changes it with `change` and writes the result. Calls
+   * are queued, so a Run's end and a Talent bought at once both count.
+   */
+  updateCampaign(change: (campaign: CampaignProgress) => CampaignProgress): Promise<CampaignUpdate>;
   /** Best effort; resolves to whether storage is persistent. Safe to call any number of times. */
   requestPersistence(): Promise<boolean>;
 }
@@ -112,6 +139,7 @@ const runKey = (modeId: string): string => `run/${modeId}`;
 const recordKey = (modeId: string, difficulty: Difficulty, board?: string): string =>
   board ? `record/${modeId}/${board}/${difficulty}` : `record/${modeId}/${difficulty}`;
 const SETTINGS_KEY = 'settings';
+const CAMPAIGN_KEY = 'campaign/original';
 
 /** Every call resolves; failures are logged and reported as false, undefined or defaults. */
 export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): AppStorage {
@@ -119,6 +147,7 @@ export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): 
   const persist = options.persist ?? persistBrowserStorage;
   let persistence: Promise<boolean> | undefined;
   let recordQueue: Promise<unknown> = Promise.resolve();
+  let campaignQueue: Promise<unknown> = Promise.resolve();
 
   const requestPersistence = (): Promise<boolean> =>
     (persistence ??= persist().catch((err: unknown) => {
@@ -219,6 +248,21 @@ export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): 
     return toSettings(await read(SETTINGS_KEY));
   }
 
+  async function loadCampaign(): Promise<CampaignProgress> {
+    return toCampaign(await read(CAMPAIGN_KEY));
+  }
+
+  function updateCampaign(change: (campaign: CampaignProgress) => CampaignProgress): Promise<CampaignUpdate> {
+    const update = campaignQueue.then(async () => {
+      const before = await loadCampaign();
+      const after = toCampaign(change(structuredClone(before)));
+      const saved = await write(CAMPAIGN_KEY, after);
+      return { before, after, saved };
+    });
+    campaignQueue = update.catch(() => undefined);
+    return update;
+  }
+
   return {
     saveRun,
     loadRun,
@@ -229,6 +273,8 @@ export function createStorage(kv: KeyValueStore, options: StorageOptions = {}): 
     recordResult,
     loadSettings,
     saveSettings: (settings) => write(SETTINGS_KEY, toSettings(settings)),
+    loadCampaign,
+    updateCampaign,
     requestPersistence,
   };
 }
@@ -302,6 +348,41 @@ function toSettings(value: unknown): Settings {
   };
 }
 
+/** Most Stars one Stage pays: what keeping every life earns. */
+const STAGE_STARS = original.starsFor(Number.POSITIVE_INFINITY);
+
+function toStageRecord(value: unknown): original.StageRecord | null {
+  if (!isObject(value)) return null;
+  const stars = value.stars;
+  const hardest = value.hardest;
+  const fastest = value.fastest;
+  if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < 1 || stars > STAGE_STARS) return null;
+  return {
+    stars,
+    hardest: typeof hardest === 'string' && (DIFFICULTIES as readonly string[]).includes(hardest) ? hardest as Difficulty : null,
+    fastest: typeof fastest === 'number' && Number.isFinite(fastest) && fastest > 0 ? fastest : null,
+  };
+}
+
+/**
+ * Keeps each Stage Record that reads right, by a whole Stage number. Talents
+ * a player couldn't hold (an unknown id, two from one row) are all dropped,
+ * which refunds their Stars: a reset is free anyway.
+ */
+function toCampaign(value: unknown): CampaignProgress {
+  const c = isObject(value) ? value : {};
+  const stages: Record<string, original.StageRecord> = {};
+  if (isObject(c.stages)) {
+    for (const [key, raw] of Object.entries(c.stages)) {
+      const record = /^[1-9]\d*$/.test(key) ? toStageRecord(raw) : null;
+      if (record) stages[key] = record;
+    }
+  }
+  const held = Array.isArray(c.talents) ? c.talents : [];
+  const talents = original.talentsProblem(held) === null ? (held as string[]).slice() : [];
+  return { stages, talents };
+}
+
 const storage = createStorage(indexedDbStore());
 
 export const {
@@ -314,5 +395,7 @@ export const {
   recordResult,
   loadSettings,
   saveSettings,
+  loadCampaign,
+  updateCampaign,
   requestPersistence,
 } = storage;
