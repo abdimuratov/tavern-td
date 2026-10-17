@@ -72,6 +72,10 @@ _Avoid_: builder, faction, class
 A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again.
 _Avoid_: escape, breach, pass
 
+**Break**:
+The countdown between one Wave being cleared and the next Wave starting on its own. "Send now" ends it early.
+_Avoid_: build phase (Gem's build phase has no timer), intermission, timer
+
 **Trait**:
 A rule that changes how one Wave's creeps behave, such as fast, heal, undead or mechanical.
 _Avoid_: ability, modifier, perk
@@ -81,6 +85,10 @@ _Avoid_: ability, modifier, perk
 **Element**:
 One of Element's six damage and creep types: Water, Fire, Nature, Earth, Light and Dark. Each deals 200% to the next in that cycle and 50% to the one before, and the player raises each from level 0 to 3 during a Run.
 _Avoid_: school, colour, affinity
+
+**Lane**:
+Element's walled route that creeps walk from the spawn to the exit. Towers stand on plots beside it, never on it, so they can't change it.
+_Avoid_: path (in code, the route is the polyline creeps follow), road, track
 
 **Composite**:
 Damage or a creep with no Element. Composite damage deals 100% to everything, and Elements deal 90% to composite creeps.

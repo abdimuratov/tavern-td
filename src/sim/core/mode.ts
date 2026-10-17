@@ -1,7 +1,7 @@
 import type { Command } from './commands';
 import type { SimEvent } from './events';
 import type { CreepSpec, DamageTable, MapSpec, TowerSpec, WaveSpec } from './specs';
-import type { Creep, Difficulty, GameState } from './state';
+import type { Creep, Difficulty, GameState, Tower } from './state';
 import type { Json } from './types';
 
 /** What starts a Run. A replay is these plus the command log, so it must stay JSON. */
@@ -60,6 +60,16 @@ export interface GameModeRules<M = unknown> {
   onWaveStart?(state: GameState<M>, wave: number, events: SimEvent[]): void;
   /** Runs before the core decides between the next build phase and a win. */
   onWaveEnd?(state: GameState<M>, wave: number, events: SimEvent[]): void;
+  /** After a creep is put on the Map, by a Wave or by the mode itself. */
+  onSpawn?(state: GameState<M>, creep: Creep, events: SimEvent[]): void;
+  /**
+   * The creep a ready tower attacks, or null to stay idle. `range` is its
+   * attack range with bonuses. Default: keep the current target while it lives
+   * and stays in range, otherwise the closest creep.
+   */
+  towerTarget?(state: GameState<M>, tower: Tower, range: number): Creep | null;
+  /** Seconds between this tower's attacks before attack-speed bonuses; the spec's cooldown by default. */
+  towerCooldown?(state: GameState<M>, tower: Tower): number | null;
   /** After the bounty is paid. `tower` is the killer's id, 0 for none. */
   onKill?(state: GameState<M>, creep: Creep, tower: number, events: SimEvent[]): void;
   /** Default: lose the spec's leakCost (1) and remove the creep. */

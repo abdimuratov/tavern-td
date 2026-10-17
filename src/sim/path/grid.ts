@@ -2,6 +2,7 @@ import { CELL } from '../core/constants';
 import type { MapSpec } from '../core/specs';
 import type { GameState } from '../core/state';
 import { getMode } from '../modes/registry';
+import { routeProblem } from './route';
 
 export interface Point {
   readonly x: number;
@@ -54,7 +55,7 @@ export function validateMap(map: MapSpec): string | null {
     if (region.length < 1) return `waypoint region ${i} is empty`;
     if (!region.every(walkable)) return `waypoint region ${i} has a cell that is off the Map or unwalkable`;
   }
-  return null;
+  return routeProblem(map);
 }
 
 export function mapData(map: MapSpec): MapData {

@@ -14,6 +14,19 @@ export interface MapSpec {
   readonly spawn: Cell;
   /** Regions creeps must enter in order: the checkpoints, then the exit last. */
   readonly waypoints: readonly (readonly Cell[])[];
+  /**
+   * A fixed route (PLAN §2): ground creeps walk this polyline from its first
+   * point instead of a flow field, and leak `leakRadius` short of its last.
+   * Structures then never change their path. Absent on mazing Maps.
+   */
+  readonly route?: RouteSpec;
+}
+
+export interface RouteSpec {
+  /** World units, spawn first, exit last. */
+  readonly points: readonly (readonly [x: number, y: number])[];
+  /** A creep this close to the last point (along the route) has leaked; 0 by default. */
+  readonly leakRadius?: number;
 }
 
 export interface CreepSpec {
@@ -50,6 +63,11 @@ export interface AttackSpec {
    * the roll clusters in the middle. Absent: one uniform roll over `damage`.
    */
   readonly dice?: readonly [count: number, sides: number];
+  /**
+   * False: a landing doesn't hit its target by itself, and the attack's effects
+   * deal all the damage (Element towers, whose hits follow their own rules). True by default.
+   */
+  readonly direct?: boolean;
 }
 
 export interface TowerSpec {

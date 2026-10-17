@@ -7,7 +7,7 @@ export type {
 } from './core/state';
 export { DIFFICULTIES } from './core/state';
 export type {
-  MapSpec, TowerSpec, AttackSpec, CreepSpec, AuraSpec, EffectSpec, WaveSpec, WaveGroup, DamageTable, TargetLayer,
+  MapSpec, RouteSpec, TowerSpec, AttackSpec, CreepSpec, AuraSpec, EffectSpec, WaveSpec, WaveGroup, DamageTable, TargetLayer,
   SplashEffect, SlowEffect, PoisonEffect, ArmorEffect, StunEffect, CritEffect, MultishotEffect, CustomEffect,
 } from './core/specs';
 export type { SimEvent, HitKind } from './core/events';
@@ -28,6 +28,7 @@ export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 export { setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, type Point } from './path/grid';
 export { routeCells, previewRoute, airRoute, pathDistance, nextCell } from './path/flow';
 export { placementError, wouldBlock, type PlacementError } from './path/block';
+export { routeData, routePoint, routePolyline, placeOnRoute, type RouteData } from './path/route';
 
 export {
   registerEffect, effectHandler,
@@ -45,3 +46,4 @@ export { earnGold, spendGold, canAfford, loseLives, gainLives } from './economy'
 
 // Game Modes. Importing the sim registers them.
 export * as gem from './modes/gem';
+export * as element from './modes/element';

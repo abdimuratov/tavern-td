@@ -43,6 +43,8 @@ export interface Creep {
   /** Index of the waypoint region it is heading for. */
   seg: number;
   status: Status[];
+  /** Distance walked along the Map's route; only on Maps that have one, so other Runs serialize as before. */
+  dist?: number;
 }
 
 export interface Tower {

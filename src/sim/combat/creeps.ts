@@ -6,6 +6,7 @@ import { loseLives } from '../economy';
 import { getMode } from '../modes/registry';
 import { flow, type Flow } from '../path/flow';
 import { cellAt, mapData, type MapData } from '../path/grid';
+import { moveOnRoute, placeOnRoute, routeData, type RouteData } from '../path/route';
 import { creepMods, speedFactor, tickCreepStatuses } from './mods';
 import { tickDown } from './status';
 
@@ -32,8 +33,11 @@ export function spawnCreep(state: GameState, spec: string, opts: SpawnOptions, e
     speed: (opts.speed ?? cs.speed) / TICK_RATE, bounty: opts.bounty ?? cs.bounty,
     air: cs.flying, seg: 0, status: [],
   };
+  // On a fixed route, ground creeps start at its first point.
+  if (!creep.air && routeData(state.map)) placeOnRoute(state, creep, 0);
   state.creeps.push(creep);
   events.push({ type: 'spawn', creep: creep.id, spec, wave, x: creep.x, y: creep.y });
+  rules.onSpawn?.(state, creep, events);
   return creep;
 }
 
@@ -53,6 +57,7 @@ export function runCreeps(sim: Sim): void {
   const creeps = state.creeps;
   if (creeps.length === 0) return;
   const md = mapData(state.map);
+  const route = routeData(state.map);
   let fl: Flow | null = null;
   const n = creeps.length;
   for (let i = 0; i < n; i++) {
@@ -66,8 +71,8 @@ export function runCreeps(sim: Sim): void {
       let dist = c.speed * speedFactor(mods);
       // A minimum speed floors slows, never the creep's own base speed.
       if (spec?.minSpeed !== undefined && !mods.stunned) dist = Math.max(dist, Math.min(c.speed, spec.minSpeed / TICK_RATE));
-      const arrived = c.air ? moveAir(c, dist, md) : moveGround(c, dist, md, (fl ??= flow(state)));
-      if (arrived) leak(sim, c, md, spec?.leakCost ?? 1);
+      const arrived = c.air ? moveAir(c, dist, md) : route ? moveOnRoute(route, c, dist) : moveGround(c, dist, md, (fl ??= flow(state)));
+      if (arrived) leak(sim, c, md, route, spec?.leakCost ?? 1);
     }
     tickDown(c.status);
   }
@@ -128,13 +133,15 @@ function moveAir(c: Creep, dist: number, md: MapData): boolean {
   return false;
 }
 
-function leak(sim: Sim, c: Creep, md: MapData, leakCost: number): void {
+function leak(sim: Sim, c: Creep, md: MapData, route: RouteData | null, leakCost: number): void {
   const { state, rules, events } = sim;
   const outcome: LeakOutcome = rules.onLeak ? rules.onLeak(state, c, events) : { lives: leakCost, then: 'remove' };
   const restart = outcome.then === 'restart';
   events.push({ type: 'leak', creep: c.id, lives: outcome.lives, restart });
   loseLives(state, outcome.lives, events);
-  if (restart) {
+  if (restart && route && !c.air) {
+    placeOnRoute(sim.state, c, 0);
+  } else if (restart) {
     c.x = md.spawnX;
     c.y = md.spawnY;
     c.seg = 0;

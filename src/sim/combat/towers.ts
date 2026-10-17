@@ -110,14 +110,16 @@ export function runTowers(sim: Sim): void {
       if (!c || c.hp <= 0 || !canHit(atk.targets, c) || dist2(t, c) > r2) t.target = 0;
     }
     if (t.cd <= 0) {
-      if (t.target === 0) t.target = closestCreep(state.creeps, t.x, t.y, r2, atk.targets)?.id ?? 0;
+      if (rules.towerTarget) t.target = rules.towerTarget(state, t, range)?.id ?? 0;
+      else if (t.target === 0) t.target = closestCreep(state.creeps, t.x, t.y, r2, atk.targets)?.id ?? 0;
       // An idle tower stays ready without banking time toward a burst later.
       if (t.target === 0) {
         t.cd = 0;
         continue;
       }
       fire(sim, t, spec, atk, mods, range);
-      t.cd = Math.max(0, t.cd + cooldownTicks(atk.cooldown, mods.attackSpeed));
+      const cooldown = rules.towerCooldown?.(state, t) ?? atk.cooldown;
+      t.cd = Math.max(0, t.cd + cooldownTicks(cooldown, mods.attackSpeed));
     }
     t.cd -= 1;
   }
@@ -170,7 +172,7 @@ function fire(sim: Sim, tower: Tower, spec: TowerSpec, atk: AttackSpec, mods: Re
 /** The target takes the hit, then every impact effect runs in the order the spec lists them. */
 export function resolveImpact(sim: Sim, impact: Impact): void {
   const { target, attack } = impact;
-  if (target !== null && target.hp > 0) {
+  if (target !== null && target.hp > 0 && attack.direct !== false) {
     damageCreep(sim, target, impact.damage, attack.attackType, impact.tower, impact.crit > 1 ? 'crit' : 'attack');
   }
   for (const e of attack.effects ?? NO_EFFECTS) effectHandler(e.kind)?.onImpact?.(e, impact, sim);
