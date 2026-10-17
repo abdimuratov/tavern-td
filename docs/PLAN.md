@@ -4,7 +4,7 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 
 ## 0. Status
 
-Planning finished on 2026-10-15. **Now: Phase 2.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
+Planning finished on 2026-10-15. **Now: Phase 3.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
 Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
@@ -20,6 +20,12 @@ Phase 2 progress (2026-10-17):
 - Done: Element's rules are ported ([element-td-rules.md](research/element-td-rules.md)), and Element is playable from the main menu. New Run asks for All Pick or All Random, Full or Express, and Difficulty. Autosave, Continue, save codes, How to play and Records all work, with Records kept apart for Full and Express. The e2e test plays a Wave and resumes it in all four browsers.
 - Left: play a full Run, autosave and resume it on the Mac, the iPhone and the S24.
 - Watch in play-testing: at fit zoom a tower is ~18 pt on a phone, so placing wants a pinch first; a second tap within 26 pt of the Ghost still builds it.
+
+Phase 3 started on 2026-10-18, again without waiting for the Phase 1 and 2 play-tests.
+
+Phase 3 progress (2026-10-18):
+- Done: the design doc, [original-design.md](original-design.md). It covers the grim-war world and its 3 Regions, 10 creeps and 3 bosses, the 30 towers, Tower Levels and Perks, the Talent trees, the unlock order and a plan for each of the 12 Stages. You chose the grim tone, soft counters, overlapping Waves and scarce Stars. It drops §4's interest, because the early call is the Original's greed lever.
+- Left: the rules, the 12 Stages' content, the Stage-select screen and the balance bots, then a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
@@ -135,7 +141,7 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 - **Our choices where the port is unclear:** fast creeps get a 1 s haste every 3 s, creeps follow the lane's centre line, Easy is HP × 0.75, and a "send now" button in every break pays no bonus.
 
 ### Phase 3: Original (the Campaign)
-1. **Design doc first** (`docs/original-design.md`): the world and its 3 regions, the creep roster (about 12 types: armoured, magic-resistant, fast, swarm, flying, regenerating, splitting, shielded, bosses), the 30 towers, Talent trees and a rough plan for each of the 12 Stages.
+1. **Design doc first** ([original-design.md](original-design.md), done 2026-10-18): the world and its 3 regions, the creep roster (about 12 types: armoured, magic-resistant, fast, swarm, flying, regenerating, splitting, shielded, bosses), the 30 towers, Talent trees and a rough plan for each of the 12 Stages.
 2. **Rules:**
    - **Towers:** 6 Tower Families (Arrow, Cannon, Frost, Arcane, Poison, Totem). Each goes through Tiers 1–3, then picks one of 2 Specialisations, about 30 towers in all. Not every family can hit air.
    - **Maps:** Build Spots only, with no free placement.

@@ -73,7 +73,7 @@ A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak
 _Avoid_: escape, breach, pass
 
 **Break**:
-The countdown between one Wave being cleared and the next Wave starting on its own. "Send now" ends it early.
+The countdown before the next Wave starts on its own. In Element it starts once a Wave is cleared; in the Original it starts once the Wave's last creep has spawned, so Waves can overlap. "Send now" ends it early.
 _Avoid_: build phase (Gem's build phase has no timer), intermission, timer
 
 **Trait**:
@@ -158,6 +158,10 @@ _Avoid_: level 51, final boss, dummy
 The ordered sequence of Stages that makes up the Original.
 _Avoid_: story, world, adventure
 
+**Region**:
+One of the Campaign's three groups of four Stages (Ashfield, Blightfen, Rift), each with its own palette, enemies and boss.
+_Avoid_: world, chapter, act, zone
+
 **Stage**:
 One hand-made Map with its own Waves in the Campaign; finishing a Stage unlocks the next.
 _Avoid_: level, mission, map
@@ -175,7 +179,7 @@ A fixed place on a Stage's Map where one tower can stand; the Original has no fr
 _Avoid_: plot, pad, slot, tile
 
 **Tower Family**:
-One of the Original's six tower lines (Arrow, Cannon, Frost, Arcane, Poison, Totem), each unlocked by finishing a Stage.
+One of the Original's six tower lines (Arrow, Cannon, Frost, Arcane, Poison, Totem). Arrow and Cannon are open from the start; each of the others unlocks by finishing a Stage.
 _Avoid_: tower type, class, line
 
 **Tier**:
@@ -193,3 +197,33 @@ _Avoid_: upgrade, perk, research, skill
 **Perk**:
 An extra ability a tower gains on reaching Tower Level 5 and again at 10.
 _Avoid_: talent, bonus, trait
+
+**Assist**:
+Half of a kill's XP, given to every other tower that hit or slowed the creep in the 3 s before it died.
+_Avoid_: shared XP, kill credit
+
+### Original (our Campaign)
+
+**Threat**:
+The number that sets a Wave's creep HP, bounty and bonus in the Original: the Stage's first Threat plus the Wave's number minus one. It keeps rising across the Campaign, so later Stages start harder.
+_Avoid_: level (Tower Level owns that word), wave number, tier
+
+**Early call**:
+Ending a Break with "Send now" in the Original, which pays bonus gold for the seconds skipped. Element's "Send now" pays nothing.
+_Avoid_: rush, skip, send early
+
+**Air line**:
+The fixed line that flying creeps follow from spawn to exit on an Original Map, ignoring the route.
+_Avoid_: flight path, air route, air lane
+
+**Damage type**:
+What kind of hit a tower deals in the Original: Pierce, Siege, Magic or Poison. A creep's armor type cuts some damage types and lets others through.
+_Avoid_: element (Element's own word), attack type in player text (`attackType` is fine in code)
+
+**Armor type**:
+A creep's defence class in the Original: Unarmored, Armored (cuts Pierce and Siege), Warded (cuts Magic) or Boss (cuts all but Poison). Numeric armor is separate, and only debuffs move it.
+_Avoid_: defence, resistance, armour
+
+**Shield**:
+A creep defence in the Original that blocks a flat amount from every hit. Poison over time ignores it.
+_Avoid_: block, barrier, absorb
