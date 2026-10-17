@@ -1,0 +1,9 @@
+// Test-only content: importing this registers the `test` Game Mode. The app never imports it.
+
+import { registerMode } from '../modes/registry';
+import { TEST_MODE } from './test-mode';
+
+registerMode(TEST_MODE);
+
+export * from './test-mode';
+export { FIXTURE_REPLAY } from './fixture';

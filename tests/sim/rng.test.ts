@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, nextFloat, nextInt, nextU32 } from '../src/sim/core/rng';
+import { createRng, nextFloat, nextInt, nextU32 } from '../../src/sim/core/rng';
 
 describe('seeded RNG', () => {
   it('replays the same sequence from the same seed', () => {
