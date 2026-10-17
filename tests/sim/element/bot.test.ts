@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { playRun } from './bot';
 
+// Three whole Runs per length take a few seconds on CI's runners, past vitest's 5 s default.
+const BOT_TIMEOUT = 30_000;
+
 describe('a headless Element bot', () => {
-  it('plays All Pick on Normal, Full and Express, over a few seeds', () => {
-    const lines: string[] = [];
-    for (const length of ['express', 'full'] as const) {
+  for (const length of ['express', 'full'] as const) {
+    it(`plays All Pick on Normal, ${length === 'full' ? 'Full' : 'Express'}, over a few seeds`, { timeout: BOT_TIMEOUT }, () => {
+      const lines: string[] = [];
       for (const seed of [1, 2, 3]) {
         const r = playRun(seed, 'normal', { length });
         lines.push(`${length} seed ${seed}: ${r.phase}, cleared ${r.completed} (won ${r.won}), score ${r.record.score}, `
@@ -18,7 +21,7 @@ describe('a headless Element bot', () => {
         // ADR-0002's budget is 4 ms a tick on an iPhone.
         expect(r.meanStepMs).toBeLessThan(1);
       }
-    }
-    console.log(lines.join('\n'));
-  });
+      console.log(lines.join('\n'));
+    });
+  }
 });
