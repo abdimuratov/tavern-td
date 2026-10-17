@@ -81,7 +81,7 @@ describe('wave preview', () => {
       ],
     },
   });
-  const view: RunView = { state, send: () => {}, refresh: () => {}, select: () => {} };
+  const view: RunView = { state, send: () => {}, refresh: () => {}, select: () => {}, say: () => {} };
   const ui: ModeUi = { modeId: 'test' };
 
   it('names each group with its count and air and boss tags', () => {

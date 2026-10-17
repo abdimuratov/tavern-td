@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { BoardOverlay, Hud } from './Hud';
-import { offlineReady, pendingUpdate, portrait, session } from './state';
+import { Menu } from './menu/Menu';
+import { RunMenu } from './RunMenu';
+import { offlineReady, pendingUpdate, portrait, runMenu, screen, session } from './state';
 
 const OFFLINE_TOAST_MS = 5000;
 
@@ -42,10 +44,13 @@ function OfflineReadyToast() {
 
 export function App() {
   const s = session.value;
+  const menu = runMenu.value;
   return (
     <>
+      {screen.value === 'menu' && <Menu />}
       {s && <BoardOverlay s={s} />}
       {s && <Hud s={s} />}
+      {s && menu && <RunMenu s={s} page={menu} />}
       <OfflineReadyToast />
       <UpdateToast />
       {portrait.value && <RotateScreen />}

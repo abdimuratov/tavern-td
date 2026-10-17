@@ -8,6 +8,12 @@ Planning finished on 2026-10-15. **Now: Phase 1.** Tick a box when its phase mee
 
 Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
+Phase 1 progress (2026-10-17):
+- Done: the deterministic game logic core (a tick takes ~0.05 ms with 300 creeps and 80 towers in Node), the renderer and input, and the platform layer. That covers autosave, Continue, Records, settings, save codes, sound and haptics.
+- Done: Gem is ported from Gem TD+ ([gem-td-rules.md](research/gem-td-rules.md)) and playable from the main menu. The WebKit, Chromium and Node replay hashes match. A headless bot reaches Wave 10–21.
+- Left: play a full Run, autosave and resume it on the Mac, the iPhone and the S24. Real-device checks are still owed for the iPhone notch side, the clipboard fallback for save codes, and Android haptics.
+- Watch in play-testing: at fit zoom a gem is ~10 px on a phone, so placing needs a pinch first.
+
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element

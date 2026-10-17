@@ -10,8 +10,8 @@ export type RouteStyle = 'current' | 'preview';
 export interface GhostView {
   readonly box: Box;
   readonly valid: boolean;
-  /** The tower being placed, or null for a generic marker (a Gem Draft gem is random). */
-  readonly look: TowerLook | null;
+  /** The tower being placed, or null for a generic marker. */
+  readonly look: Pick<TowerLook, 'shape' | 'color' | 'size' | 'plate'> | null;
   /** Attack range in world units, 0 for none. */
   readonly range: number;
 }

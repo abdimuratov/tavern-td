@@ -1,58 +1,37 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { draftCount, newGemRun, OPEN_SPOTS, placeDraft, spotCorner, tapAt, touch, worldPoint } from './app';
 
-// The app boots into the dev sandbox: a 20×12 Map of the test Game Mode with
-// 400 gold and Arrow (10 gold) picked in the build menu.
-const START_GOLD = '400';
-const AFTER_ARROW = '390';
+// The app boots into the main menu. These check the play screen itself on a
+// fresh Gem Run: taps and clicks, ghosts, pan, the HUD, hotkeys, and the shell.
 
-const touch = (): boolean => !!test.info().project.use.hasTouch;
-
-async function boardBox(page: Page) {
-  const canvas = page.locator('#board canvas');
-  await expect(canvas).toBeVisible();
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('canvas has no box');
-  return box;
-}
-
-async function tapAt(page: Page, x: number, y: number) {
-  if (touch()) await page.touchscreen.tap(x, y);
-  else await page.mouse.click(x, y);
-}
-
-/** Where a cell's centre is on the page, from the app's debug handle. */
-async function cellPoint(page: Page, col: number, row: number) {
-  await page.waitForFunction(() => !!window.tavern);
-  return page.evaluate(([c, r]) => window.tavern!.worldToClient((c + 0.5) * 64, (r + 0.5) * 64), [col, row] as const);
-}
-
-/** Builds the picked Arrow on a cell: one click with a mouse, tap then tap again on a phone. */
-async function buildAt(page: Page, col: number, row: number) {
-  await boardBox(page);
-  const { x, y } = await cellPoint(page, col, row);
-  await expect(page.getByTestId('gold')).toHaveText(START_GOLD);
-  if (touch()) {
-    await tapAt(page, x, y);
-    await expect(page.getByTestId('hint')).toHaveText(/tap again to build/);
-    await expect(page.getByTestId('gold')).toHaveText(START_GOLD);
-  }
-  await tapAt(page, x, y);
-  await expect(page.getByTestId('gold')).toHaveText(AFTER_ARROW);
-}
-
-test('a tap on the board registers its cell and builds there', async ({ page }) => {
+test('the main menu lists the Game Modes, with Gem playable', async ({ page }) => {
   await page.goto('./');
-  await buildAt(page, 10, 6);
-  expect(await page.evaluate(() => window.tavern!.controller.state.towers.map((t) => [t.spec, t.cell]))).toEqual([['arrow', 6 * 20 + 10]]);
-  // A tap on the new tower selects it.
-  const p = await cellPoint(page, 10, 6);
-  await tapAt(page, p.x, p.y);
-  await expect(page.getByTestId('tower-panel')).toContainText('Arrow');
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await expect(page.getByTestId('mode-gem')).toContainText('Gem TD');
+  for (const id of ['element', 'original', 'maul']) await expect(page.getByTestId(`mode-${id}`)).toContainText('Coming later');
+  await expect(page.getByTestId('continue')).toBeHidden();
 });
 
-test('a ghost on terrain that can not be built on is red and says why', async ({ page }) => {
+test('a tap on the field places a Draft gem on its 2×2 spot', async ({ page }) => {
   await page.goto('./');
-  const p = await cellPoint(page, 4, 2);
+  await newGemRun(page);
+  const [col, row] = OPEN_SPOTS[0]!;
+  await placeDraft(page, col, row);
+  const cells = await page.evaluate(() => window.tavern!.controller.state.towers.map((t) => t.cells));
+  expect(cells).toEqual([[row * 95 + col, row * 95 + col + 1, (row + 1) * 95 + col, (row + 1) * 95 + col + 1]]);
+  await expect(page.getByTestId('gem-step')).toHaveText(/Place gem 2 of 5/);
+  // A tap on the new gem selects it.
+  const p = await worldPoint(page, (col + 0.5) * 64, (row + 0.5) * 64);
+  await tapAt(page, p.x, p.y);
+  await expect(page.getByTestId('tower-panel')).toContainText('Draft gem 1 of 5');
+});
+
+test('a ghost on ground that can not be built on is red and says why', async ({ page }) => {
+  await page.goto('./');
+  await newGemRun(page);
+  // The spawn lane along the top is walkable but unbuildable.
+  const [wx, wy] = spotCorner(10, 11);
+  const p = await worldPoint(page, wx, wy);
   if (touch()) {
     await tapAt(page, p.x, p.y);
     await expect(page.getByTestId('hint')).toHaveText('Unbuildable');
@@ -62,14 +41,16 @@ test('a ghost on terrain that can not be built on is red and says why', async ({
     await expect(page.getByTestId('hint')).toHaveText('Unbuildable');
     await page.mouse.click(p.x, p.y);
   }
-  await expect(page.getByTestId('gold')).toHaveText(START_GOLD);
+  await page.waitForTimeout(150);
+  expect(await draftCount(page)).toBe(0);
 });
 
 test('a drag pans instead of tapping', async ({ page, browserName }) => {
   test.skip(touch(), 'mouse drag only');
   test.skip(browserName === 'webkit', 'WebKit wheel/drag emulation is flaky');
   await page.goto('./');
-  const box = await boardBox(page);
+  await newGemRun(page);
+  const box = (await page.locator('#board canvas').boundingBox())!;
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   await page.mouse.move(cx, cy);
@@ -79,17 +60,17 @@ test('a drag pans instead of tapping', async ({ page, browserName }) => {
   await page.mouse.move(cx + 120, cy + 60, { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(200);
-  await expect(page.getByTestId('gold')).toHaveText(START_GOLD);
-  expect(await page.evaluate(() => window.tavern!.controller.state.towers.length)).toBe(0);
+  expect(await draftCount(page)).toBe(0);
 });
 
-test('the HUD starts a Wave, pauses and changes speed', async ({ page }) => {
+test('the HUD pauses and changes speed, and hides what Gem has no use for', async ({ page }) => {
   await page.goto('./');
-  await expect(page.getByTestId('wave')).toHaveText('0/12');
-  await expect(page.getByTestId('wave-preview')).toContainText('Grunt');
-  await page.getByTestId('start-wave').click();
-  await expect(page.getByTestId('wave')).toHaveText('1/12');
-  await expect(page.getByTestId('start-wave')).toBeDisabled();
+  await newGemRun(page);
+  await expect(page.getByTestId('wave')).toHaveText('0/50');
+  await expect(page.getByTestId('lives')).toBeHidden();
+  await expect(page.getByTestId('start-wave')).toBeHidden();
+  await expect(page.getByTestId('wave-preview')).toContainText('Cellar Rat');
+  await expect(page.getByTestId('leak-rule')).toHaveText('Leaks are free until Wave 10');
 
   await page.getByTestId('speed-3').click();
   await expect(page.getByTestId('speed-3')).toHaveAttribute('aria-pressed', 'true');
@@ -102,22 +83,27 @@ test('the HUD starts a Wave, pauses and changes speed', async ({ page }) => {
   await expect(page.getByTestId('paused')).toBeHidden();
 });
 
-test('hotkeys drive pause, speed and the build menu', async ({ page }) => {
+test('hotkeys drive pause, speed, Gem Quality and the menu', async ({ page }) => {
   test.skip(touch(), 'keyboard only');
   await page.goto('./');
-  await page.waitForFunction(() => !!window.tavern);
+  await newGemRun(page);
   await page.keyboard.press('p');
   await expect(page.getByTestId('paused')).toBeVisible();
   await page.keyboard.press('p');
   await expect(page.getByTestId('paused')).toBeHidden();
   await page.keyboard.press('2');
   await expect(page.getByTestId('speed-2')).toHaveAttribute('aria-pressed', 'true');
-  await page.keyboard.press('c');
-  await expect(page.locator('[data-action="cannon"]')).toHaveAttribute('aria-pressed', 'true');
+  // 10 gold can't buy Gem Quality 1 (20), and the game says so.
+  await page.keyboard.press('q');
+  await expect(page.getByTestId('hint')).toHaveText('Not enough gold');
   await page.keyboard.press('Escape');
-  await expect(page.locator('[data-action="cannon"]')).toHaveAttribute('aria-pressed', 'false');
-  await page.keyboard.press('Space');
-  await expect(page.getByTestId('wave')).toHaveText('1/12');
+  await expect(page.getByTestId('run-menu')).toBeVisible();
+  // Keys don't reach the game while the menu is open.
+  await page.keyboard.press('3');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('run-menu')).toBeHidden();
+  await expect(page.getByTestId('paused')).toBeHidden();
+  await expect(page.getByTestId('speed-2')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('portrait shows the rotate screen', async ({ page }) => {
@@ -151,6 +137,7 @@ test('opens offline once the service worker is installed', async ({ page, contex
 
   await context.setOffline(true);
   await page.reload();
-  // The sandbox is a lazily loaded chunk, so this also proves the precache holds it.
-  await buildAt(page, 10, 6);
+  await newGemRun(page);
+  const [col, row] = OPEN_SPOTS[0]!;
+  await placeDraft(page, col, row);
 });

@@ -12,6 +12,11 @@
   --error: #ff9c8f;
   /* The HUD sits right of the board; on a phone in landscape it narrows to leave the Map room. */
   --hud-w: 264px;
+  /* Notch and home-indicator insets, as variables so a screenshot can stand in for a phone's. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
   color-scheme: dark;
 }
 
@@ -50,9 +55,9 @@ html, body {
 /* The board fills what the HUD and the notch leave; its background runs under the home indicator. */
 #board, .board-overlay {
   position: fixed;
-  left: env(safe-area-inset-left);
+  left: var(--safe-l);
   top: 0;
-  width: calc(var(--app-w, 100vw) - env(safe-area-inset-left) - env(safe-area-inset-right) - var(--hud-w));
+  width: calc(var(--app-w, 100vw) - var(--safe-l) - var(--safe-r) - var(--hud-w));
   height: var(--app-h, 100%);
 }
 #board canvas { display: block; touch-action: none; }
@@ -99,11 +104,11 @@ html, body {
   top: 0;
   right: 0;
   bottom: 0;
-  width: calc(var(--hud-w) + env(safe-area-inset-right));
+  width: calc(var(--hud-w) + var(--safe-r));
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) 8px;
+  padding: calc(var(--safe-t) + 8px) calc(var(--safe-r) + 8px) calc(var(--safe-b) + 8px) 8px;
   background: var(--panel-solid);
   border-left: 1px solid var(--line);
   font-variant-numeric: tabular-nums;
@@ -233,7 +238,7 @@ html, body {
 
 .banners {
   position: absolute;
-  top: calc(env(safe-area-inset-top) + 8px);
+  top: calc(var(--safe-t) + 8px);
   left: 8px;
   right: 8px;
   display: flex;
@@ -291,8 +296,8 @@ html, body {
 
 .toast {
   position: absolute;
-  left: calc(env(safe-area-inset-left) + 12px);
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  left: calc(var(--safe-l) + 12px);
+  bottom: calc(var(--safe-b) + 12px);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -312,11 +317,272 @@ html, body {
 
 .fps {
   position: fixed;
-  left: calc(env(safe-area-inset-left) + 6px);
-  bottom: calc(env(safe-area-inset-bottom) + 6px);
+  left: calc(var(--safe-l) + 6px);
+  bottom: calc(var(--safe-b) + 6px);
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--panel);
   font: 11px ui-monospace, monospace;
   pointer-events: none;
+}
+
+/* ---------- Text the player may need to copy or paste ---------- */
+textarea, input { -webkit-user-select: text; user-select: text; }
+textarea.code {
+  display: block;
+  width: 100%;
+  font: 16px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  background: #0d0b09;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  resize: none;
+  word-break: break-all;
+}
+textarea.code[readonly] { font-size: 12px; }
+.error { color: var(--error); }
+.note { color: var(--muted); font-size: 12px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* ---------- Play screen additions ---------- */
+.menu-button {
+  position: absolute;
+  top: calc(var(--safe-t) + 8px);
+  left: 8px;
+  background: var(--panel);
+}
+.menu-button svg { width: 22px; height: 22px; }
+.banners { left: 60px; right: 60px; }
+
+/* A full-width button with words: Draft choices, upgrades, Gem Quality. */
+.btn.option {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 26px 4px 9px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+.btn.option .line { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.btn.option .label { flex: none; font-weight: 700; white-space: nowrap; }
+.btn.option .detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.option .sub { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.option .sub.why { color: var(--error); }
+.btn.option .key { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
+.btn.option.active .sub, .btn.option.primary .sub { color: #3b2a12; }
+.btn.option:disabled { opacity: 0.62; }
+.btn .coin, .detail .coin { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 2px; }
+
+.mode-status {
+  flex: none;
+  display: grid;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #221c16;
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.mode-status .step { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.mode-status .leak { color: var(--muted); }
+.mode-status .leak.fatal { color: var(--error); font-weight: 650; }
+.pips { display: inline-flex; gap: 3px; }
+.pips span { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--muted); }
+.pips span.on { background: var(--accent); border-color: var(--accent); }
+
+.gem-actions { display: grid; gap: 4px; }
+.odds .bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--button); }
+.odds .q { min-width: 3px; overflow: hidden; font-size: 9px; font-weight: 750; line-height: 14px; text-align: center; color: #15100b; }
+.q0 { background: #9a9183; }
+.q1 { background: #c9bf86; }
+.q2 { background: #72c982; }
+.q3 { background: #61a5ee; }
+.q4 { background: #bb83f2; }
+.q5 { background: #f2b54c; }
+.odds .legend { display: flex; justify-content: space-between; margin-top: 1px; font-size: 9.5px; color: var(--muted); }
+
+.gem-panel { display: grid; gap: 4px; min-width: 0; }
+.panel { min-width: 0; overflow-wrap: anywhere; }
+.gem-panel .kind { margin-top: -3px; font-size: 11px; }
+.gem-panel .note { margin: 0; }
+.choices, .field-actions { display: grid; gap: 4px; }
+.choices .lead { margin: 0; font-size: 11.5px; font-weight: 650; color: var(--accent); }
+.panel dl.gem-stats { margin: 2px 0 0; }
+.abilities { margin: 0; padding-left: 14px; display: grid; gap: 2px; font-size: 11.5px; line-height: 1.3; color: var(--muted); }
+
+/* ---------- Modals ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  padding: calc(var(--safe-t) + 10px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 10px) calc(var(--safe-l) + 12px);
+  background: rgba(8, 6, 4, 0.62);
+  pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal {
+  margin: auto;
+  width: min(520px, 100%);
+  padding: 12px 16px 14px;
+  border-radius: 12px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+}
+.modal header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.modal h2 { margin: 0 0 6px; font-size: 17px; }
+.modal header h2 { margin: 0; }
+.modal p { margin: 4px 0 8px; font-size: 13px; }
+.modal .buttons { justify-content: flex-end; }
+.modal.ec { width: min(640px, 100%); }
+.modal.ec p { font-size: 12px; }
+.ec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.btn.ec-option { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 3px 8px; font-size: 12px; line-height: 1.15; text-align: left; min-width: 0; }
+.ec-option .label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-option .detail { font-size: 11px; color: var(--muted); }
+.ec-option.active .detail { color: #3b2a12; }
+.btn.ec-clear { width: 100%; margin-top: 6px; }
+
+/* ---------- Full screens: the main menu and the in-Run menu ---------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--safe-t) + 12px) calc(var(--safe-r) + 16px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 16px);
+  background: var(--bg);
+}
+.run-menu { display: flex; background: rgba(10, 8, 6, 0.86); }
+.run-menu .sheet { margin: auto; width: 100%; }
+.sheet { max-width: 560px; margin: 0 auto; }
+.sheet.wide { max-width: 940px; }
+.sheet > header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.sheet > header h1 { margin: 0; font-size: 20px; }
+.sheet > header .btn.icon { font-size: 26px; line-height: 1; }
+.sheet-body > p:first-child { margin-top: 0; }
+.menu-list { display: grid; gap: 6px; }
+.menu-list .btn { width: 100%; padding: 0 14px; text-align: left; font-size: 15px; }
+.sheet.narrow { max-width: 400px; }
+
+/* Centred on a big screen; on a phone the auto margins collapse and it scrolls from the top. */
+.screen.menu { display: flex; flex-direction: column; }
+.screen.menu > .menu-main, .screen.menu > .sheet { margin: auto; width: 100%; }
+.menu-main { max-width: 940px; display: flex; flex-direction: column; gap: 10px; }
+.menu-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.menu-head h1 { margin: 0; font-size: 28px; letter-spacing: 0.02em; color: var(--accent); }
+.menu-cols { display: grid; grid-template-columns: 1fr 200px; gap: 14px; align-items: start; }
+.mode-card { padding: 12px 14px; border-radius: 12px; background: #221c16; border: 1px solid var(--line); }
+.mode-title { display: flex; align-items: center; gap: 10px; }
+.mode-title h2 { margin: 0; font-size: 20px; }
+.mode-card > p { margin: 6px 0 8px; color: var(--muted); }
+.mode-card .buttons { margin-top: 0; }
+.mode-card .buttons .btn { padding: 0 18px; font-weight: 650; }
+.mode-card .note { margin: 6px 0 0; color: var(--error); }
+.btn.continue { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.15; }
+.btn.continue .detail { font-size: 11px; font-weight: 500; }
+.gem-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  background: linear-gradient(135deg, #f0c8ff, #a86bff 45%, #46e2ea);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+}
+.later { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.later li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px dashed var(--line); }
+.tag.soon { background: var(--button); color: var(--muted); }
+
+.difficulties { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.btn.difficulty { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 68px; padding: 8px 14px; text-align: left; }
+.difficulty .name { font-size: 16px; font-weight: 750; }
+.difficulty .about { font-size: 12.5px; }
+.difficulty .best-wave { font-size: 11px; opacity: 0.75; }
+
+.records-mode h2 { margin: 10px 0 4px; font-size: 15px; }
+.records-mode h2 .tag { margin-left: 8px; }
+.records-mode:first-child h2 { margin-top: 0; }
+.records-mode p { margin: 0; }
+table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.records th, .records td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.records thead th { font-size: 11px; font-weight: 650; color: var(--muted); }
+.records th:first-child { text-align: left; }
+
+.settings { display: grid; }
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 50px; padding: 0 2px; border-bottom: 1px solid var(--line); }
+.setting.off > span { color: var(--muted); }
+.setting .seg { flex: none; width: 168px; }
+.setting input[type='range'] { width: 180px; height: 44px; margin: 0; accent-color: var(--accent); }
+.switch {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 32px;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--button);
+  border: 1px solid var(--button-line);
+  cursor: pointer;
+}
+/* A 44 px tall hit area around the 32 px track. */
+.switch::before { content: ''; position: absolute; inset: -7px -2px; }
+.switch .knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: transform 0.15s; }
+.switch.on { background: var(--accent); border-color: var(--accent); }
+.switch.on .knob { transform: translateX(24px); background: #1b140c; }
+
+.howto { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.howto section { padding: 9px 12px; border-radius: 10px; background: #221c16; border: 1px solid var(--line); }
+.howto h3 { margin: 0 0 3px; font-size: 14px; color: var(--accent); }
+.howto p { margin: 0; font-size: 12.5px; line-height: 1.4; }
+.howto p + p { margin-top: 4px; }
+.howto .controls-help { grid-column: 1 / -1; }
+
+/* ---------- The end of a Run ---------- */
+.run-over .card { min-width: 260px; max-width: calc(100% - 24px); }
+.results { display: grid; gap: 4px; margin: 0 0 12px; text-align: left; }
+.results div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.results dt { color: var(--muted); }
+.results dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.best { margin-left: 6px; padding: 1px 5px; border-radius: 4px; background: var(--accent); color: #1b140c; font-size: 10px; font-weight: 800; text-transform: uppercase; vertical-align: 1px; }
+.run-over .buttons { justify-content: center; margin-top: 0; }
+
+.rotate { z-index: 30; }
+.toast { z-index: 25; }
+
+@media (max-height: 520px) {
+  /* A selected structure needs the room more than the wave preview and the swap line do. */
+  .hud.has-selection .waves, .hud.has-selection .mode-status { display: none; }
+  .gem-panel.choosing .gem-stats, .gem-panel.choosing .abilities { display: none; }
+  .panel dl.gem-stats { grid-template-columns: minmax(0, 1fr); }
+  .panel dl.gem-stats .row { justify-content: space-between; }
+  .panel dl.gem-stats dd { text-align: right; }
+  .btn.option { font-size: 12px; padding-left: 8px; }
+  .menu-head h1 { font-size: 24px; }
+  .sheet > header { margin-bottom: 4px; }
+  .howto p { font-size: 12px; }
+  .run-over .card { padding: 14px 20px; }
+  .run-over h1 { font-size: 24px; }
+}
+/* Hotkey badges mean nothing without a keyboard, and a phone needs the room. */
+@media (hover: none) {
+  .key { display: none; }
+  .btn.option { padding-right: 8px; }
+}
+@media (min-height: 700px) and (min-width: 1000px) {
+  .menu-head h1 { font-size: 40px; }
+  .menu-main { gap: 16px; }
+  .mode-card { padding: 18px 20px; }
+  .mode-card > p { font-size: 15px; }
+}
+@media (max-width: 720px) {
+  .menu-cols { grid-template-columns: 1fr 168px; }
+  .ec-grid { grid-template-columns: repeat(4, 1fr); }
+  .btn.ec-option { font-size: 11px; padding: 3px 6px; }
 }

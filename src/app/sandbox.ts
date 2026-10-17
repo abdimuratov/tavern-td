@@ -1,8 +1,7 @@
-// The dev sandbox: a playable Run of the core's `test` Game Mode until Gem
-// lands. It is the app's only boot target for now and is loaded through a
-// dynamic import, so the main menu can replace it without the test mode
-// shipping in the main bundle. Add `?stress` to the URL for 300 creeps
-// against 80 towers, and `?fps` for a frame-rate readout.
+// The dev sandbox: a playable Run of the core's `test` Game Mode, for trying
+// renderer and input changes without Gem's rules. Dev builds only: open the
+// app with `?sandbox`, or `?stress` for 300 creeps against 80 towers (add
+// `?fps` for a frame-rate readout). Production builds never load it.
 
 import { signal } from '@preact/signals';
 import { footprintAt } from '../render/footprint';
@@ -81,7 +80,7 @@ export const SANDBOX_UI: ModeUi = {
       cells,
       spec,
       command: { type: 'place', spec, col: cellCol(s.map, cell), row: cellRow(s.map, cell) },
-      error: s.gold < price ? 'not enough gold' : null,
+      ...(s.gold < price ? { error: 'not enough gold' } : {}),
       label: `${TEST_TOWERS[spec]!.name} · ${price} gold`,
     };
   },

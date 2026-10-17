@@ -4,11 +4,18 @@ import { fnv1a, type CreepSpec, type GameModeRules, type TowerSpec } from '../si
 /** Shapes drawn into the atlas at boot. Each is white with a dark outline, so a tint colours it. */
 export type Shape =
   | 'circle' | 'square' | 'diamond' | 'triangle' | 'pentagon' | 'hexagon' | 'octagon'
-  | 'star' | 'cross' | 'gem' | 'rock' | 'chevron';
+  | 'star' | 'cross' | 'gem' | 'rock' | 'chevron'
+  /** Gem cuts with 3–8 facets seen from above, so a gem's quality reads by its facet count. */
+  | 'cut3' | 'cut4' | 'cut5' | 'cut6' | 'cut8'
+  /** A flat engraved tile, for structures creeps walk over. */
+  | 'tile'
+  /** A twelve-point burst, for one-of-a-kind towers. */
+  | 'burst';
 
 export const SHAPES: readonly Shape[] = [
   'circle', 'square', 'diamond', 'triangle', 'pentagon', 'hexagon', 'octagon',
   'star', 'cross', 'gem', 'rock', 'chevron',
+  'cut3', 'cut4', 'cut5', 'cut6', 'cut8', 'tile', 'burst',
 ];
 
 export interface TowerLook {
@@ -19,6 +26,10 @@ export interface TowerLook {
   readonly size: number;
   /** A dark plate under the shape; off for Rocks and walls. */
   readonly plate: boolean;
+  /** The plate's tint, when it should differ from the usual dark one (Gem's specials). */
+  readonly plateColor?: number;
+  /** A soft glow of this colour under the tower, for the rare ones. */
+  readonly halo?: number;
   /** Colour of its projectiles and hit flashes. */
   readonly shot: number;
   /** Its attack sound. */

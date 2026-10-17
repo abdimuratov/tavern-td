@@ -81,7 +81,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     if (s.phase === 'won' || s.phase === 'lost') return null;
     const placement = ui.placement?.(view, p) ?? null;
     if (!placement || placement.cells.length === 0) return null;
-    const error = placement.error ?? placementError(s, placement.cells);
+    const error = placement.checked ? (placement.error ?? null) : placement.error ?? placementError(s, placement.cells);
     return { p, placement, error, by };
   }
 
@@ -99,7 +99,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
   function flushRoute(): void {
     if (!routeWanted) return;
     const s = state();
-    const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null
+    const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null && ghost.placement.route !== false
       ? previewRoute(s, ghost.placement.cells) : null;
     routeWanted = null;
     routeShown = preview ?? routeCells(s);
@@ -149,7 +149,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       board.setGhost({
         box: cellsBox(s.map, cells),
         valid: next.error === null,
-        look: spec ? board.looks.tower(spec) : null,
+        look: spec ? board.looks.tower(spec) : next.placement.look ?? null,
         range: spec ? reach(s, spec) : 0,
       });
       routeVersion = s.pathVersion;
@@ -210,6 +210,10 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       if (tower) {
         if (kind !== 'mouse') setGhost(null);
         feedback.tap();
+        if (ui.tapTower?.(view, tower)) {
+          revision.value++;
+          return;
+        }
         select(tower.id);
         return;
       }
@@ -243,6 +247,10 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     },
     cancel,
     select,
+    /** Whether Esc has something to drop: a tapped ghost or a selection. A mouse's hover ghost doesn't count. */
+    busy(): boolean {
+      return selected.value !== 0 || (ghost !== null && ghost.by !== 'mouse');
+    },
     /** Re-reads the Game Mode's placement, after its own UI state changed. */
     refresh(): void {
       if (ghost?.by === 'mouse' || (!ghost && mouse)) hoverGhost();
@@ -257,8 +265,9 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       let structural = false;
       for (const e of events) {
         if (e.type === 'rejected') flash(e.reason, 'error');
+        // A mode event can move structures too, such as Gem's swap.
         else if (e.type === 'placed' || e.type === 'removed' || e.type === 'changed' || e.type === 'waveStart'
-          || e.type === 'waveEnd' || e.type === 'won' || e.type === 'lost') structural = true;
+          || e.type === 'waveEnd' || e.type === 'won' || e.type === 'lost' || e.type === 'mode') structural = true;
       }
       if (selected.value !== 0 && (structural || !findTower(s, selected.value))) select(selected.value);
       sinceCheck++;

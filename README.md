@@ -14,6 +14,8 @@ pnpm test:e2e     # Playwright: Mac Chrome, Mac Safari, iPhone and Android emula
 pnpm icons        # re-rasterise tools/icon.svg after editing it
 ```
 
+Dev builds only: `?sandbox` skips the menu into the core's test Game Mode, and `?stress` plays the performance budget (300 creeps, 80 towers). `?fps` adds a frame-rate readout in any build.
+
 ## Install
 
 - **Mac:** open the Play URL in Safari, then File → Add to Dock. Or in Chrome, ⋮ → Cast, save and share → Install page as app.

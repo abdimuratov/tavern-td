@@ -11,6 +11,7 @@ import { ObjectPool, SpritePool } from './pool';
  * sprite sharing a layer could swap order (a bar's fill under its back).
  */
 export interface EntityLayers {
+  halos: Container;
   plates: Container;
   towers: Container;
   ground: Container;
@@ -45,6 +46,7 @@ interface CreepView {
 interface TowerView {
   id: number;
   spec: string;
+  halo: Sprite | null;
   plate: Sprite | null;
   top: Sprite | null;
 }
@@ -113,7 +115,7 @@ export class Entities {
     id: 0, spec: '', look: { shape: 'circle', color: 0, size: 0 }, air: false,
     px: 0, py: 0, x: 0, y: 0, size: 0, hp: 1, status: 0, body: null, shadow: null, barBack: null, barFill: null,
   }));
-  private readonly towerViews = new ObjectPool<TowerView>(() => ({ id: 0, spec: '', plate: null, top: null }));
+  private readonly towerViews = new ObjectPool<TowerView>(() => ({ id: 0, spec: '', halo: null, plate: null, top: null }));
   private readonly shotViews = new ObjectPool<ShotView>(() => ({ id: 0, spec: '', px: 0, py: 0, x: 0, y: 0, sprite: null }));
 
   private readonly ground: SpritePool;
@@ -121,6 +123,7 @@ export class Entities {
   private readonly shadows: SpritePool;
   private readonly barBacks: SpritePool;
   private readonly bars: SpritePool;
+  private readonly halos: SpritePool;
   private readonly plates: SpritePool;
   private readonly tops: SpritePool;
   private readonly projectiles: SpritePool;
@@ -131,6 +134,7 @@ export class Entities {
     this.shadows = new SpritePool(layers.shadows, atlas.glyph('shadow'));
     this.barBacks = new SpritePool(layers.barBacks, atlas.glyph('white'));
     this.bars = new SpritePool(layers.bars, atlas.glyph('white'));
+    this.halos = new SpritePool(layers.halos, atlas.glyph('glow'));
     this.plates = new SpritePool(layers.plates, atlas.glyph('plate'));
     this.tops = new SpritePool(layers.towers, atlas.shape('square'));
     this.projectiles = new SpritePool(layers.projectiles, atlas.glyph('glow'));
@@ -298,7 +302,8 @@ export class Entities {
       let v: TowerView;
       if (j < views.length && views[j]!.id === t.id) {
         v = views[j++]!;
-        if (v.spec !== t.spec) {
+        if (v.spec !== t.spec || v.top!.x !== t.x || v.top!.y !== t.y) {
+          // A new spec, or a swap or slate move put it somewhere else.
           this.releaseSprites(v);
           this.dressTower(v, t, state);
         }
@@ -320,9 +325,17 @@ export class Entities {
     const box = cellsBox(state.map, towerCells(t));
     const span = Math.min(box.w, box.h) * CELL;
     v.spec = t.spec;
+    if (look.halo !== undefined) {
+      const halo = this.halos.acquire();
+      halo.tint = look.halo;
+      halo.alpha = 0.55;
+      halo.scale.set((span * 1.5) / ATLAS_UNIT);
+      halo.position.set(t.x, t.y);
+      v.halo = halo;
+    }
     if (look.plate) {
       const plate = this.plates.acquire();
-      plate.tint = 0x3a3027;
+      plate.tint = look.plateColor ?? 0x3a3027;
       plate.scale.set((span * 0.9) / ATLAS_UNIT);
       plate.position.set(t.x, t.y);
       v.plate = plate;
@@ -335,9 +348,10 @@ export class Entities {
   }
 
   private releaseSprites(v: TowerView): void {
+    if (v.halo) this.halos.release(v.halo);
     if (v.plate) this.plates.release(v.plate);
     if (v.top) this.tops.release(v.top);
-    v.plate = v.top = null;
+    v.halo = v.plate = v.top = null;
   }
 
   private releaseTower(v: TowerView): void {

@@ -1,19 +1,12 @@
 import { h, render } from 'preact';
-import { setAudioSettings, setupAudio } from '../platform/audio';
-import { setHapticsEnabled, setupNative } from '../platform/native';
+import { setupAudio } from '../platform/audio';
+import { setupNative } from '../platform/native';
 import { registerServiceWorker } from '../platform/pwa';
 import { loadSettings } from '../platform/storage';
 import { isPortrait, watchViewport } from '../platform/viewport';
 import { App } from '../ui/App';
 import { offlineReady, pendingUpdate, portrait } from '../ui/state';
-import { startPlay, type Play } from './game';
-
-declare global {
-  interface Window {
-    /** The running play screen, for the e2e tests and the Safari inspector. */
-    tavern?: Play;
-  }
-}
+import { createShell } from './shell';
 
 async function boot(): Promise<void> {
   const boardHost = document.getElementById('board');
@@ -31,18 +24,19 @@ async function boot(): Promise<void> {
   });
   render(h(App, {}), uiHost);
 
-  const settings = loadSettings();
-  // Until the main menu exists, the app boots straight into the dev sandbox.
-  // It stays behind this one dynamic import so the menu can replace it.
-  const { sandboxTarget } = await import('./sandbox');
-  const fpsEl = new URLSearchParams(location.search).has('fps') ? fpsReadout() : null;
-  const play = await startPlay(sandboxTarget(location.search), boardHost, fpsEl ? { fps: (n) => { fpsEl.textContent = `${n.toFixed(0)} fps`; } } : {});
-  window.tavern = play;
+  const query = new URLSearchParams(location.search);
+  const fpsEl = query.has('fps') ? fpsReadout() : null;
+  const shell = createShell(boardHost, fpsEl ? { fps: (n) => { fpsEl.textContent = `${n.toFixed(0)} fps`; } } : {});
+  shell.applySettings(await loadSettings());
 
-  const s = await settings;
-  setAudioSettings(s);
-  setHapticsEnabled(s.haptics);
-  play.controller.setSpeed(s.defaultSpeed);
+  // Dev builds only: `?sandbox` plays the core's test Game Mode, `?stress` the performance budget.
+  // The branch is dropped from production builds, so the test mode never ships.
+  if (import.meta.env.DEV && (query.has('sandbox') || query.has('stress'))) {
+    const { sandboxTarget } = await import('./sandbox');
+    await shell.playTarget(sandboxTarget(location.search));
+    return;
+  }
+  await shell.showMenu();
 }
 
 function fpsReadout(): HTMLElement {

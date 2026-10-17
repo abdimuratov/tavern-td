@@ -8,6 +8,7 @@ import { Effects } from './effects';
 import { Entities } from './entities';
 import { attachGestures, type PointerKind } from './gestures';
 import { createLookCache, type LookCache, type ModeLook } from './look';
+import { Marks, type BoardMark } from './marks';
 import { Overlay, type GhostView, type RouteStyle, type SelectionView } from './overlay';
 import { buildTerrain, TERRAIN_COLORS, type Terrain } from './terrain';
 
@@ -30,6 +31,10 @@ export interface Board {
   setRoute(cells: readonly number[] | null, style: RouteStyle): void;
   setGhost(ghost: GhostView | null): void;
   setSelection(sel: SelectionView | null): void;
+  /** The Game Mode's marks on structures; the list replaces the last one. */
+  setMarks(marks: readonly BoardMark[]): void;
+  /** The cell grid lines (the Show grid setting). They still fade out when zoomed far out. */
+  setShowGrid(show: boolean): void;
   readonly looks: LookCache;
   /** Where a world point is on the page, in CSS pixels: for tests and debugging. */
   worldToClient(p: Point): Point;
@@ -69,6 +74,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   const terrainLayer = new Container();
   const overlay = new Overlay(atlas);
   const layers = {
+    halos: new Container(),
     plates: new Container(),
     towers: new Container(),
     ground: new Container(),
@@ -80,10 +86,13 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   };
   const effectsUnder = new Container();
   const effectsOver = new Container();
+  const marksLayer = new Container();
   world.addChild(
-    terrainLayer, overlay.under, effectsUnder, layers.plates, layers.towers, overlay.over, layers.ground,
+    terrainLayer, overlay.under, effectsUnder, layers.halos, layers.plates, layers.towers, marksLayer, overlay.over, layers.ground,
     layers.projectiles, layers.shadows, layers.air, layers.barBacks, layers.bars, effectsOver,
   );
+  const marks = new Marks(atlas, marksLayer);
+  let showGrid = true;
 
   let rules: GameModeRules | null = null;
   let looks: LookCache = createLookCache({ id: '', towers: {}, creeps: {}, damageTable: {}, setup() {} });
@@ -102,7 +111,10 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
     cam = clamp(next, screen, worldSize);
     world.position.set(cam.x, cam.y);
     world.scale.set(cam.scale);
-    if (terrain) terrain.grid.alpha = Math.min(1, Math.max(0, (cam.scale * CELL - 9) / 12));
+    if (terrain) {
+      terrain.grid.alpha = Math.min(1, Math.max(0, (cam.scale * CELL - 9) / 12));
+      terrain.grid.visible = showGrid;
+    }
     if (hover) opts.onHover?.(screenToWorld(cam, hover));
   };
 
@@ -218,8 +230,10 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
         worldSize = { width: map.cols * CELL, height: map.rows * CELL };
         apply(fitCamera(screen, worldSize));
       }
+      terrain.grid.visible = showGrid;
       overlay.setGhost(null);
       overlay.setSelection(null);
+      marks.set([]);
       entities.sync(state);
     },
     afterStep(state, events) {
@@ -229,6 +243,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
     render(alpha, dt) {
       entities.draw(alpha);
       effects.update(dt);
+      marks.update(dt);
       app.render();
     },
     setRoute(cells, style) {
@@ -240,6 +255,11 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
     },
     setGhost: (ghost) => overlay.setGhost(ghost),
     setSelection: (sel) => overlay.setSelection(sel),
+    setMarks: (list) => marks.set(list),
+    setShowGrid(show) {
+      showGrid = show;
+      if (terrain) terrain.grid.visible = show;
+    },
     destroy() {
       observer.disconnect();
       detach();

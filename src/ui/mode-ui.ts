@@ -1,7 +1,10 @@
+import type { ComponentType } from 'preact';
 import type { HapticKind } from '../platform/native';
 import type { SoundName } from '../platform/audio';
-import type { ModeLook } from '../render/look';
+import type { RunResult } from '../platform/storage';
+import type { ModeLook, TowerLook } from '../render/look';
 import { getMode, type Command, type GameState, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
+import type { Hint, HintTone, PlaySession } from './state';
 
 /** What a Game Mode's UI sees of the Run it is attached to. */
 export interface RunView {
@@ -13,7 +16,12 @@ export interface RunView {
   refresh(): void;
   /** Selects a structure by id (0 clears), as a tap on it would. */
   select(id: number): void;
+  /** A short message over the board for a moment, such as "Recipe ready". */
+  say(text: string, tone?: HintTone): void;
 }
+
+/** What a ghost looks like when there's no tower spec to take it from. */
+export type GhostLook = Pick<TowerLook, 'shape' | 'color' | 'size' | 'plate'>;
 
 /** A structure the player could place with the pointer where it is. */
 export interface Placement {
@@ -27,6 +35,12 @@ export interface Placement {
   readonly error?: string | null;
   /** What the hint says while the ghost is valid, such as "Arrow · 10 gold". */
   readonly label?: string;
+  /** True when `error` already covers the Map's own checks (bounds, Block), so they aren't run twice. */
+  readonly checked?: boolean;
+  /** False for a structure creeps walk over: it can't change the route, so no route preview is drawn. */
+  readonly route?: boolean;
+  /** The ghost's look when `spec` is absent. */
+  readonly look?: GhostLook;
 }
 
 /** A HUD button. Its key is bound while it is on screen, WC3-style. */
@@ -61,6 +75,8 @@ export interface WavePreviewGroup {
   readonly count: number;
   readonly air: boolean;
   readonly boss: boolean;
+  /** The boss tag's text, such as Gem's "Damage Test"; "Boss" by default. */
+  readonly tag?: string;
 }
 
 export interface WavePreview {
@@ -100,6 +116,44 @@ export interface ModeUi {
   feedback?(event: SimEvent, state: GameState): CueOverride | undefined;
   /** Every tick's events, for a mode's own UI state. */
   onEvents?(view: RunView, events: readonly SimEvent[]): void;
+  /** A tap on a structure while the mode waits for a second pick (Gem's swap). True when the mode used it. */
+  tapTower?(view: RunView, tower: Tower): boolean;
+  /** True while the mode waits for a second pick, so Esc cancels that instead of opening the menu. */
+  pending?(view: RunView): boolean;
+  /** Marks on structures, re-read after every tick that changed a structure or the mode's state. */
+  marks?(state: GameState): readonly StructureMark[];
+  /** The hint line when no ghost or message is up, such as what to do next. */
+  hint?(view: RunView): Hint | null;
+  /** The finished Run as a Record entry; modes without one keep no Records. */
+  result?(state: GameState): RunResult;
+  /** A deeper check of the mode's own state in a loaded save; false refuses the save as damaged. */
+  validSave?(state: GameState): boolean;
+  /** The mode's own block under the speed controls, such as Gem's Draft progress. */
+  readonly Status?: ComponentType<ModeHudProps>;
+  /** The mode's own block in the actions area, such as Gem Quality. Hidden on a short screen while something is selected. */
+  readonly Actions?: ComponentType<ModeHudProps>;
+  /** Replaces the selected structure's stats and buttons. */
+  readonly Panel?: ComponentType<ModePanelProps>;
+  /** The mode's one-screen how-to-play. */
+  readonly HowTo?: ComponentType;
+}
+
+export interface ModeHudProps {
+  readonly s: PlaySession;
+}
+
+export interface ModePanelProps {
+  readonly s: PlaySession;
+  readonly tower: Tower;
+}
+
+/** A sign on a structure, drawn by the board. */
+export interface StructureMark {
+  readonly tower: number;
+  readonly color: number;
+  /** Corner brackets for "not settled yet", a ring for "look here". */
+  readonly style: 'brackets' | 'ring';
+  readonly pulse?: boolean;
 }
 
 /** The core's Wave for 0-based `index`, or undefined past the last. */

@@ -1,7 +1,5 @@
 import { createStore, del, get, set, type UseStore } from 'idb-keyval';
-
-export type Difficulty = 'easy' | 'normal' | 'hard' | 'insane';
-export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard', 'insane'];
+import { DIFFICULTIES, type Difficulty } from '../sim';
 
 /** The three IndexedDB calls this module needs, so tests can back it with a Map. */
 export interface KeyValueStore {

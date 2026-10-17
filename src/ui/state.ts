@@ -1,7 +1,8 @@
 import { signal } from '@preact/signals';
-import type { Phase } from '../sim';
-import type { ModeUi, RunView } from './mode-ui';
+import { DEFAULT_SETTINGS, type RecordUpdate, type Settings } from '../platform/storage';
+import type { Difficulty, Phase } from '../sim';
 import type { Hotkeys } from './hotkeys';
+import type { ModeUi, RunView } from './mode-ui';
 
 export const portrait = signal(false);
 /** True once the service worker's first install has finished. */
@@ -19,11 +20,20 @@ export interface PlaySession {
   startWave(): void;
   setSpeed(speed: Speed): void;
   togglePause(): void;
+  /** A fresh Run of the same Game Mode and Difficulty. */
   restart(): void;
   /** Clears the ghost and the selection, as Esc does. */
   cancel(): void;
   /** A HUD button press, for its haptic. */
   tap(): void;
+  /** Pauses and opens the in-Run menu. */
+  openMenu(): void;
+  /** Closes the in-Run menu and resumes. */
+  closeMenu(): void;
+  /** Saves the Run and goes back to the main menu. */
+  quit(): void;
+  /** The Run as it stands as a save code. */
+  exportCode(): Promise<string>;
 }
 
 export const session = signal<PlaySession | null>(null);
@@ -49,3 +59,51 @@ export interface Hint {
 }
 /** The line over the board: what a ghost would build, or why it can't. */
 export const hint = signal<Hint | null>(null);
+
+/** The in-Run menu's page, null while it is closed. */
+export type RunMenuPage = 'main' | 'settings' | 'howto' | 'export';
+export const runMenu = signal<RunMenuPage | null>(null);
+
+/** How the Run ended, for the end screen. `update` arrives once the Record is merged. */
+export interface RunEnd {
+  readonly won: boolean;
+  readonly wave: number;
+  readonly totalWaves: number;
+  /** Null for modes without a score. */
+  readonly score: number | null;
+  /** The winning time in seconds, null for a loss. */
+  readonly seconds: number | null;
+  readonly difficulty: Difficulty;
+  readonly update: RecordUpdate | null;
+}
+export const runEnd = signal<RunEnd | null>(null);
+
+export const settings = signal<Settings>({ ...DEFAULT_SETTINGS });
+
+/** Which screen is up: nothing yet, the main menu, or a Run. */
+export const screen = signal<'boot' | 'menu' | 'play'>('boot');
+
+/** A Run saved for Continue, or why the save can't be used. */
+export type SavedRunInfo =
+  | { readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly savedAt: number }
+  | { readonly ok: false; readonly modeId: string; readonly problem: string };
+
+/** Saved Runs by Game Mode id, refreshed whenever the main menu opens. */
+export const savedRuns = signal<Readonly<Record<string, SavedRunInfo>>>({});
+
+/** A pasted save code, checked: what it holds, or why it can't be loaded. */
+export type CodeCheck =
+  | { readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly gold: number; start(): void }
+  | { readonly ok: false; readonly message: string };
+
+/** What the menus ask of the app. The app fills it in at boot. */
+export interface AppActions {
+  newRun(modeId: string, difficulty: Difficulty): void;
+  continueRun(modeId: string): void;
+  checkCode(code: string): Promise<CodeCheck>;
+  /** Saves and applies new settings at once. */
+  updateSettings(next: Settings): void;
+}
+
+export const appActions = signal<AppActions | null>(null);
+

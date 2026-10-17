@@ -6,12 +6,19 @@ import type { Speed } from '../ui/state';
 
 export type { Speed };
 
-/** Why the Run is being saved: the end of a Wave, or the app going to the background. */
-export type AutosaveReason = 'waveEnd' | 'background';
+/**
+ * Why the Run is being saved: the end of a Wave, the app going to the background,
+ * the player quitting to the menu, or a new Run starting (so Continue finds it).
+ */
+export type AutosaveReason = 'waveEnd' | 'background' | 'quit' | 'start';
 
 export interface RunControllerOptions {
   /** What each Run starts from; called again for "play again", so it can pick a new seed. */
   runOptions(): RunOptions;
+  /** A saved Run to play first instead of a fresh one. replay() then covers only what came after it. */
+  initial?: GameState;
+  /** Start paused, as a resumed Run does. */
+  paused?: boolean;
   /** Saves a Run in progress. Errors are logged, never thrown into the loop. */
   autosave?(state: GameState, reason: AutosaveReason): unknown;
   /** Forgets the autosave of a Run that has ended, so Continue isn't offered for it. */
@@ -38,6 +45,10 @@ export interface RunController {
   restart(): void;
   /** Pauses and saves: for the app going to the background. */
   background(): void;
+  /** Saves now, unless the Run is over. */
+  save(reason: AutosaveReason): void;
+  /** Runs up to `ticks` ticks at once, stopping at the Run's end: for tests and debugging. */
+  fastForward(ticks: number): void;
   /** The Run so far as a replay, for bug reports and tests. */
   replay(): Replay;
   /** After every tick, with that tick's events. */
@@ -73,11 +84,11 @@ export function createRunController(opts: RunControllerOptions): RunController {
   const runListeners = new Set<(state: GameState) => void>();
 
   let runOptions = opts.runOptions();
-  let state = createRun(runOptions);
+  let state = opts.initial ?? createRun(runOptions);
   let log: ReplayEntry[] = [];
   let queue: Command[] = [];
   let speed: Speed = 1;
-  let paused = false;
+  let paused = opts.paused ?? false;
   let acc = 0;
   let alpha = 0;
   let last: number | null = null;
@@ -190,6 +201,10 @@ export function createRunController(opts: RunControllerOptions): RunController {
     background() {
       paused = true;
       save('background');
+    },
+    save,
+    fastForward(ticks) {
+      for (let i = 0; i < ticks && !over(); i++) tick();
     },
     replay() {
       return { ...runOptions, log: [...log], until: state.tick };

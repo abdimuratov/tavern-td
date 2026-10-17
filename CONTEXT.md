@@ -34,6 +34,10 @@ _Avoid_: level, challenge
 The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win.
 _Avoid_: high score, achievement, stats
 
+**Save code**:
+A Run in progress as copyable text, made by Export save code in the in-Run menu and loaded by Import save code in the main menu.
+_Avoid_: save string, password, export
+
 ### Play
 
 **Wave**:

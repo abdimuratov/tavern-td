@@ -2,7 +2,7 @@ import { CanvasSource, Rectangle, Texture } from 'pixi.js';
 import { SHAPES, type Shape } from './look';
 
 /** Extra sprites besides the tintable shapes. */
-export type Glyph = 'plate' | 'shadow' | 'glow' | 'ring' | 'white';
+export type Glyph = 'plate' | 'shadow' | 'glow' | 'ring' | 'white' | 'brackets';
 
 export interface Atlas {
   shape(s: Shape): Texture;
@@ -50,6 +50,30 @@ function solid(g: CanvasRenderingContext2D, outline = 7): void {
 
 const UP = -Math.PI / 2;
 const ROCK = [1, 0.86, 0.97, 0.8, 0.95, 0.88, 1, 0.83, 0.92];
+
+/** A cut gem from above: an n-sided girdle, a table in the middle and a facet line from each table corner. */
+function cut(n: number): Draw {
+  // Odd cuts and the four-facet one point up, so none reads as a plain square; the rest sit flat.
+  const turn = n % 2 === 1 || n === 4 ? UP : Math.PI / n;
+  return (g) => {
+    const girdle = regular(n, R * (n === 3 ? 1.04 : 0.98), turn);
+    const table = regular(n, R * (n === 3 ? 0.42 : 0.5), turn);
+    path(g, n === 3 ? girdle.map(([x, y]) => [x, y + R * 0.14]) : girdle);
+    solid(g);
+    g.beginPath();
+    const dy = n === 3 ? R * 0.14 : 0;
+    for (let i = 0; i < n; i++) {
+      const [x, y] = table[i]!;
+      const [gx, gy] = girdle[i]!;
+      g.moveTo(x, y + dy);
+      g.lineTo(gx, gy + dy);
+    }
+    path(g, table.map(([x, y]) => [x, y + dy]));
+    g.lineWidth = 3.5;
+    g.strokeStyle = 'rgba(10, 8, 6, 0.42)';
+    g.stroke();
+  };
+}
 
 const SHAPE_DRAW: Readonly<Record<Shape, Draw>> = {
   circle: (g) => {
@@ -104,6 +128,37 @@ const SHAPE_DRAW: Readonly<Record<Shape, Draw>> = {
     path(g, regular(ROCK.length, R, 0.3).map(([x, y], i) => [x * ROCK[i]!, y * ROCK[i]! * 0.92]));
     solid(g);
   },
+  cut3: cut(3),
+  cut4: cut(4),
+  cut5: cut(5),
+  cut6: cut(6),
+  cut8: cut(8),
+  tile: (g) => {
+    // Flat and square, with an engraved inner line, so it reads as floor rather than wall.
+    g.beginPath();
+    g.roundRect(-R * 0.92, -R * 0.92, R * 1.84, R * 1.84, R * 0.16);
+    solid(g, 5);
+    g.beginPath();
+    g.roundRect(-R * 0.6, -R * 0.6, R * 1.2, R * 1.2, R * 0.1);
+    g.moveTo(0, -R * 0.6);
+    g.lineTo(0, R * 0.6);
+    g.moveTo(-R * 0.6, 0);
+    g.lineTo(R * 0.6, 0);
+    g.lineWidth = 4;
+    g.strokeStyle = 'rgba(10, 8, 6, 0.38)';
+    g.stroke();
+  },
+  burst: (g) => {
+    const outer = regular(12, R, UP);
+    const inner = regular(12, R * 0.68, UP + Math.PI / 12);
+    path(g, outer.flatMap((p, i) => [p, inner[i]!]));
+    solid(g, 6);
+    g.beginPath();
+    g.arc(0, 0, R * 0.34, 0, Math.PI * 2);
+    g.lineWidth = 4;
+    g.strokeStyle = 'rgba(10, 8, 6, 0.4)';
+    g.stroke();
+  },
   chevron: (g) => {
     // Points along +x, so a sprite's rotation is its heading.
     // Longer than it is wide, so the heading reads at a glance.
@@ -144,6 +199,22 @@ const GLYPH_DRAW: Readonly<Record<Glyph, Draw>> = {
   white: (g) => {
     g.fillStyle = '#ffffff';
     g.fillRect(-SLOT / 2, -SLOT / 2, SLOT, SLOT);
+  },
+  brackets: (g) => {
+    // Four corner marks: something placed but not settled yet.
+    const a = R * 0.92;
+    const b = R * 0.42;
+    g.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+      g.moveTo(sx * a, sy * (a - b));
+      g.lineTo(sx * a, sy * a);
+      g.lineTo(sx * (a - b), sy * a);
+    }
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.lineWidth = R * 0.16;
+    g.strokeStyle = '#ffffff';
+    g.stroke();
   },
 };
 

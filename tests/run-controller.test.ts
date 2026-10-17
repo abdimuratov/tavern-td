@@ -119,6 +119,34 @@ describe('run controller', () => {
     expect(autosave).toHaveBeenLastCalledWith(two.c.state, 'background');
   });
 
+  it('resumes a saved Run paused, and its commands go on from where it was', () => {
+    const first = setup();
+    first.c.send({ type: 'place', spec: 'arrow', col: 5, row: 5 });
+    first.frames(40, TICK_MS);
+    const saved = JSON.parse(JSON.stringify(first.c.state)) as GameState;
+    const { c, frames } = setup({ initial: saved, paused: true });
+    expect(c.paused).toBe(true);
+    expect(hashState(c.state)).toBe(hashState(first.c.state));
+    frames(30, TICK_MS);
+    expect(c.state.tick).toBe(saved.tick);
+    c.setPaused(false);
+    frames(30, TICK_MS);
+    first.frames(30, TICK_MS);
+    expect(hashState(c.state)).toBe(hashState(first.c.state));
+  });
+
+  it('fast-forwards a number of ticks at once, stopping at the end of the Run', () => {
+    const { c } = setup();
+    c.fastForward(90);
+    expect(c.state.tick).toBe(90);
+    c.send({ type: 'startWave' });
+    c.fastForward(30 * 600);
+    expect(c.state.phase === 'won' || c.state.phase === 'lost').toBe(true);
+    const end = c.state.tick;
+    c.fastForward(100);
+    expect(c.state.tick).toBe(end);
+  });
+
   it('restarts into a fresh Run and tells listeners', () => {
     const { c, frames } = setup();
     const runs: GameState[] = [];
