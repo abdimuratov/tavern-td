@@ -138,11 +138,15 @@ The route is the centre line of the 2-cell lane. Map units have their origin at 
 
 **Fit on a phone.** At 390 pt of landscape height, 40 rows give about 9.75 pt per cell and about 19.5 pt per tower. The whole Map fits on screen, but placing towers needs the planned pinch-zoom to about 2×. No shrinking is needed, and shrinking would break 1:1 distances.
 
-**Faithful to WC3?** **Assumed**: I could not confirm it cell for cell. The web check of WC3 pages had not reported back when this file was written. What we know:
+**Faithful to WC3?** **Very likely, but not confirmed cell for cell.**
 
-- The Dota map was rebuilt for the port by its own mapper. Its eight sectors share one layout: a two-portal entry and exit side by side, and one winding walled lane.
-- WC3 guides talk about "2-pass" build spots ([wc3-td-maps.md](wc3-td-maps.md)). This lane has them.
-- **Recommendation.** Use this Map as the faithful route, and revisit only if a WC3 screenshot shows a different lane.
+- **The diagram.** The community's placement diagram ([placement convention](https://forums.eletd.com/topic/95222-placement-convention/)) shows this lane. The designer reposted it for the Dota 2 port, and its upload dates from 2011. It has the same features:
+  - spawn and exit side by side at the top, either side of the first ledge;
+  - U-turns around the ledges;
+  - a long outer run back to the exit.
+- **WC3-era guides.** From 2007 to 2011 they describe the same route and pass counts point for point ([tower placement guide](https://forums.eletd.com/topic/161-tower-placement-guide/), [basics](https://forums.eletd.com/topic/945-basics-of-element-td)). Their "two-pass" zones are this lane's plots between two passes.
+- **Not settled.** No source gives one lane's size or the WC3 tower footprint. The diagram is about 21 × 29 cells by eye, and the whole WC3 map is 160 × 96 ([Hive, 4.3b](https://www.hiveworkshop.com/threads/element-td-survivor-4-3b.125024/)).
+- **Recommendation.** Use this Map as the faithful route.
 
 ## 2. Elements and the damage cycle
 
@@ -839,7 +843,7 @@ Our game logic may use only `+ − × ÷` and `sqrt`, with a seeded RNG ([ADR-00
 
 **Questions the sources do not settle:**
 
-11. **The WC3 route.** It is not confirmed cell for cell; see §1. The Dota map was rebuilt by Azarak and looks deliberately faithful, but I found no WC3 terrain data.
+11. **The WC3 route.** The shape matches the WC3 placement diagram and guides, but sizes aren't confirmed cell for cell; see §1.
 12. **Pre-Dota numbers.** Fast, undead, mech and heal had different numbers in the WC3 era (§14). We follow the port.
 13. **Code oddities we fix, not copy.**
     - The Periodic tower hangs when every creep in range is dead.
@@ -851,6 +855,11 @@ Our game logic may use only `+ − × ÷` and `sqrt`, with a seeded RNG ([ADR-00
 - **Interest upgrades.** WC3 let you spend lumber to raise the interest rate, at most twice ([Hive, ETD Final](https://www.hiveworkshop.com/threads/element-td-final.35698/)). The port has no such purchase.
 - **Trait numbers.** WC3-era guides give different numbers for fast, undead, mech and heal ([eletd basics](https://forums.eletd.com/topic/945-basics-of-element-td)).
 - **PLAN's numbers.** The economy PLAN.md states (2% every 15 s, 50 lives, 250 gold) matches the port exactly.
+- **Other WC3 differences** ([current version](https://forums.eletd.com/topic/19-current-version/), [Hive, 4.3b](https://www.hiveworkshop.com/threads/element-td-survivor-4-3b.125024/)):
+  - WC3 had 60 levels, then an endless boss that grew with each kill;
+  - an early beta started with 70 gold;
+  - Composite took about 75–80% from Elements;
+  - there was no numeric score: the most endless-boss kills won.
 - **Recommendation.** Follow the port everywhere. It is the only complete, citable source.
 
 ## 14. Corrections to [wc3-td-maps.md](wc3-td-maps.md)
