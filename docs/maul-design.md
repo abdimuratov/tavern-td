@@ -111,10 +111,10 @@ Prices follow §9 of the balance notes: Tier 1 at about 0.10 DPS a gold, each Ti
 |---|---|---|---|
 | **Ironclad**: physical and siege | Ballista: Pierce bolts at ground and air → Skypiercer (very long range) or Repeater (3 targets) | Mortar: Siege splash, ground only → Thunder Mortar (stuns) or Bombard (huge range, the boss and Golem answer) | Air must fall to line A; Pierce is poor on Golems |
 | **Rimeborn**: frost and slow | Frost Spire: Frost bolts that slow → Glacier Spike (heavy, crits) or Hailcaller (4 targets) | Chill Totem: slows everything near it → Blizzard Totem (deepest chill, splash) or Shatter Totem (−5 armor) | Wraiths ignore slows; low damage early |
-| **Mirefolk**: poison over time | Dart Tower: Pierce darts with venom → Asp Spire (bosses) or Spitter (4 targets) | Spore Pod: spores poison every ground creep where they burst → Blight Pod (−4 armor) or Rot Bloom (a rotting aura) | Venom doesn't stack, so swarms need spores; spores can't hit air |
+| **Mirefolk**: poison over time | Dart Tower: Pierce darts with venom → Asp Spire (bosses) or Spitter (4 targets) | Spore Pod: spores poison every ground creep where they burst → Blight Pod (−4 armor) or Rot Bloom (a rotting aura) | One tower's venom sits on one creep at a time, so swarms need spores or a Spitter; spores can't hit air |
 | **Runecasters**: arcane and splash | Spark Rune: Magic bolts → Chain Rune (jumps 4 times) or Void Rune (Chaos) | Glyph: Magic splash at ground and air → Nova Circle (widest) or Ley Shrine (+25% damage, +15% attack speed to towers near it) | Magic is poor on Golems until Void Rune |
 
-All slows share one key, so only the strongest counts on a creep. Each poison (darts, spores, rot) has its own key, so one of each ticks on a creep and the same one never stacks. Poison skips the damage table and armor.
+All slows share one key, so only the strongest counts on a creep. Each Dart tower's venom ticks on its own: venom from many towers stacks, but one tower's never stacks with itself. Spores and rot each tick once on a creep beside it. Poison skips the damage table and armor.
 
 Every tower, as built. DPS is against armor it takes full damage from, before splash, extra targets or poison.
 
@@ -122,7 +122,7 @@ Every tower, as built. DPS is against armor it takes full damage from, before sp
 
 | Tower | Tier | Price | Total | Hits | Damage | Every | DPS | Range | Targets | Also |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Bulwark | Wall | 10 | 10 | pierce | 1–2 | 2 s | 0.8 | 320 | both | |
+| Bulwark | Wall | 10 | 10 | pierce | 1–2 | 2 s | 0.8 | 320 | both |  |
 | Ballista | 1 | 40 | 50 | pierce | 6–8 | 1.4 s | 5.0 | 420 | both |  |
 | Heavy Ballista | 2 | 85 | 135 | pierce | 17–21 | 1.5 s | 12.7 | 450 | both |  |
 | Skypiercer | 3 | 200 | 335 | pierce | 48–54 | 1.5 s | 34.0 | 720 | both |  |
@@ -137,11 +137,11 @@ Every tower, as built. DPS is against armor it takes full damage from, before sp
 | Tower | Tier | Price | Total | Hits | Damage | Every | DPS | Range | Targets | Also |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Rime Wall | Wall | 10 | 10 | frost | 1–2 | 2 s | 0.8 | 320 | both |  |
-| Frost Spire | 1 | 40 | 50 | frost | 5–7 | 1.5 s | 4.0 | 400 | both | slow 25% 2 s |
+| Frost Spire | 1 | 40 | 50 | frost | 6–8 | 1.5 s | 4.7 | 400 | both | slow 25% 2 s |
 | Frost Lance | 2 | 90 | 140 | frost | 15–19 | 1.5 s | 11.3 | 430 | both | slow 35% 2 s |
 | Glacier Spike | 3 | 210 | 350 | frost | 60–70 | 1.8 s | 36.1 | 480 | both | slow 45% 2.5 s; 20% ×2 |
 | Hailcaller | 3 | 210 | 350 | frost | 16–20 | 1.4 s | 12.9 | 450 | both | 4 targets; slow 35% 2 s |
-| Chill Totem | 1 | 50 | 60 | magic | 3–5 | 1.5 s | 2.7 | 300 | both | aura slow 20% r220 |
+| Chill Totem | 1 | 50 | 60 | magic | 4–6 | 1.5 s | 3.3 | 300 | both | aura slow 20% r220 |
 | Rime Totem | 2 | 100 | 160 | magic | 9–11 | 1.5 s | 6.7 | 320 | both | aura slow 30% r260 |
 | Blizzard Totem | 3 | 220 | 380 | magic | 22–26 | 2 s | 12.0 | 340 | both | splash 90/160; aura slow 40% r300 |
 | Shatter Totem | 3 | 220 | 380 | magic | 30–36 | 1.5 s | 22.0 | 340 | both | aura slow 30% r300; aura armor 5 r300 |
@@ -151,10 +151,10 @@ Every tower, as built. DPS is against armor it takes full damage from, before sp
 | Tower | Tier | Price | Total | Hits | Damage | Every | DPS | Range | Targets | Also |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Bramble | Wall | 10 | 10 | pierce | 1–2 | 2 s | 0.8 | 320 | both |  |
-| Dart Tower | 1 | 40 | 50 | pierce | 3–4 | 1.2 s | 2.9 | 400 | both | poison 3/s 4 s |
-| Viper Tower | 2 | 90 | 140 | pierce | 8–10 | 1.2 s | 7.5 | 420 | both | poison 7/s 4 s |
-| Asp Spire | 3 | 200 | 340 | pierce | 18–22 | 1.2 s | 16.7 | 450 | both | poison 18/s 5 s |
-| Spitter | 3 | 200 | 340 | pierce | 6–8 | 1.2 s | 5.8 | 430 | both | 4 targets; poison 10/s 4 s |
+| Dart Tower | 1 | 40 | 50 | pierce | 3–4 | 1.2 s | 2.9 | 400 | both | venom 3/s 4 s |
+| Viper Tower | 2 | 90 | 140 | pierce | 8–10 | 1.2 s | 7.5 | 420 | both | venom 7/s 4 s |
+| Asp Spire | 3 | 200 | 340 | pierce | 18–22 | 1.2 s | 16.7 | 450 | both | venom 18/s 5 s |
+| Spitter | 3 | 200 | 340 | pierce | 6–8 | 1.2 s | 5.8 | 430 | both | 4 targets; venom 10/s 4 s |
 | Spore Pod | 1 | 50 | 60 | chaos | 2–2 | 2 s | 1.0 | 420 | ground | spores 2.5/s 4 s r110 |
 | Plague Pod | 2 | 100 | 160 | chaos | 4–4 | 2 s | 2.0 | 440 | ground | spores 6.5/s 5 s r130 |
 | Blight Pod | 3 | 220 | 380 | chaos | 8–8 | 2 s | 4.0 | 460 | ground | spores 15/s 5 s r150, −4 armor |
@@ -189,7 +189,7 @@ Each attack type has one armor it hits hardest, as WC3's table does, but the swi
 
 ## 7. Creeps and Waves
 
-A creep's HP is a multiple of a Raider's on that Wave, 10 × 1.10^(w−1), before Difficulty. Twenty Raiders, ten from each gate, make up §9's normal Wave. Creeps leave their gate a fraction of a second apart, because Wintermaul spawned a whole Wave at once.
+A creep's HP is a multiple of a Raider's on that Wave, 8 × 1.12^(w−1), before Difficulty. Twenty Raiders, ten from each gate, are about §9's normal Wave early on. The curve climbs faster than §9's 1.10 because a growing maze multiplies every tower's time on target (§12). Creeps leave their gate a fraction of a second apart, because Wintermaul spawned a whole Wave at once.
 
 | Creep | Kind | Armor | Speed | HP (Raiders) | Per gate | Lives | Notes |
 |---|---|---|---|---|---|---|---|
@@ -254,4 +254,11 @@ Creep HP × 0.75 (Easy), 1 (Normal), 1.3 (Hard) or 1.6 (Insane), the core's defa
 
 - *Assumed:* the east gate's creeps trail the west's by 0.5 s. A boss's escort starts 2 s behind it. A tower snaps to the 64-unit grid. The juggle test counts a creep as turned when its next step points away from its last one.
 - *Assumed:* the second Race comes free once Wave 15 is cleared, not at its start.
-- *Tuned so far (2026-10-18), from §9:* the bounty pool doubled to 20 × (1 + ⌊w/4⌋); start gold 200 → 300; boss HP to 10, 11, 12 and 14 Raiders (from 16–24). A first small sweep put the bot at wins on Easy and about half on Normal, and dying early on Insane. The rules step finishes the tuning and records it here.
+- *Assumed:* a Wall's weak attack is 1–2 every 2 s at 320 range, about 0.075 DPS a gold, hitting ground and air.
+- *Tuned (2026-10-18), from §9, with the headless bot* (`tests/sim/maul/bot.ts`). It builds a three-Wall serpentine in the lower field, opens with four Tier 1 towers where the routes pass most, gives 35% of its gold to Walls and the rest to the upgrade with the most damage per gold where the creeps pass, alternates lines A and B, and sends each Wave once it has nothing to buy. It never juggles.
+  - The bounty pool doubled to 20 × (1 + ⌊w/4⌋). With §9's pool the bot lost every Run by Wave 10, because a maze costs gold that adds no damage.
+  - Start gold 200 → 300, and the Raider curve 12 × 1.10^(w−1) → 8 × 1.12^(w−1). A gentler start with a steeper climb was the one change that moved Insane and Normal toward PLAN §4's targets together.
+  - Boss HP 16–24 → 10, 11, 12 and 14 Raiders.
+  - Venom ticks per tower (it shared one key and couldn't stack, so Mirefolk lost every last boss), and Frost Spire and Chill Totem hit about 20% harder (Rimeborn died on Wave 4 on Hard).
+  - Result on seed 1, which hardly varies by seed: Easy 4/4 won with all 20 lives; Normal 2/4 won (Rimeborn and Runecasters), the other two reach Wave 40 and lose to the Winter King; Hard 1/4; Insane 0/4, dying on Waves 7–12. PLAN §4 asks for ~95%, ~60% and under 10%.
+  - Watch in play-testing: Runecasters is the strongest Race and Ironclad the weakest; the last boss decides most Normal Runs; a juggling player should find Normal easy.

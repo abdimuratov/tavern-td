@@ -60,7 +60,14 @@ Phase 4 progress (2026-10-18):
 - Done: the research, [maul-rules.md](research/maul-rules.md), read from Wintermaul X14's own map files plus later versions' listings. X14 has 30 Waves with air at 5, 14, 23 and 27. Waves never overlap, and the last boss leaking loses the game. It has 20 lives, kill bounty, no interest, 75% sells, no upgrades and no Block check. Juggling is allowed. The map has no licence, so we port rules only.
 - Done: the design doc, [maul-design.md](maul-design.md). Four Races (Ironclad, Rimeborn, Mirefolk, Runecasters), each with a Wall and two lines that fork at Tier 3: 36 towers. One Map, the Crossing: two gates whose approaches meet at a Ford, then a shared lower field past two Posts to the exit. 40 Waves with six air Waves at uneven gaps and a boss every 10th. Breaks start after a clear, a second Race joins after Wave 15, and Blocks are refused while Juggling is allowed.
 - My calls, open to change: one shared field rather than two separate lanes; interest kept although Wintermaul had none; nothing hits only air.
-- Left: the rules and their tests, the balance bot, the UI, then a play-test on the Mac, the iPhone and the S24.
+- Done: Maul's deterministic rules ([maul-design.md §12](maul-design.md#12-assumed-and-tuned) lists what they assume and how they were tuned):
+  - Engine: a mazing Map can have several spawns, each Wave group names its gate, and the Block check keeps every gate connected. A Checkpoint can stand in several places, and flyers head for the nearest.
+  - Building anywhere on open ground, mid-Wave too. Walls with a weak attack; Tier upgrades with a fork at Tier 3, and a second Race's towers after Wave 15. Sells return 75%, or everything spent during the current Break. Juggles are detected and counted.
+  - Combat on the core's attacks: an attack-type table with each type's favourite armor, slows that share one key, venom that ticks per tower, spores and Blight armor, chain lightning, auras, unslowable Wraiths, Troll regen, and bosses that slow to half speed at most.
+  - Pace and economy: 60 s before Wave 1, then 30 s Breaks after each clear; Send now pays nothing. The bounty pool, the end-of-Wave bonus and interest. 20 lives, and the last boss's leak ends the Run. Score and Records.
+- Tested: 37 Maul tests, plus path tests for two spawns and a split Checkpoint. The replay hash and snapshot tests pass, and WebKit and Chromium match Node on a fixed Maul replay. A tick takes about 5 µs.
+- Tuned with a headless bot, on seed 1: it wins Easy with every Race, wins Normal with two of four and reaches Wave 40 with the rest, wins Hard with one, and dies on Insane during Waves 7–12. The bounty pool had to double from §4's, because a maze costs gold that adds no damage.
+- Left: the UI, then a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

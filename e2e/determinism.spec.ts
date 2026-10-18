@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { replayHash, type Replay } from '../src/sim';
-import { ELEMENT_FIXTURE_REPLAY, FIXTURE_REPLAY, ORIGINAL_FIXTURE_REPLAY } from '../src/sim/testing';
+import { ELEMENT_FIXTURE_REPLAY, FIXTURE_REPLAY, MAUL_FIXTURE_REPLAY, ORIGINAL_FIXTURE_REPLAY } from '../src/sim/testing';
 import { SIM_BUNDLE } from './global-setup';
 
 declare global {
   interface Window {
-    TavernSim?: { replayHash(r: Replay): string; FIXTURE_REPLAY: Replay; ELEMENT_FIXTURE_REPLAY: Replay; ORIGINAL_FIXTURE_REPLAY: Replay };
+    TavernSim?: {
+      replayHash(r: Replay): string; FIXTURE_REPLAY: Replay; ELEMENT_FIXTURE_REPLAY: Replay; ORIGINAL_FIXTURE_REPLAY: Replay; MAUL_FIXTURE_REPLAY: Replay;
+    };
   }
 }
 
@@ -42,6 +44,18 @@ test('the Original replay fixture hashes the same in the browser as in Node', as
   const browser = await page.evaluate(() => {
     const sim = window.TavernSim!;
     return sim.replayHash(sim.ORIGINAL_FIXTURE_REPLAY);
+  });
+  expect(browser).toBe(node);
+});
+
+// Maul mazes on flow fields from two gates, re-paths creeps on every build and sale, and has effects of its own.
+test('the Maul replay fixture hashes the same in the browser as in Node', async ({ page }) => {
+  const node = replayHash(MAUL_FIXTURE_REPLAY);
+  await page.goto('about:blank');
+  await page.addScriptTag({ path: SIM_BUNDLE });
+  const browser = await page.evaluate(() => {
+    const sim = window.TavernSim!;
+    return sim.replayHash(sim.MAUL_FIXTURE_REPLAY);
   });
   expect(browser).toBe(node);
 });

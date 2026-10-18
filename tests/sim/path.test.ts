@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cellCol, cellOf, cellRow, hashState, nextCell, pathDistance, placementError, previewRoute, removeTower, routeCells, wouldBlock,
-  type GameState,
+  airRoute, allRouteCells, cellCol, cellOf, cellRow, hashState, nextCell, pathDistance, placementError, previewAllRoutes, previewRoute,
+  removeTower, routeCells, spawnCount, validateMap, wouldBlock,
+  type GameState, type MapSpec,
 } from '../../src/sim';
 import { TEST_MAP } from '../../src/sim/testing';
-import { creepAt, newRun, ofType, openMap, run, towerAt } from './helpers';
+import { creepAt, newRun, ofType, openMap, run, runUntil, towerAt } from './helpers';
 
 const place = (spec: string, col: number, row: number) => ({ type: 'place', spec, col, row });
 
@@ -170,5 +171,94 @@ describe('route', () => {
     run(s, 1, [place('rock', cellCol(s.map, cell), cellRow(s.map, cell))]);
     expect(routeCells(s)).toEqual(preview);
     expect(previewRoute(s, [cellOf(s.map, 0, 0)])).toBeNull();
+  });
+});
+
+/** Spawns in the top corners, one checkpoint between them in the middle, the exit at the bottom centre. */
+function twoSpawns(): MapSpec {
+  const map = openMap(9, 7, [0, 0], [[[4, 2]], [[4, 6]]]);
+  const terrain = map.terrain.map((row, r) => (r === 0 ? `${row.slice(0, 8)},` : row));
+  return { ...map, id: 'two-spawns', terrain, spawns: [[0, 0], [8, 0]] };
+}
+
+describe('several spawns', () => {
+  it('are checked: spawn first, walkable, and never beside routes', () => {
+    const map = twoSpawns();
+    expect(validateMap(map)).toBeNull();
+    expect(spawnCount(map)).toBe(2);
+    expect(spawnCount(openMap(3, 3, [0, 0], [[[2, 2]]]))).toBe(1);
+    expect(validateMap({ ...map, spawns: [[8, 0], [0, 0]] })).toBe('spawns must list spawn first');
+    expect(validateMap({ ...map, spawns: [[0, 0], [9, 0]] })).toBe('every spawn must be a walkable cell on the Map');
+    expect(validateMap({ ...map, spawns: [] })).toBe('spawns needs at least one spawn');
+    expect(validateMap({ ...map, route: { points: [[0, 0], [64, 0]] } })).toMatch(/no spawns list/);
+  });
+
+  it('each start a route through the same checkpoints, and send their creeps in where the Wave group says', () => {
+    const waves = [{ groups: [{ creep: 'grunt', count: 1, interval: 1 }, { creep: 'grunt', count: 1, interval: 1, spawn: 1 }, { creep: 'bat', count: 1, interval: 1, spawn: 1 }] }];
+    const s = newRun({ map: twoSpawns(), options: { waves } });
+    const [west, east] = allRouteCells(s);
+    expect(west![0]).toBe(cellOf(s.map, 0, 0));
+    expect(east![0]).toBe(cellOf(s.map, 8, 0));
+    expect(routeCells(s, 1)).toEqual(east);
+    expectShortest(s, west!);
+    expectShortest(s, east!);
+    expect(airRoute(s, 1)[0]).toEqual({ x: 8.5 * 64, y: 32 });
+    const spawned = ofType(run(s, 1, [{ type: 'startWave' }]), 'spawn').map((e) => [e.spec, e.x, e.y]);
+    expect(spawned).toEqual([['grunt', 32, 32], ['grunt', 8.5 * 64, 32], ['bat', 8.5 * 64, 32]]);
+    expect(s.creeps.map((c) => c.spawn)).toEqual([0, 1, 1]);
+  });
+
+  it('are each kept open by the Block check', () => {
+    const s = newRun({ map: twoSpawns() });
+    // Walling in the east spawn alone leaves the west one free, and is still a Block.
+    towerAt(s, 'rock', 7, 0);
+    towerAt(s, 'rock', 7, 1);
+    expect(placementError(s, [cellOf(s.map, 8, 1)])).toBe('blocks the path');
+    expect(previewAllRoutes(s, [cellOf(s.map, 8, 1)])).toBeNull();
+    const preview = previewAllRoutes(s, [cellOf(s.map, 3, 2)])!;
+    expect(preview).toHaveLength(2);
+    expect(previewRoute(s, [cellOf(s.map, 3, 2)], 1)).toEqual(preview[1]);
+  });
+
+  it('restart a leaked creep at its own spawn', () => {
+    const waves = [{ groups: [{ creep: 'grunt', count: 1, interval: 1, spawn: 1 }] }];
+    const s = newRun({ map: twoSpawns(), options: { waves, leak: 'restart' } });
+    run(s, 1, [{ type: 'startWave' }]);
+    const creep = s.creeps[0]!;
+    runUntil(s, (events) => events.some((e) => e.type === 'leak'));
+    expect([creep.x, creep.y, creep.seg]).toEqual([8.5 * 64, 32, 0]);
+    expect(s.lives).toBe(9);
+  });
+});
+
+describe('a Checkpoint in several places', () => {
+  /** One spawn top-centre, a Checkpoint split between the two bottom corners, the exit right of centre. */
+  function corners(): MapSpec {
+    return openMap(9, 6, [4, 0], [[[0, 5], [8, 5]], [[5, 0]]]);
+  }
+
+  it('sends ground creeps to the nearer place and flyers straight to it', () => {
+    const s = newRun({ map: corners() });
+    towerAt(s, 'rock', 1, 4);
+    towerAt(s, 'rock', 1, 3);
+    towerAt(s, 'rock', 2, 4);
+    const route = routeCells(s);
+    // With the west corner walled in further, the ground route takes the east one.
+    expect(route).toContain(cellOf(s.map, 8, 5));
+    expect(route).not.toContain(cellOf(s.map, 0, 5));
+    const air = airRoute(s);
+    // Both corners are as near the spawn as each other: the first listed wins, then the exit.
+    expect(air).toEqual([{ x: 4.5 * 64, y: 32 }, { x: 32, y: 5.5 * 64 }, { x: 5.5 * 64, y: 32 }]);
+  });
+
+  it('counts as reached at either place', () => {
+    const waves = [{ groups: [{ creep: 'bat', count: 1, interval: 1 }] }];
+    const s = newRun({ map: corners(), options: { waves } });
+    run(s, 1, [{ type: 'startWave' }]);
+    const bat = s.creeps[0]!;
+    runUntil(s, () => bat.seg === 1);
+    // It touched the west corner's centre and has turned for the exit this same tick.
+    expect(bat.x).toBeLessThan(64);
+    runUntil(s, () => s.lives < 10);
   });
 });

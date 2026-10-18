@@ -26,10 +26,10 @@ export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rn
 export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 
 export {
-  setMap, validateMap, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, buildSpotCells, buildSpotAt,
+  setMap, validateMap, spawnCount, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, buildSpotCells, buildSpotAt,
   type Point,
 } from './path/grid';
-export { routeCells, previewRoute, airRoute, pathDistance, nextCell } from './path/flow';
+export { routeCells, allRouteCells, previewRoute, previewAllRoutes, airRoute, pathDistance, nextCell } from './path/flow';
 export { placementError, wouldBlock, type PlacementError } from './path/block';
 export {
   routeData, airLineData, creepLine, routeCount, routePoint, routePolyline, airLinePolyline, placeOnRoute, type RouteData,
@@ -53,3 +53,4 @@ export { earnGold, spendGold, canAfford, loseLives, gainLives } from './economy'
 export * as gem from './modes/gem';
 export * as element from './modes/element';
 export * as original from './modes/original';
+export * as maul from './modes/maul';

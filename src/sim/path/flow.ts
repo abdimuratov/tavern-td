@@ -1,6 +1,6 @@
 import type { GameState } from '../core/state';
 import { placementError } from './block';
-import { mapData, openCells, walkOverIds, type MapData, type Point } from './grid';
+import { mapData, nearestPart, openCells, walkOverIds, type MapData, type Point } from './grid';
 
 // One flow field per route segment: the octile distance from every cell to that
 // segment's waypoint region, plus the downhill neighbour to step to. Fields are
@@ -178,28 +178,41 @@ export function nextCell(state: GameState, segment: number, cell: number): numbe
 }
 
 /**
- * The ground route as cells: spawn, through each checkpoint, into the exit.
+ * The ground route as cells: spawn `spawn`, through each checkpoint, into the exit.
  * For the renderer's live path line. Stops early if a segment is unreachable.
  */
-export function routeCells(state: GameState): number[] {
-  return trace(mapData(state.map), flow(state).next);
+export function routeCells(state: GameState, spawn = 0): number[] {
+  return trace(mapData(state.map), flow(state).next, spawn);
+}
+
+/** The ground route from every spawn, spawn 0 first. */
+export function allRouteCells(state: GameState): number[][] {
+  const md = mapData(state.map);
+  const next = flow(state).next;
+  return md.spawns.map((_, i) => trace(md, next, i));
 }
 
 /**
  * The route as it would run with structures on `cells`, for the path preview
  * while placing; null when the placement would be refused. Leaves the state untouched.
  */
-export function previewRoute(state: GameState, cells: readonly number[]): number[] | null {
+export function previewRoute(state: GameState, cells: readonly number[], spawn = 0): number[] | null {
+  return previewAllRoutes(state, cells)?.[spawn] ?? null;
+}
+
+/** previewRoute from every spawn, spawn 0 first, building the fields once. */
+export function previewAllRoutes(state: GameState, cells: readonly number[]): number[][] | null {
   if (placementError(state, cells) !== null) return null;
   const md = mapData(state.map);
   const open = openCells(md, state.grid, walkOverIds(state));
   for (const c of cells) open[c] = 0;
-  return trace(md, fields(md, open).next);
+  const next = fields(md, open).next;
+  return md.spawns.map((_, i) => trace(md, next, i));
 }
 
-function trace(md: MapData, next: readonly Int32Array[]): number[] {
+function trace(md: MapData, next: readonly Int32Array[], spawn: number): number[] {
   const last = md.regions.length;
-  let cell = md.spawn;
+  let cell = md.spawns[spawn] ?? md.spawn;
   let seg = 0;
   const route = [cell];
   const limit = md.size * last + 1;
@@ -216,8 +229,15 @@ function trace(md: MapData, next: readonly Int32Array[]): number[] {
   return route;
 }
 
-/** The air route: spawn centre, then each waypoint region's centre. */
-export function airRoute(state: GameState): Point[] {
+/** The air route from spawn `spawn`: its centre, then the nearest place of each waypoint region in turn. */
+export function airRoute(state: GameState, spawn = 0): Point[] {
   const md = mapData(state.map);
-  return [{ x: md.spawnX, y: md.spawnY }, ...md.centres];
+  const start = md.spawnPoints[spawn] ?? md.spawnPoints[0]!;
+  const out: Point[] = [{ x: start.x, y: start.y }];
+  for (let seg = 0; seg < md.regions.length; seg++) {
+    const from = out[out.length - 1]!;
+    const p = nearestPart(md, seg, from.x, from.y);
+    out.push({ x: p.x, y: p.y });
+  }
+  return out;
 }

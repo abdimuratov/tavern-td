@@ -20,15 +20,25 @@ export interface MapData {
   /** Cell centres, indexed by cell. */
   readonly cx: Float64Array;
   readonly cy: Float64Array;
+  /** Spawn 0: `spawn`. */
   readonly spawn: number;
   readonly spawnX: number;
   readonly spawnY: number;
+  /** Every spawn's cell, spawn 0 first; just `spawn` on a Map without a `spawns` list. */
+  readonly spawns: readonly number[];
+  readonly spawnPoints: readonly Point[];
   /** Cells of each waypoint region, in visiting order; the exit is last. */
   readonly regions: readonly Int32Array[];
   /** inRegion[r][cell] is 1 when the cell belongs to region r. */
   readonly inRegion: readonly Uint8Array[];
-  /** Mean of each region's cell centres: where air creeps fly. */
+  /** Mean of each region's cell centres. */
   readonly centres: readonly Point[];
+  /**
+   * Each region's places: the centre of every 4-connected group of its cells,
+   * so a Checkpoint can stand in several places at once (Maul's two corners).
+   * Air creeps fly to the nearest. A region in one piece has its centre as its only place.
+   */
+  readonly parts: readonly (readonly Point[])[];
 }
 
 const mapCache = new WeakMap<MapSpec, MapData>();
@@ -49,6 +59,13 @@ export function validateMap(map: MapSpec): string | null {
       && col >= 0 && row >= 0 && col < cols && row < rows && terrain[row]![col] !== '#';
   };
   if (!walkable(spawn)) return 'spawn must be a walkable cell on the Map';
+  const spawns = map.spawns;
+  if (spawns !== undefined) {
+    if (!Array.isArray(spawns) || spawns.length < 1) return 'spawns needs at least one spawn';
+    if (!spawns.every(walkable)) return 'every spawn must be a walkable cell on the Map';
+    if (spawns[0]![0] !== spawn[0] || spawns[0]![1] !== spawn[1]) return 'spawns must list spawn first';
+    if (map.route !== undefined || map.routes !== undefined) return 'a Map with routes starts its creeps on them, so it has no spawns list';
+  }
   if (waypoints.length < 1) return 'needs at least one waypoint region (the exit)';
   for (let i = 0; i < waypoints.length; i++) {
     const region = waypoints[i]!;
@@ -116,6 +133,7 @@ export function mapData(map: MapSpec): MapData {
   const regions: Int32Array[] = [];
   const inRegion: Uint8Array[] = [];
   const centres: Point[] = [];
+  const parts: Point[][] = [];
   for (const cells of map.waypoints) {
     const list = new Int32Array(cells.length);
     const member = new Uint8Array(size);
@@ -130,16 +148,75 @@ export function mapData(map: MapSpec): MapData {
     });
     regions.push(list);
     inRegion.push(member);
-    centres.push({ x: sx / cells.length, y: sy / cells.length });
+    const centre = { x: sx / cells.length, y: sy / cells.length };
+    centres.push(centre);
+    const groups = pieces(list, member, cols);
+    parts.push(groups.length === 1 ? [centre] : groups.map((g) => {
+      let gx = 0;
+      let gy = 0;
+      for (const i of g) {
+        gx += cx[i]!;
+        gy += cy[i]!;
+      }
+      return { x: gx / g.length, y: gy / g.length };
+    }));
   }
-  const spawn = map.spawn[1] * cols + map.spawn[0];
+  const spawns = (map.spawns ?? [map.spawn]).map(([c, r]) => r * cols + c);
+  const spawn = spawns[0]!;
   const data: MapData = {
     map, cols, rows, size, walkable, buildable, cx, cy,
     spawn, spawnX: cx[spawn]!, spawnY: cy[spawn]!,
-    regions, inRegion, centres,
+    spawns, spawnPoints: spawns.map((i) => ({ x: cx[i]!, y: cy[i]! })),
+    regions, inRegion, centres, parts,
   };
   mapCache.set(map, data);
   return data;
+}
+
+/** A region's cells split into 4-connected groups, each in the region's own order. */
+function pieces(list: Int32Array, member: Uint8Array, cols: number): number[][] {
+  const group = new Map<number, number>();
+  const out: number[][] = [];
+  for (const start of list) {
+    if (group.has(start)) continue;
+    const g = out.length;
+    const stack = [start];
+    group.set(start, g);
+    while (stack.length > 0) {
+      const u = stack.pop()!;
+      const c = u % cols;
+      for (const v of [c > 0 ? u - 1 : -1, c < cols - 1 ? u + 1 : -1, u - cols, u + cols]) {
+        if (v >= 0 && v < member.length && member[v] === 1 && !group.has(v)) {
+          group.set(v, g);
+          stack.push(v);
+        }
+      }
+    }
+    out.push([]);
+  }
+  for (const i of list) out[group.get(i)!]!.push(i);
+  return out;
+}
+
+/** The place of region `seg` nearest (x, y): where a flyer there heads next. */
+export function nearestPart(md: MapData, seg: number, x: number, y: number): Point {
+  const parts = md.parts[seg]!;
+  let best = parts[0]!;
+  if (parts.length === 1) return best;
+  let bestD = Infinity;
+  for (const p of parts) {
+    const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+    if (d < bestD) {
+      best = p;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** How many spawns the Map has: its `spawns` list, or 1. */
+export function spawnCount(map: MapSpec): number {
+  return map.spawns?.length ?? 1;
 }
 
 /** Installs the Run's Map with an empty grid. Throws on a malformed Map: that is a content bug. */

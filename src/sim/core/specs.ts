@@ -12,6 +12,12 @@ export interface MapSpec {
   /** One string per row: `.` buildable, `,` walkable but unbuildable, `#` neither. */
   readonly terrain: readonly string[];
   readonly spawn: Cell;
+  /**
+   * Every spawn of a mazing Map with more than one (Maul), `spawn` first. Each
+   * Wave group names the one its creeps enter at, and all of them visit the
+   * same waypoints. Absent: `spawn` is the only one. Not on Maps with routes.
+   */
+  readonly spawns?: readonly Cell[];
   /** Regions creeps must enter in order: the checkpoints, then the exit last. */
   readonly waypoints: readonly (readonly Cell[])[];
   /**
@@ -196,6 +202,8 @@ export interface WaveGroup {
   readonly bounty?: number;
   /** Index of the Map's route (and air line) its creeps take; 0 by default. */
   readonly route?: number;
+  /** Index of the Map's spawn (`spawns`) its creeps enter at; 0 by default. */
+  readonly spawn?: number;
 }
 
 export interface WaveSpec {

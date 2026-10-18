@@ -87,6 +87,7 @@ export function waveProblems(rules: GameModeRules, wave: WaveSpec, label: string
     if (!finite(g.interval, 0) || (g.delay !== undefined && !finite(g.delay, 0))) out.push(`${label}: interval and delay must be 0 or more`);
     if (g.bounty !== undefined && !finite(g.bounty, 0)) out.push(`${label}: bounty must be 0 or more`);
     if (g.route !== undefined && (!Number.isInteger(g.route) || g.route < 0)) out.push(`${label}: route must be a whole number of 0 or more`);
+    if (g.spawn !== undefined && (!Number.isInteger(g.spawn) || g.spawn < 0)) out.push(`${label}: spawn must be a whole number of 0 or more`);
   }
   return out;
 }

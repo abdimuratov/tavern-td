@@ -1,5 +1,6 @@
 import { difficultyHp, removeGoneCreeps, spawnCreep } from '../combat/creeps';
 import { getMode, waveProblems } from '../modes/registry';
+import { spawnCount } from '../path/grid';
 import { routeCount } from '../path/route';
 import { TICK_RATE } from './constants';
 import type { SimEvent } from './events';
@@ -24,6 +25,7 @@ export function startNextWave(state: GameState, events: SimEvent[]): string | nu
   const routes = routeCount(state.map);
   for (const g of spec.groups) {
     if (g.route !== undefined && g.route >= Math.max(1, routes)) problems.push(`Wave ${index + 1}: Map ${state.map.id} has no route ${g.route}`);
+    if (g.spawn !== undefined && g.spawn >= spawnCount(state.map)) problems.push(`Wave ${index + 1}: Map ${state.map.id} has no spawn ${g.spawn}`);
   }
   if (problems.length > 0) throw new Error(`Game Mode ${rules.id}: ${problems.join('; ')}`);
 
@@ -42,6 +44,7 @@ export function startNextWave(state: GameState, events: SimEvent[]): string | nu
     };
     // Only groups that name a route carry one, so Runs on one-route Maps serialize as before.
     if (g.route !== undefined) group.route = g.route;
+    if (g.spawn !== undefined) group.spawn = g.spawn;
     return group;
   });
   const number = index + 1;
@@ -60,8 +63,11 @@ export function runWaves(sim: Sim): void {
     for (const g of wave.groups) {
       while (g.spawned < g.count && Math.round(g.start + g.spawned * g.interval) <= state.tick) {
         g.spawned++;
-        const opts = { wave: wave.number, hp: g.hp, speed: g.speed, bounty: g.bounty };
-        spawnCreep(state, g.creep, g.route === undefined ? opts : { ...opts, route: g.route }, events);
+        spawnCreep(state, g.creep, {
+          wave: wave.number, hp: g.hp, speed: g.speed, bounty: g.bounty,
+          ...(g.route === undefined ? {} : { route: g.route }),
+          ...(g.spawn === undefined ? {} : { spawn: g.spawn }),
+        }, events);
       }
     }
   }

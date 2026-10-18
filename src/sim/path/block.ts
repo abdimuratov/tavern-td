@@ -19,7 +19,7 @@ export function placementError(state: GameState, cells: readonly number[]): Plac
 }
 
 /**
- * The Block check: true if closing `cells` would cut any route segment, land
+ * The Block check: true if closing `cells` would cut off a spawn or a route segment, land
  * on a ground creep, or strand a live ground creep from its next waypoint.
  */
 export function wouldBlock(state: GameState, cells: readonly number[]): boolean {
@@ -46,7 +46,7 @@ function blockError(state: GameState, md: MapData, cells: readonly number[]): 'c
     return l >= 0 && reach[seg]![l] === 1;
   };
 
-  if (!canReach(md.spawn, 0)) return 'blocks the path';
+  for (const spawn of md.spawns) if (!canReach(spawn, 0)) return 'blocks the path';
   for (let seg = 1; seg < md.regions.length; seg++) {
     for (const c of md.regions[seg - 1]!) if (open[c] === 1 && !canReach(c, seg)) return 'blocks the path';
   }

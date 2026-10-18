@@ -47,6 +47,8 @@ export interface Creep {
   dist?: number;
   /** Index of the route it walks (or whose air line it flies); only on Maps with a `routes` list. */
   route?: number;
+  /** Index of the spawn it entered at; only on Maps with a `spawns` list. */
+  spawn?: number;
 }
 
 export interface Tower {
@@ -102,6 +104,8 @@ export interface SpawnGroup {
   bounty: number;
   /** The route its creeps take; only when the Wave group names one. */
   route?: number;
+  /** The spawn its creeps enter at; only when the Wave group names one. */
+  spawn?: number;
 }
 
 export interface ActiveWave {

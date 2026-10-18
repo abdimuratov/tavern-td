@@ -5,7 +5,7 @@ import type { Creep, Difficulty, GameState } from '../core/state';
 import { loseLives } from '../economy';
 import { getMode } from '../modes/registry';
 import { flow, type Flow } from '../path/flow';
-import { cellAt, mapData, type MapData } from '../path/grid';
+import { cellAt, mapData, nearestPart, type MapData } from '../path/grid';
 import { creepLine, lineOf, mapLines, moveOnRoute, placeOnRoute, routeCount } from '../path/route';
 import { creepMods, speedFactor, tickCreepStatuses } from './mods';
 import { tickDown } from './status';
@@ -20,9 +20,11 @@ export interface SpawnOptions {
   readonly bounty?: number;
   /** Index of the Map's route it takes (and whose air line it flies); 0 by default. */
   readonly route?: number;
+  /** Index of the Map's spawn it enters at, on a Map with a `spawns` list; 0 by default. */
+  readonly spawn?: number;
 }
 
-/** Puts a creep on the spawn cell, or at the start of its route or air line. The Wave runner uses this; Game Modes can too (summons, splits). */
+/** Puts a creep on its spawn cell, or at the start of its route or air line. The Wave runner uses this; Game Modes can too (summons, splits). */
 export function spawnCreep(state: GameState, spec: string, opts: SpawnOptions, events: SimEvent[]): Creep {
   const rules = getMode(state.modeId);
   if (!Object.hasOwn(rules.creeps, spec)) throw new Error(`Game Mode ${rules.id} has no creep ${spec}`);
@@ -35,6 +37,15 @@ export function spawnCreep(state: GameState, spec: string, opts: SpawnOptions, e
     speed: (opts.speed ?? cs.speed) / TICK_RATE, bounty: opts.bounty ?? cs.bounty,
     air: cs.flying, seg: 0, status: [],
   };
+  const spawn = opts.spawn ?? 0;
+  if (state.map.spawns !== undefined) {
+    if (!Number.isInteger(spawn) || spawn < 0 || spawn >= state.map.spawns.length) throw new Error(`Map ${state.map.id} has no spawn ${spawn}`);
+    creep.spawn = spawn;
+    creep.x = md.spawnPoints[spawn]!.x;
+    creep.y = md.spawnPoints[spawn]!.y;
+  } else if (spawn !== 0) {
+    throw new Error(`Map ${state.map.id} has no spawn ${spawn}`);
+  }
   const route = opts.route ?? 0;
   if (state.map.routes !== undefined) {
     if (!Number.isInteger(route) || route < 0 || route >= state.map.routes.length) throw new Error(`Map ${state.map.id} has no route ${route}`);
@@ -119,11 +130,11 @@ function moveGround(c: Creep, dist: number, md: MapData, fl: Flow): boolean {
   return false;
 }
 
-/** Moves an air creep up to `dist` along the waypoint centres; true when it reached the exit's centre. */
+/** Moves an air creep up to `dist` from waypoint to waypoint (the nearest place of each); true when it reached the exit. */
 function moveAir(c: Creep, dist: number, md: MapData): boolean {
   const last = md.regions.length;
   for (let guard = 0; guard < 16 && dist > 0; guard++) {
-    const target = md.centres[c.seg]!;
+    const target = nearestPart(md, c.seg, c.x, c.y);
     const dx = target.x - c.x;
     const dy = target.y - c.y;
     const d = Math.sqrt(dx * dx + dy * dy);
@@ -151,8 +162,9 @@ function leak(sim: Sim, c: Creep, md: MapData, onLine: boolean, leakCost: number
   if (restart && onLine) {
     placeOnRoute(sim.state, c, 0);
   } else if (restart) {
-    c.x = md.spawnX;
-    c.y = md.spawnY;
+    const at = md.spawnPoints[c.spawn ?? 0] ?? md.spawnPoints[0]!;
+    c.x = at.x;
+    c.y = at.y;
     c.seg = 0;
   } else {
     c.hp = 0;

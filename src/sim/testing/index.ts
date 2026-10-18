@@ -9,3 +9,4 @@ export * from './test-mode';
 export { FIXTURE_REPLAY } from './fixture';
 export { ELEMENT_FIXTURE_REPLAY } from './element-fixture';
 export { ORIGINAL_FIXTURE_REPLAY } from './original-fixture';
+export { MAUL_FIXTURE_REPLAY } from './maul-fixture';
