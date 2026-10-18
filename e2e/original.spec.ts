@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { buildOnSpot, newOriginalRun, spotPoint, tapAt, touch, towerSpecs } from './app';
 
 // The Original as a player plays it: menu → Campaign → Stage 1 → Normal, a

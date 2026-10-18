@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { finishWave, newGemRun, OPEN_SPOTS, placeDraft } from './app';
 
 // A Gem Run as a player plays it: menu → New Run → Normal, five Draft gems,

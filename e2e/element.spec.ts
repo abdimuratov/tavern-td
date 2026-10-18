@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { buildTower, finishWave, newElementRun, towerSpecs } from './app';
 
 // An Element Run as a player plays it: menu → Element → New Run (All Pick,

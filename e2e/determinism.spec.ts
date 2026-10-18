@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { replayHash, type Replay } from '../src/sim';
 import { ELEMENT_FIXTURE_REPLAY, FIXTURE_REPLAY, MAUL_FIXTURE_REPLAY, ORIGINAL_FIXTURE_REPLAY } from '../src/sim/testing';
 import { SIM_BUNDLE } from './global-setup';
