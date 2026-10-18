@@ -274,6 +274,10 @@ _Avoid_: enemy, opponent bot, CPU, computer, AI (in player text)
 A Side's own 16 × 28 part of the Line Wars Map, between a spawn strip and an exit strip. Only that Side builds in it, and only the Rival's Sends walk it.
 _Avoid_: lane (Element's Lane), line, board, arena
 
+**Divide**:
+The band of rock between the two Fields of the Line Wars Map, wider than any tower's reach, so no tower touches the other Field and no creep crosses it.
+_Avoid_: wall (Maul's Wall), border, gap, river
+
 **Send**:
 A creep, or a pack of them, bought in Line Wars for the Rival's Field. It enters at once and raises the buyer's Income at once and for good.
 _Avoid_: summon (Line Tower Wars' word), spawn, attack, wave

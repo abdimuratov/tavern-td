@@ -1,12 +1,13 @@
 import { expect, test } from './fixtures';
 import { replayHash, type Replay } from '../src/sim';
-import { ELEMENT_FIXTURE_REPLAY, FIXTURE_REPLAY, MAUL_FIXTURE_REPLAY, ORIGINAL_FIXTURE_REPLAY } from '../src/sim/testing';
+import { ELEMENT_FIXTURE_REPLAY, FIXTURE_REPLAY, LINEWARS_FIXTURE_REPLAY, MAUL_FIXTURE_REPLAY, ORIGINAL_FIXTURE_REPLAY } from '../src/sim/testing';
 import { SIM_BUNDLE } from './global-setup';
 
 declare global {
   interface Window {
     TavernSim?: {
       replayHash(r: Replay): string; FIXTURE_REPLAY: Replay; ELEMENT_FIXTURE_REPLAY: Replay; ORIGINAL_FIXTURE_REPLAY: Replay; MAUL_FIXTURE_REPLAY: Replay;
+      LINEWARS_FIXTURE_REPLAY: Replay;
     };
   }
 }
@@ -56,6 +57,19 @@ test('the Maul replay fixture hashes the same in the browser as in Node', async 
   const browser = await page.evaluate(() => {
     const sim = window.TavernSim!;
     return sim.replayHash(sim.MAUL_FIXTURE_REPLAY);
+  });
+  expect(browser).toBe(node);
+});
+
+// Line Wars runs two Sides and the Rival's AI inside the sim: the AI's commands
+// aren't in the log, so this checks that every engine regenerates them alike.
+test('the Line Wars replay fixture hashes the same in the browser as in Node', async ({ page }) => {
+  const node = replayHash(LINEWARS_FIXTURE_REPLAY);
+  await page.goto('about:blank');
+  await page.addScriptTag({ path: SIM_BUNDLE });
+  const browser = await page.evaluate(() => {
+    const sim = window.TavernSim!;
+    return sim.replayHash(sim.LINEWARS_FIXTURE_REPLAY);
   });
   expect(browser).toBe(node);
 });

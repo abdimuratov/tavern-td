@@ -54,3 +54,4 @@ export * as gem from './modes/gem';
 export * as element from './modes/element';
 export * as original from './modes/original';
 export * as maul from './modes/maul';
+export * as linewars from './modes/linewars';

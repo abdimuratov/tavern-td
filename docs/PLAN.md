@@ -91,12 +91,19 @@ Phase 5 progress (2026-10-18):
   - None of the maps has a licence, so we port rules only. Legion TD is left out, as you asked.
 - Done: the design doc, [line-wars-design.md](line-wars-design.md), and [ADR-0003](adr/0003-two-sides-and-an-ai-in-one-sim.md) on fitting two Sides and an AI into one sim.
   - The Twin Fields: your Field and the Rival's, each 16 × 28 cells, side by side with 12 columns of rock between them. Yours is on the right, beside the HUD. Blocks are refused and Juggling is allowed.
-  - Towers are Maul's four Races and 36 towers, one Race per Side. There are no Waves: 10 Sends made from Maul's creeps cost 12 to 400 gold. They unlock from 0:20 to 10:00, with Stock that refills and at most 40 creeps a Side alive at once.
+  - Towers are Maul's four Races and 36 towers, one Race per Side. There are no Waves: 10 Sends made from Maul's creeps cost 24 to 800 gold after tuning. They unlock from 0:20 to 10:00, with Stock that refills and at most 40 creeps a Side alive at once.
   - Income is 10 plus what your Sends added, paid every 10 s, and the Run starts with 150 gold. Each Side has 30 lives, and a Leak steals lives once. Sudden Death from 15:00 drains a life from both Sides every Income tick, so every Run ends by 19:50.
-  - The Rival's AI runs inside the sim, acts only through the same commands you use and draws only on a seeded RNG stream in the state. A replay of the seed and your commands reproduces it, and versus can later hand its Side to a person. Difficulty sets the Rival's income (×0.85 / 1 / 1.2 / 1.5) and how well it plays.
+  - The Rival's AI runs inside the sim, acts only through the same commands you use and draws only on a seeded RNG stream in the state. A replay of the seed and your commands reproduces it, and versus can later hand its Side to a person. Difficulty sets the Rival's income (×0.85 / 1 / 1.1 / 1.5 after tuning) and how well it plays.
 - My calls, open to change: a Leak steals once rather than looping; no neutral Waves; Difficulty changes the Rival, not the creeps; flyers add half the income ratio; Sends are one tap, with no confirm. The AI's commands are not stored in the log, because the replay regenerates them.
 - Needs your yes: three of Maul's creep names (Raider, Frost Wolf, Wraith) are names the research says to avoid. Line Wars calls them Brawler, Sleet Hound and Hollow, and I recommend Maul does too.
-- Doing: the deterministic rules.
+- Done: Line Wars' deterministic rules ([line-wars-design.md §16](line-wars-design.md#16-assumed-and-tuned) lists what they assume and how they were tuned):
+  - Two Sides in one sim on the Twin Fields: each Side's gold, income, lives and Stock in the mode's state, every `lw.*` command naming its Side through one handler, building in your own Field only with Blocks refused and Juggling counted per Side. Maul's tree queries moved into a helper both modes share, and Maul's replay hashes are unchanged.
+  - The 10 Sends with unlocks, Stock, restock and the cap of 40; the income tick and the Rival's factor; bounty to the defender; Leaks that steal once; Sudden Death's freeze, drain and tougher Sends, ending every Run by 19:50; score and the Record's "best steal".
+  - The Rival's AI inside the sim: its blueprint maze, Danger, the air guard, the defense floor, greed and banked salvos, on five skill profiles. It acts only through the handler, its commands are never logged, and `['human', 'human']` runs none.
+- Tested: 45 Line Wars tests. The replay hash, snapshot-restore (the AI's memory included) and AI-regeneration tests pass, and Chromium matches Node on a fixed Line Wars replay. A tick takes about 7 µs, a think tick about 24 µs.
+- Tuned with `pnpm balance linewars` on 5 seeds a row: the competent bot wins Easy 5/5, Normal 3/5, Hard 1/5 and Insane 0/5, with a median Run of 17:45. Turtle, Rusher and Flyer lose Normal every time, and the seat check is 6/10. Send prices doubled, HP climbs faster than price, Hard's factor fell to ×1.1, and the AI's salvos got a bank of their own.
+- Not met: one Normal Run in five reaches 19:50, and Normal Runs are long (median 19:30). The AI's worst think tick, about 0.6–0.9 ms in Node, may pass 4 ms on a phone.
+- Doing: the UI and the main menu.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

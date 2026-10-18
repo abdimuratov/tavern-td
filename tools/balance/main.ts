@@ -23,6 +23,7 @@ import { drawStage } from './maps';
 //   pnpm balance --stages 7 --scale 0.8:1.4   80% in Wave 1, rising to 140% in the last
 //   pnpm balance --threads 8             more worker threads (4 by default)
 //   pnpm balance maps                    each Stage's Map as text
+//   pnpm balance linewars                Line Wars instead (tools/balance/linewars.ts), in this one process
 
 interface Args {
   readonly stages: readonly number[];
@@ -212,6 +213,11 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv[0] === 'maps') {
     for (const stage of STAGES) console.log(drawStage(stage).join('\n') + '\n');
+    return;
+  }
+  if (argv[0] === 'linewars') {
+    const { lineWars } = await import('./linewars');
+    process.exitCode = lineWars(argv.slice(1)) ? 0 : 1;
     return;
   }
   const args = parseArgs(argv);
