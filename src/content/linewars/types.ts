@@ -13,7 +13,7 @@ export type SendId = (typeof SEND_IDS)[number];
 /** One Send (design §8): what it costs, what it pays back, and the creeps it buys. */
 export interface LwSendSpec {
   readonly id: SendId;
-  /** The Send's name in the send menu. */
+  /** The Send's name in the send menu: its creep's, or a pack's own plural. */
   readonly name: string;
   /** Its Mac hotkey (§15). */
   readonly key: string;
@@ -38,7 +38,7 @@ export interface LwSendSpec {
   readonly restock: number;
 }
 
-/** A Line Wars creep: Maul's creep with the Send's name, HP and steal. */
+/** A Line Wars creep: Maul's creep with the Send's HP and steal. */
 export interface LwCreepSpec extends MaulCreepSpec {
   readonly lw: { readonly send: SendId };
 }

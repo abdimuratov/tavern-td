@@ -110,7 +110,7 @@ Prices follow §9 of the balance notes: Tier 1 at about 0.10 DPS a gold, each Ti
 | Race | Line A | Line B | Weak spot |
 |---|---|---|---|
 | **Ironclad**: physical and siege | Ballista: Pierce bolts at ground and air → Skypiercer (very long range) or Repeater (3 targets) | Mortar: Siege splash, ground only → Thunder Mortar (stuns) or Bombard (huge range, the boss and Golem answer) | Air must fall to line A; Pierce is poor on Golems |
-| **Rimeborn**: frost and slow | Frost Spire: Frost bolts that slow → Glacier Spike (heavy, crits) or Hailcaller (4 targets) | Chill Totem: slows everything near it → Blizzard Totem (deepest chill, splash) or Shatter Totem (−5 armor) | Wraiths ignore slows; low damage early |
+| **Rimeborn**: frost and slow | Frost Spire: Frost bolts that slow → Glacier Spike (heavy, crits) or Hailcaller (4 targets) | Chill Totem: slows everything near it → Blizzard Totem (deepest chill, splash) or Shatter Totem (−5 armor) | Hollows ignore slows; low damage early |
 | **Mirefolk**: poison over time | Dart Tower: Pierce darts with venom → Asp Spire (bosses) or Spitter (4 targets) | Spore Pod: spores poison every ground creep where they burst → Blight Pod (−4 armor) or Rot Bloom (a rotting aura) | One tower's venom sits on one creep at a time, so swarms need spores or a Spitter; spores can't hit air |
 | **Runecasters**: arcane and splash | Spark Rune: Magic bolts → Chain Rune (jumps 4 times) or Void Rune (Chaos) | Glyph: Magic splash at ground and air → Nova Circle (widest) or Ley Shrine (+25% damage, +15% attack speed to towers near it) | Magic is poor on Golems until Void Rune |
 
@@ -189,19 +189,19 @@ Each attack type has one armor it hits hardest, as WC3's table does, but the swi
 
 ## 7. Creeps and Waves
 
-A creep's HP is a multiple of a Raider's on that Wave, 8 × 1.12^(w−1), before Difficulty. Twenty Raiders, ten from each gate, are about §9's normal Wave early on. The curve climbs faster than §9's 1.10 because a growing maze multiplies every tower's time on target (§12). Creeps leave their gate a fraction of a second apart, because Wintermaul spawned a whole Wave at once.
+A creep's HP is a multiple of a Brawler's on that Wave, 8 × 1.12^(w−1), before Difficulty. Twenty Brawlers, ten from each gate, are about §9's normal Wave early on. The curve climbs faster than §9's 1.10 because a growing maze multiplies every tower's time on target (§12). Creeps leave their gate a fraction of a second apart, because Wintermaul spawned a whole Wave at once.
 
-| Creep | Kind | Armor | Speed | HP (Raiders) | Per gate | Lives | Notes |
+| Creep | Kind | Armor | Speed | HP (Brawlers) | Per gate | Lives | Notes |
 |---|---|---|---|---|---|---|---|
-| Raider | normal | Medium 0 | 230 | 1 | 10 | 1 | |
+| Brawler | normal | Medium 0 | 230 | 1 | 10 | 1 | |
 | Snowling | swarm | Light 0 | 250 | 0.4 | 20 | 1 | |
-| Frost Wolf | fast | Light 0 | 360 | 0.7 | 10 | 1 | |
+| Sleet Hound | fast | Light 0 | 360 | 0.7 | 10 | 1 | |
 | Brute | tank | Heavy 2 | 200 | 2.5 | 5 | 2 | |
 | Ice Golem | tank | Fortified 4 | 170 | 3 | 4 | 2 | |
 | Troll | regen | Medium 1 | 220 | 1.4 | 8 | 1 | heals 2% of max HP a second |
-| Wraith | unslowable | Medium 0 | 240 | 1.1 | 9 | 1 | slows don't touch it |
+| Hollow | unslowable | Medium 0 | 240 | 1.1 | 9 | 1 | slows don't touch it |
 | Harpy | air | Light 0 | 260 | 0.6 | 8 | 1 | flies; 8 a gate is Wintermaul's 75% of a Wave |
-| Tusked Warlord | boss (10) | Hero 3 | 170 | 10 | 1 | 5 | + 5 Raiders a gate behind it |
+| Tusked Warlord | boss (10) | Hero 3 | 170 | 10 | 1 | 5 | + 5 Brawlers a gate behind it |
 | War Mammoth | boss (20) | Hero 5 | 150 | 11 | 1 | 5 | + 3 Brutes a gate |
 | Glacier Colossus | boss (30) | Hero 7 | 140 | 12 | 1 | 5 | + 2 Golems a gate |
 | The Winter King | boss (40) | Hero 8 | 140 | 14 | 1 | the Run | + 4 Trolls a gate |
@@ -212,10 +212,10 @@ Bosses can't be slowed below half speed. A stun still holds them.
 
 | Waves | |
 |---|---|
-| 1–10 | Raider, Raider, Snowling, Frost Wolf, **Harpy**, Raider, Brute, Snowling, Ice Golem, **Warlord** |
-| 11–20 | Frost Wolf, Troll, Raider, **Harpy**, Brute, Wraith, Ice Golem, Snowling, Troll, **Mammoth** |
-| 21–30 | Frost Wolf, Wraith, **Harpy**, Ice Golem, Raider, Brute, **Harpy**, Troll, Snowling, **Colossus** |
-| 31–40 | Wraith, Frost Wolf, Brute, **Harpy**, Ice Golem, Troll, Snowling, **Harpy**, Wraith, **Winter King** |
+| 1–10 | Brawler, Brawler, Snowling, Sleet Hound, **Harpy**, Brawler, Brute, Snowling, Ice Golem, **Warlord** |
+| 11–20 | Sleet Hound, Troll, Brawler, **Harpy**, Brute, Hollow, Ice Golem, Snowling, Troll, **Mammoth** |
+| 21–30 | Sleet Hound, Hollow, **Harpy**, Ice Golem, Brawler, Brute, **Harpy**, Troll, Snowling, **Colossus** |
+| 31–40 | Hollow, Sleet Hound, Brute, **Harpy**, Ice Golem, Troll, Snowling, **Harpy**, Hollow, **Winter King** |
 
 **Telegraphing.** The wave preview shows the next three Waves with armor, HP and a one-line hint. An air Wave is tagged *Air*, the HUD warns during the Break before one, and the board brightens the air lines. Bosses are tagged *Boss*, and the last *Last boss*.
 
@@ -255,10 +255,11 @@ Creep HP × 0.75 (Easy), 1 (Normal), 1.3 (Hard) or 1.6 (Insane), the core's defa
 - *Assumed:* the east gate's creeps trail the west's by 0.5 s. A boss's escort starts 2 s behind it. A tower snaps to the 64-unit grid. The juggle test counts a creep as turned when its next step points away from its last one.
 - *Assumed:* the second Race comes free once Wave 15 is cleared, not at its start.
 - *Assumed:* a Wall's weak attack is 1–2 every 2 s at 320 range, about 0.075 DPS a gold, hitting ground and air.
+- *Renamed (2026-10-18):* the Raider, Frost Wolf and Wraith are now the Brawler, Sleet Hound and Hollow, because Line Tower Wars and Wintermaul Wars use the old names ([line-wars-rules.md §7](research/line-wars-rules.md#7-licence-and-names-we-must-not-use)). Line Wars' Sends take the same names. Their ids stay `raider`, `frost_wolf` and `wraith`: ids are in every save and replay hash, so old saves load and the hashes are unchanged.
 - *Tuned (2026-10-18), from §9, with the headless bot* (`tests/sim/maul/bot.ts`). It builds a three-Wall serpentine in the lower field, opens with four Tier 1 towers where the routes pass most, gives 35% of its gold to Walls and the rest to the upgrade with the most damage per gold where the creeps pass, alternates lines A and B, and sends each Wave once it has nothing to buy. It never juggles.
   - The bounty pool doubled to 20 × (1 + ⌊w/4⌋). With §9's pool the bot lost every Run by Wave 10, because a maze costs gold that adds no damage.
-  - Start gold 200 → 300, and the Raider curve 12 × 1.10^(w−1) → 8 × 1.12^(w−1). A gentler start with a steeper climb was the one change that moved Insane and Normal toward PLAN §4's targets together.
-  - Boss HP 16–24 → 10, 11, 12 and 14 Raiders.
+  - Start gold 200 → 300, and the Brawler curve 12 × 1.10^(w−1) → 8 × 1.12^(w−1). A gentler start with a steeper climb was the one change that moved Insane and Normal toward PLAN §4's targets together.
+  - Boss HP 16–24 → 10, 11, 12 and 14 Brawlers.
   - Venom ticks per tower (it shared one key and couldn't stack, so Mirefolk lost every last boss), and Frost Spire and Chill Totem hit about 20% harder (Rimeborn died on Wave 4 on Hard).
   - Result on seed 1, which hardly varies by seed: Easy 4/4 won with all 20 lives; Normal 2/4 won (Rimeborn and Runecasters), the other two reach Wave 40 and lose to the Winter King; Hard 1/4; Insane 0/4, dying on Waves 7–12. PLAN §4 asks for ~95%, ~60% and under 10%.
   - Watch in play-testing: Runecasters is the strongest Race and Ironclad the weakest; the last boss decides most Normal Runs; a juggling player should find Normal easy.

@@ -45,7 +45,7 @@ There are no Waves, so PLAN §4's Wave baseline doesn't apply. The Send table (�
 - Juggling is allowed, as in Maul.
 - Difficulty is the Rival's income bonus plus its skill.
 - 30 lives, and Sudden Death from 15:00, so every Run ends by 19:50.
-- Our numbers, names, text and shapes. No name from research §7 is used. Three of Maul's creeps get new names here for that reason (§8).
+- Our numbers, names, text and shapes. No name from research §7 is used. Three of Maul's creeps were renamed for that reason, in Maul too (§8).
 
 ## 3. The Map: the Twin Fields
 
@@ -190,15 +190,15 @@ Maul's attack-type table ([maul-design.md §6](maul-design.md#6-damage-and-armor
 
 ## 8. Sends
 
-A Send is one creep, or a pack of them, made from Maul's creeps. Its HP is set here rather than by a Wave curve. Three of Maul's names are on research §7's lists, so the Sends made from those creeps are renamed: the Raider becomes the **Brawler**, the Frost Wolf the **Sleet Hound**, and the Wraith the **Hollow** (§18). The shapes are Maul's.
+A Send is one creep, or a pack of them, made from Maul's creeps. Its HP is set here rather than by a Wave curve. Three of Maul's names were on research §7's lists, so Maul renamed those creeps: the Raider became the **Brawler**, the Frost Wolf the **Sleet Hound**, and the Wraith the **Hollow** (§18). A Send and its creeps take their names from Maul's creep table, and only a pack (Snowlings, Harpies) names its Send itself. The shapes are Maul's.
 
 | Key | Send | Creep (Maul) | Creeps | Price | Income | Ratio | HP each | Armor | Speed | Bounty each | Steals each | Unlock | Stock cap | Restock |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Z | Snowlings | Snowling | 3 | 24 | +2 | 8.3% | 16 | Light 0 | 250 | 2 | 1 | 0:20 | 6 | 5 s |
-| X | Brawler | Raider | 1 | 40 | +3 | 7.5% | 100 | Medium 0 | 230 | 6 | 1 | 0:40 | 6 | 6 s |
-| C | Sleet Hound | Frost Wolf | 1 | 60 | +4 | 6.7% | 140 | Light 0 | 360 | 8 | 1 | 1:20 | 5 | 8 s |
+| X | Brawler | Brawler | 1 | 40 | +3 | 7.5% | 100 | Medium 0 | 230 | 6 | 1 | 0:40 | 6 | 6 s |
+| C | Sleet Hound | Sleet Hound | 1 | 60 | +4 | 6.7% | 140 | Light 0 | 360 | 8 | 1 | 1:20 | 5 | 8 s |
 | V | Troll | Troll | 1 | 90 | +6 | 6.7% | 290 | Medium 1 | 220 | 10 | 1 | 2:00 | 5 | 10 s |
-| B | Hollow | Wraith | 1 | 120 | +7 | 5.8% | 460 | Medium 0 | 240 | 12 | 1 | 3:00 | 4 | 12 s |
+| B | Hollow | Hollow | 1 | 120 | +7 | 5.8% | 460 | Medium 0 | 240 | 12 | 1 | 3:00 | 4 | 12 s |
 | A | Brute | Brute | 1 | 160 | +9 | 5.6% | 780 | Heavy 2 | 200 | 16 | 1 | 4:00 | 4 | 15 s |
 | D | Harpies | Harpy | 2 | 200 | +5 | 2.5% | 220 | Light 0 | 260 | 8 | 1 | 5:00 | 3 | 20 s |
 | F | Ice Golem | Ice Golem | 1 | 260 | +13 | 5% | 1,540 | Fortified 4 | 170 | 20 | 1 | 6:00 | 3 | 20 s |
@@ -424,7 +424,7 @@ The rules are in `src/sim/modes/linewars/` (mode id `linewars`) with the AI in i
 - *Assumed:* a steal never takes more lives than the defender has, which keeps the 60 conserved.
 - *Assumed:* a draw is phase `lost` with `result: 'draw'`. The end card says "Draw". The income tie-break compares the frozen incomes before the Difficulty factor.
 - *Assumed:* on the same tick, Side 0's commands apply before Side 1's, both in versus and against the AI. The core applies the log in its order, so versus's lockstep layer must order it; an AI Side 0 (tools) thinks before Side 1.
-- *Assumed:* a tower's Side is its anchor's column's Field; a creep's Field is its spawn index (0–15 Side 0). Line Wars' creep specs keep Maul's creep ids (`raider`, `frost_wolf`, `wraith`…) so the board can draw Maul's shapes, with the Send's name, HP and steal, and an `lw.send` back-link.
+- *Assumed:* a tower's Side is its anchor's column's Field; a creep's Field is its spawn index (0–15 Side 0). Line Wars' creep specs keep Maul's creep ids (`raider`, `frost_wolf`, `wraith`…) so the board can draw Maul's shapes, with Maul's name, the Send's HP and steal, and an `lw.send` back-link.
 - *Assumed:* the juggle test is Maul's (a live ground creep whose next step now points away from its last), counted for the Side that built or sold. Maul's chain lightning keeps its `maul.chain` event in Line Wars.
 - *Assumed:* the score is Side 0's. A win's seconds left run from the end tick to 20:00, rounded down. `lwRecord(state).wave` is the lives your Leaks stole, the Records hook for "Best steal".
 - *Assumed:* tests and tools may start both Sides with other gold or lives (`options.gold`, `options.lives`); New Run never does. A Line Wars Run refuses any Map but the Twin Fields.
@@ -517,7 +517,7 @@ _Avoid_: overtime, endgame, drain mode
 - **A Leak steals once and the creep is removed:** under 2.7c's 1v1 loop, one gap in your maze would lose you the Run.
 - **No neutral Waves:** the Rival is the pressure, and Waves hitting both Sides alike would only dilute the Sends.
 - **Difficulty is the Rival's income and skill, with the same creeps:** that is Reforged's lever, it is open, and versus needs identical creeps. It changes CONTEXT's Difficulty entry.
-- **Brawler, Sleet Hound and Hollow replace Maul's Raider, Frost Wolf and Wraith:** all three are on research §7's lists. Maul should adopt the new names too, which touches a finished mode and **needs your yes**.
+- **Brawler, Sleet Hound and Hollow replace Maul's Raider, Frost Wolf and Wraith:** all three are on research §7's lists. You agreed, and Maul uses the new names too. The ids stay `raider`, `frost_wolf` and `wraith`, because ids are in every save and replay hash.
 - **Juggling allowed, and the AI never juggles:** this matches Maul, costs gold, and can't stall a Run past 19:50.
 - **One Race per Side, the Rival's random by default:** a second Race would arrive after the Run is decided.
 - **No tower-attacking Sends:** they need new engine work, and flyers already punish long cheap mazes.

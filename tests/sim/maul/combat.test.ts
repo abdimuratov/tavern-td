@@ -75,7 +75,7 @@ describe('slows', () => {
     expect(creepMods(c).slow).toBeCloseTo(0.35, 9);
   });
 
-  it('can\'t touch a Wraith, and slow a boss to half its speed at most', () => {
+  it('can\'t touch a Hollow, and slow a boss to half its speed at most', () => {
     const s = newRun({ map: field() });
     // Both stand on the exit's rows, so they walk straight east.
     const w = creepAt(s, 'wraith', 5.5 * 64, 5.5 * 64, 1e6);

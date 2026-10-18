@@ -79,6 +79,10 @@ describe('the Waves', () => {
     for (const id of Object.keys(MAUL_CREEPS)) expect(MAUL_WAVES.some((w) => w.creep === id || w.escort?.creep === id), id).toBe(true);
   });
 
+  it('call three creeps the Brawler, Sleet Hound and Hollow, under the ids saves and replays already hold', () => {
+    expect(['raider', 'frost_wolf', 'wraith'].map((id) => MAUL_CREEPS[id]!.name)).toEqual(['Brawler', 'Sleet Hound', 'Hollow']);
+  });
+
   it('are previewed with air and boss tags, both gates, HP with Difficulty, bounty and bonus', () => {
     const s = newRun({ difficulty: 'hard' });
     const air = maul.wavePreview(s, 5)!;

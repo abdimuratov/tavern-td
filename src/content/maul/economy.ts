@@ -9,7 +9,7 @@ export const START_GOLD = 300;
 export const START_LIVES = 20;
 
 /**
- * A Raider's HP on Wave w: 8 × 1.12^(w−1), before Difficulty. Twenty of them
+ * A Brawler's HP on Wave w: 8 × 1.12^(w−1), before Difficulty. Twenty of them
  * (ten a gate) are about §9's normal Wave early. The curve climbs faster than
  * §9's 1.10 because a maze multiplies every tower's time on target as it grows.
  */

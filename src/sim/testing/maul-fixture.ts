@@ -1,8 +1,8 @@
 import type { Replay } from '../core/replay';
 
 /**
- * A fixed Maul Run (Mirefolk, Hard) with Waves of its own: Raiders, Harpies, a
- * Warlord with Trolls, Golems and Wraiths from both gates. It touches Walls and
+ * A fixed Maul Run (Mirefolk, Hard) with Waves of its own: Brawlers, Harpies, a
+ * Warlord with Trolls, Golems and Hollows from both gates. It touches Walls and
  * a Wall line that closes and opens mid-Wave (a juggle), every fork of both
  * lines, venom that stacks across towers, spores that eat armor, the Rot
  * Bloom's aura, refused builds (a Block, a creep in the way, gold), full and
@@ -60,7 +60,7 @@ export const MAUL_FIXTURE_REPLAY: Replay = {
     { tick: 3600, command: { type: 'maul.sell', tower: 25 } },
     { tick: 3600, command: { type: 'maul.sell', tower: 26 } },
     { tick: 3601, command: { type: 'maul.build', spec: 'dart_tower', col: 34, row: 14 } },
-    // Mid-Wave: open the line's west end, turning back the Wraiths heading east, then close it again.
+    // Mid-Wave: open the line's west end, turning back the Hollows heading east, then close it again.
     { tick: 4500, command: { type: 'maul.sell', tower: 1 } },
     { tick: 4560, command: { type: 'maul.build', spec: 'bramble', col: 1, row: 16 } },
     { tick: 6000, command: { type: 'maul.sendNow' } },

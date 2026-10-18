@@ -17,7 +17,7 @@ test('a Maul Run builds and upgrades on open ground, sends a Wave, autosaves and
   await expect(page.getByTestId('lives')).toHaveText('20');
   await expect(page.getByTestId('gold')).toHaveText('300');
   await expect(page.getByTestId('races')).toHaveText('Mirefolk');
-  await expect(page.getByTestId('wave-preview')).toContainText('Raider');
+  await expect(page.getByTestId('wave-preview')).toContainText('Brawler');
 
   await buildTower(page, 'wall', 20, 16);
   await buildTower(page, 'dart-tower', 24, 16);

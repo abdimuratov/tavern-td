@@ -1,10 +1,13 @@
 import type { ArmorType, MaulCreepInfo, MaulCreepSpec } from './types';
 
-// Maul's creeps (docs/maul-design.md §6). HP is a multiple of a Raider's HP on
+// Maul's creeps (docs/maul-design.md §7). HP is a multiple of a Brawler's HP on
 // the Wave (src/sim/modes/maul/waves.ts), so a spec's `hp` is only its HP on
 // Wave 1. Bounty is 0 on every spec: the Wave's bounty pool pays kills instead.
+// The Brawler, Sleet Hound and Hollow keep their old ids (`raider`,
+// `frost_wolf`, `wraith`), and so do the names in code that follow those ids:
+// ids are in every save and every replay hash.
 
-/** A Raider's HP on Wave 1, the unit every creep's HP is a multiple of. */
+/** A Brawler's HP on Wave 1, the unit every creep's HP is a multiple of. */
 export const RAIDER_BASE_HP = 8;
 
 /** Bosses can't be slowed below this share of their speed. */
@@ -22,13 +25,13 @@ function creep(id: string, name: string, armorType: ArmorType, speed: number, in
 }
 
 const ROWS: readonly [string, MaulCreepSpec][] = [
-  creep('raider', 'Raider', 'medium', 230, {
+  creep('raider', 'Brawler', 'medium', 230, {
     kind: 'normal', hpMult: 1, perSpawn: 10, gap: 0.5, lives: 1, armor: 0, hint: 'Frost hits Medium armor hardest',
   }),
   creep('snowling', 'Snowling', 'light', 250, {
     kind: 'swarm', hpMult: 0.4, perSpawn: 20, gap: 0.3, lives: 1, armor: 0, hint: 'A swarm: splash and multishot',
   }),
-  creep('frost_wolf', 'Frost Wolf', 'light', 360, {
+  creep('frost_wolf', 'Sleet Hound', 'light', 360, {
     kind: 'fast', hpMult: 0.7, perSpawn: 10, gap: 0.4, lives: 1, armor: 0, hint: 'Fast: slow them, or make the maze longer',
   }),
   creep('brute', 'Brute', 'heavy', 200, {
@@ -40,7 +43,7 @@ const ROWS: readonly [string, MaulCreepSpec][] = [
   creep('troll', 'Troll', 'medium', 220, {
     kind: 'regen', hpMult: 1.4, perSpawn: 8, gap: 0.6, lives: 1, armor: 1, hint: 'Heals 2% a second: burst it down',
   }),
-  creep('wraith', 'Wraith', 'medium', 240, {
+  creep('wraith', 'Hollow', 'medium', 240, {
     kind: 'unslowable', hpMult: 1.1, perSpawn: 9, gap: 0.5, lives: 1, armor: 0, unslowable: true, hint: 'Slows can\'t touch it',
   }),
   creep('harpy', 'Harpy', 'light', 260, {

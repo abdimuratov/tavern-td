@@ -64,9 +64,10 @@ describe('the Sends', () => {
     expect([LW_SENDS.warlord.steals, LW_SENDS.mammoth.steals]).toEqual([2, 3]);
   });
 
-  it('rename three of Maul\'s creeps for Line Wars only: Brawler, Sleet Hound and Hollow', () => {
-    expect([LW_CREEPS['raider']!.name, LW_CREEPS['frost_wolf']!.name, LW_CREEPS['wraith']!.name]).toEqual(['Brawler', 'Sleet Hound', 'Hollow']);
-    expect([MAUL_CREEPS['raider']!.name, MAUL_CREEPS['frost_wolf']!.name, MAUL_CREEPS['wraith']!.name]).toEqual(['Raider', 'Frost Wolf', 'Wraith']);
+  it('take their names from Maul\'s creep table, and only a pack names its Send itself', () => {
+    for (const s of SEND_LIST) expect(LW_CREEPS[s.creep]!.name, s.id).toBe(MAUL_CREEPS[s.creep]!.name);
+    expect(SEND_LIST.filter((s) => s.name !== MAUL_CREEPS[s.creep]!.name).map((s) => s.id)).toEqual(['snowlings', 'harpies']);
+    expect([LW_SENDS.brawler.creep, LW_SENDS.sleet_hound.creep, LW_SENDS.hollow.creep]).toEqual(['raider', 'frost_wolf', 'wraith']);
   });
 
   it('trade income for pressure: the income ratio falls and HP per gold rises with price, and flyers return half', () => {

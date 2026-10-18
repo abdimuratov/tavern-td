@@ -12,7 +12,7 @@ import { mlState } from './state';
 // core's groups. Each Wave sends its creep from both spawns at once; a boss
 // Wave sends a boss from each, with its escort close behind.
 
-/** A Raider's HP on Wave w before Difficulty: 8 × 1.12^(w−1). */
+/** A Brawler's HP on Wave w before Difficulty: 8 × 1.12^(w−1). */
 export function raiderHp(wave: number): number {
   return RAIDER_HP.base * powDet(RAIDER_HP.growth, Math.max(0, wave - 1));
 }
