@@ -27,15 +27,15 @@ One playthrough of a Game Mode on a Map, from its start to victory or defeat.
 _Avoid_: match, game, session
 
 **Difficulty**:
-The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty.
+The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty. Versus has none: it always plays Normal, so neither Side's income is scaled.
 _Avoid_: level, challenge
 
 **Record**:
-The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win. Line Wars keeps Runs, wins, fastest win, best score and best steal: the most lives taken in a Run.
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win. Line Wars keeps Runs, wins, fastest win, best score and best steal: the most lives taken in a Run. Versus keeps its own Line Wars board, which each device fills from its own Side.
 _Avoid_: high score, achievement, stats
 
 **Save code**:
-A Run in progress as copyable text, made by Export save code in the in-Run menu and loaded by Import save code in the main menu.
+A Run in progress as copyable text, made by Export save code in the in-Run menu and loaded by Import save code in the main menu. A Versus Run has none, and no autosave.
 _Avoid_: save string, password, export
 
 ### Play
@@ -263,11 +263,11 @@ _Avoid_: block, barrier, absorb
 ### Line Wars (Line Tower Wars rules)
 
 **Side**:
-One of the two players in Line Wars, with its own Field, Race, gold, income, lives and Stock. Side 0 is you; Side 1 is the Rival.
+One of the two players in Line Wars, with its own Field, Race, gold, income, lives and Stock. Against the AI, Side 0 is you and Side 1 the Rival; in Versus, Side 0 is the Host and Side 1 the Guest. Each device shows its Viewer Side as you.
 _Avoid_: player (in code), team, slot, seat
 
 **Rival**:
-The other Side in Line Wars: played by the sim's AI now, by a remote player in versus later.
+The other Side in Line Wars, as each player sees it: the sim's AI, or in Versus the other person.
 _Avoid_: enemy, opponent bot, CPU, computer, AI (in player text)
 
 **Field**:
@@ -297,3 +297,49 @@ _Avoid_: charges, supply, food
 **Sudden Death**:
 Line Wars from 15:00: Income stops growing, every Income tick takes a life from each Side, and new Sends get tougher. It ends every Run by 19:50.
 _Avoid_: overtime, endgame, drain mode
+
+### Versus (Line Wars on two devices)
+
+**Versus**:
+Line Wars between two people on two devices, connected directly over WebRTC with no server. Each device runs the whole sim in lockstep, and they send each other only commands.
+_Avoid_: multiplayer, online, PvP, match, netplay
+
+**Host**:
+In Versus, the player who makes the Join code. The Host plays Side 0 and starts the Run, and its state is the one a resync copies.
+_Avoid_: server, owner, player 1
+
+**Guest**:
+In Versus, the player who joins with the Host's Join code and plays Side 1.
+_Avoid_: client, joiner, player 2
+
+**Join code**:
+The Host's text that lets a Guest connect, passed on as a link, a QR or a copy. It holds only what can't be rebuilt of WebRTC's offer.
+_Avoid_: invite, room code, password, offer (fine in code)
+
+**Answer code**:
+The Guest's text that the Host pastes back to finish connecting.
+_Avoid_: reply, response, answer on its own (fine in code)
+
+**Turn**:
+In Versus, three ticks (100 ms) that step together. No tick of a Turn steps until both players' Batches for it are in.
+_Avoid_: frame, round, step, tick (a Turn is three)
+
+**Batch**:
+One player's commands for one Turn, sent every Turn even when empty. Each device applies Side 0's Batch before Side 1's, and drops any command in it for the other Side.
+_Avoid_: packet, message, input
+
+**Input Delay**:
+How many Turns after a tap its command applies: the same for both players, 2 to 5 Turns (200–500 ms), set by the Host from the lobby's ping and fixed for the Run.
+_Avoid_: lag, latency (the network's), ping
+
+**Desync**:
+The two devices' states disagreeing at a hash check, made once a second. The first is repaired from the Host's state; a second ends the Run with no result.
+_Avoid_: divergence, mismatch, out of sync (fine in player text)
+
+**Viewer Side**:
+The Side a device shows as you: Side 0, except on a Versus Guest's device, where it is Side 1 and the board is mirrored so its Field is on the right. The sim never knows it.
+_Avoid_: local player, perspective, me
+
+**Concede**:
+Leaving a Versus Run before it ends, a loss for you and a win for the Rival. After the Rival's app has been gone 2 minutes, the player who stayed may claim the win, which counts as the Rival conceding.
+_Avoid_: forfeit, surrender, quit

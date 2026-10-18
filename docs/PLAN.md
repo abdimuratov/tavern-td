@@ -115,6 +115,14 @@ Phase 5 progress (2026-10-18):
   - e2e in all four browsers: a Run built, upgraded and sent through the HUD that meets the Rival's Sends, autosaves at a checkpoint and continues; Mac hotkeys; a refused Block and a refused build in the Rival's Field; a save code that imports back; a won Run's end card and its Record.
 - Assumed for the UI: the send menu sits at the bottom of the HUD, under the build menu and "In your Field", so it stays when a tower's panel takes their place on a phone; Continue leads with the Run's time ("4:10 in · Rimeborn vs Ironclad · Normal"), since the card already names the mode; a Leak toast sums one tick's Leaks.
 - Left: a play-test on the Mac, the iPhone and the S24. Watch the send menu's tap targets (about 52 × 46 pt on a phone), whether the Rival's Field reads at fit zoom (a Snowling is about 3 pt), and the HUD's status block hiding while a tower is selected on a phone.
+- Done: the design doc for versus, [versus-design.md](versus-design.md), and [ADR-0004](adr/0004-lockstep-versus-over-webrtc.md) on lockstep over WebRTC with codes passed by hand.
+  - Connecting with no server: the Host's Join code goes out as a link with the code after `#`, a QR, the share sheet or a copy, and the Guest's Answer code comes back by share sheet or copy. A code is about 140–220 characters: only the ICE credentials, the DTLS fingerprint and up to 4 candidates, from which the other end rebuilds the SDP. Public STUN, no TURN. Without TURN some pairs of networks won't connect, most often two phones on mobile data; after 20 s the app says so and suggests one Wi-Fi.
+  - Lockstep: the Host is Side 0 and the Guest Side 1. A Turn is 3 ticks; each device sends a Batch of its own Side's commands every Turn, 2–5 Turns ahead from the lobby's ping, and a Turn steps once both are in, Side 0's first. Both devices drop a Batch's commands for the other Side. The protocol version, `SNAPSHOT_VERSION`, a hash of `src/sim` and `src/content`, and the initial state's hash must match. A state hash every second costs 0.05–0.15 ms in Node mid-Run; the first Desync is repaired from the Host's state, and a second ends the Run with a report to copy.
+  - Phones: 1× only. Either player pauses on the same tick, and both press Ready to resume. Going to the background pauses both. A lost connection is rejoined with a fresh pair of codes, and after 2 min the player who stayed may claim the win.
+  - No autosave, Continue or save codes in Versus; a Versus Records board on each device; always Normal. The Guest sees its own Field on the right through a Viewer Side in the UI and a mirrored board. `src/sim` keeps its rules, state and hashes, and only `lwRecord` gains a Side.
+  - The plug: a tick source in `RunController` that says which commands a tick applies, or that it can't step yet. The transport, codes, lockstep and session live in `src/net`, the screens in `src/ui/versus/`.
+- My calls, open to change: a QR for the Join code only, with no scanning in the app; no custom TURN field yet; compatibility by the sim hash rather than the build, so an older APK still plays Pages; a first desync repaired once, a second ending the Run; no pause limit; claiming the win only for a player who stayed; nothing kept on disk, so a restarted Host app ends the Run; no handicap; the Guest's board mirrored.
+- Next: the net layer and its tests over a fake transport, then the screens and an e2e test with two pages over loopback WebRTC.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
@@ -291,6 +299,6 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 
 ## 7. Parked for later
 
-- Line Wars details and versus networking.
+- Versus: a TURN relay, a handicap, and keeping a Versus Run on disk.
 - Challenge Stages, music and more Races.
 - A Remix mode (Gem's Draft plus Element's picks).
