@@ -4,7 +4,7 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 
 ## 0. Status
 
-Planning finished on 2026-10-15. **Now: Phase 4.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
+Planning finished on 2026-10-15. **Now: Phase 5.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
 Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
@@ -81,6 +81,16 @@ Phase 4 progress (2026-10-18):
 - Watch in play-testing: at fit zoom a tower is about 12 pt on a phone, so placing wants a pinch first. Maul's Runs are long, 35–45 min at 1×. Runecasters may be the strongest Race and Ironclad the weakest.
 - Left: a play-test on the Mac, the iPhone and the S24.
 
+Phase 5 started on 2026-10-18 without waiting for any play-test. Its first step is Line Wars against an AI; versus over WebRTC comes after.
+
+Phase 5 progress (2026-10-18):
+- Done: the research, [line-wars-rules.md](research/line-wars-rules.md). It reads Line Tower Wars: Reforged 2.7c's own script, a Dota 2 port with the same 36 Sends and their prices, and Castle Fight X's source. Changelogs and listings cover later Reforged versions and Wintermaul Wars.
+  - Line Tower Wars has no Waves. Every creep is a Send someone bought, and it raises the sender's income at once, at a ratio that falls from 20% to 5% as Sends get dearer. Income is paid every 10 s.
+  - A Leak moves a life from the defender to the sender. Sudden Death from about 25 min drains lives every tick.
+  - Reforged's computer players differ by Difficulty only in an income bonus: +0%, +20% or +50%.
+  - None of the maps has a licence, so we port rules only. Legion TD is left out, as you asked.
+- Doing: the design.
+
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element
@@ -98,7 +108,7 @@ Phase 4 progress (2026-10-18):
 | Game logic | Deterministic, with no drawing code, ready for versus play later ([ADR-0002](adr/0002-deterministic-simulation-core.md)) |
 | Players | Single-player now; versus is a stretch goal |
 | Look | 2D top-down, clean geometric shapes drawn in code, **landscape only**. The UI is designed fresh and doesn't copy WC3. |
-| Game Modes | **Gem** (Gem TD), **Element** (Element TD), **Original** (our Campaign), **Maul** (Wintermaul), in that build order. Line Wars against an AI is the stretch goal; Legion is parked. |
+| Game Modes | **Gem** (Gem TD), **Element** (Element TD), **Original** (our Campaign), **Maul** (Wintermaul), in that build order. Line Wars against an AI is the stretch goal. Legion TD is out (2026-10-18). |
 | Faithfulness | Gem and Element copy the Classic 1:1 from public source code. Maul keeps faithful rules with our own numbers. Classics keep their randomness and have no progression. |
 | Progression | Classics keep Records only. The Original has a Campaign, Stars, Talents and Tower Levels. |
 | Difficulty | Easy, Normal, Hard and Insane in every mode. Normal uses the Classic's own numbers. |
@@ -258,4 +268,4 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 
 - Line Wars details and versus networking.
 - Challenge Stages, music and more Races.
-- A Remix mode (Gem's Draft plus Element's picks) and Legion-style auto-battling.
+- A Remix mode (Gem's Draft plus Element's picks).
