@@ -69,32 +69,42 @@ export class Overlay {
   }
 
   setRoute(map: MapSpec, cells: readonly number[] | null, style: RouteStyle): void {
+    this.setRoutes(map, cells ? [cells] : [], style);
+  }
+
+  /** Several routes as cells at once, such as one from each of Maul's gates. */
+  setRoutes(map: MapSpec, routes: readonly (readonly number[])[], style: RouteStyle): void {
     const g = this.route;
     g.clear();
-    if (!cells || cells.length < 2) return;
     const { color, alpha, width } = ROUTE[style];
     const x = (cell: number): number => ((cell % map.cols) + 0.5) * CELL;
     const y = (cell: number): number => (Math.floor(cell / map.cols) + 0.5) * CELL;
-    g.moveTo(x(cells[0]!), y(cells[0]!));
-    for (let i = 1; i < cells.length; i++) {
-      const prev = cells[i - 1]!;
-      const cell = cells[i]!;
-      const next = cells[i + 1];
-      // Skip points in the middle of a straight run: fewer vertices, cleaner joins.
-      if (next !== undefined && cell - prev === next - cell) continue;
-      g.lineTo(x(cell), y(cell));
+    const drawn = routes.filter((cells) => cells.length >= 2);
+    if (drawn.length === 0) return;
+    for (const cells of drawn) {
+      g.moveTo(x(cells[0]!), y(cells[0]!));
+      for (let i = 1; i < cells.length; i++) {
+        const prev = cells[i - 1]!;
+        const cell = cells[i]!;
+        const next = cells[i + 1];
+        // Skip points in the middle of a straight run: fewer vertices, cleaner joins.
+        if (next !== undefined && cell - prev === next - cell) continue;
+        g.lineTo(x(cell), y(cell));
+      }
     }
     g.stroke({ color, alpha, width, cap: 'round', join: 'round' });
-    for (let i = ARROW_EVERY; i < cells.length - 1; i += ARROW_EVERY) {
-      const ax = x(cells[i]!);
-      const ay = y(cells[i]!);
-      const dx = x(cells[i + 1]!) - ax;
-      const dy = y(cells[i + 1]!) - ay;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const ux = dx / len;
-      const uy = dy / len;
-      const s = width * 1.5;
-      g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+    for (const cells of drawn) {
+      for (let i = ARROW_EVERY; i < cells.length - 1; i += ARROW_EVERY) {
+        const ax = x(cells[i]!);
+        const ay = y(cells[i]!);
+        const dx = x(cells[i + 1]!) - ax;
+        const dy = y(cells[i + 1]!) - ay;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        const s = width * 1.5;
+        g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+      }
     }
     g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
   }

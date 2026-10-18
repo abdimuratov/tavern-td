@@ -2,7 +2,7 @@ import type { Board } from '../render/board';
 import { boxCentre, cellAtPoint, cellsBox, sameCells, towerCells } from '../render/footprint';
 import type { PointerKind } from '../render/gestures';
 import {
-  CELL, findTower, getMode, placementError, previewRoute, routeCells, routeCount, routePolyline, towerMods,
+  CELL, allRouteCells, findTower, getMode, placementError, previewAllRoutes, routeCount, routePolyline, towerMods,
   type GameState, type Point, type SimEvent, type Tower,
 } from '../sim';
 import type { ModeUi, Placement, RunView } from '../ui/mode-ui';
@@ -113,11 +113,13 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       board.setRoutePaths(lines, 'current');
       return;
     }
+    // A mazing Map draws the route from every spawn (Maul has two gates).
     const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null && ghost.placement.route !== false
-      ? previewRoute(s, ghost.placement.cells) : null;
+      ? previewAllRoutes(s, ghost.placement.cells) : null;
     routeWanted = null;
-    routeShown = preview ?? routeCells(s);
-    board.setRoute(routeShown, preview ? 'preview' : 'current');
+    const routes = preview ?? allRouteCells(s);
+    routeShown = routes[0] ?? [];
+    board.setRoutes(routes, preview ? 'preview' : 'current');
   }
 
   function updateHint(): void {

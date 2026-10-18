@@ -2,6 +2,7 @@ import { DEFAULT_DIFFICULTY_HP, getMode, hasMode, type Difficulty } from '../sim
 import type { ModeUi } from './mode-ui';
 import { ELEMENT_UI } from './modes/element';
 import { GEM_UI } from './modes/gem';
+import { MAUL_UI } from './modes/maul';
 import { ORIGINAL_UI } from './modes/original';
 
 /** A Game Mode as the main menu lists it. Only those with a `ui` can be played yet. */
@@ -21,7 +22,10 @@ export const CATALOG: readonly CatalogEntry[] = [
     id: 'original', name: 'Original', origin: 'Our own Campaign',
     blurb: 'The March is burning. Hold the old road Stage by Stage, and spend the Stars you win on Talents.', ui: ORIGINAL_UI,
   },
-  { id: 'maul', name: 'Maul', origin: 'Wintermaul', blurb: 'Pick a Race and maze an open field.' },
+  {
+    id: 'maul', name: 'Maul', origin: 'Wintermaul',
+    blurb: 'Pick a Race and maze an open field with its towers. Juggling allowed; the last boss must not get through.', ui: MAUL_UI,
+  },
 ];
 
 export function catalogEntry(modeId: string): CatalogEntry | undefined {

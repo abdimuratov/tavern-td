@@ -247,7 +247,7 @@ Creep HP × 0.75 (Easy), 1 (Normal), 1.3 (Hard) or 1.6 (Insane), the core's defa
 - **Build menu:** the Wall and each Race's two Tier 1 towers, each with its price. The Ghost is 2 × 2 and snaps to the half-tower grid. It shows its range and the live path preview from both gates, and turns red with the reason on a Block.
 - **Tower panel:** the role, attack type, DPS and range; the upgrades (both forks at Tier 2); and Sell, with "full refund" while that holds.
 - **Feedback:** "Juggle: n creeps turned" when a build or sale turns creeps around, the air warning, "a second Race can join" after Wave 15, and the boss tags.
-- **Mac hotkeys:** Q W E build the Wall, line A and line B, and R T the second Race's lines. On a selected tower, Q and W pick its upgrades and S sells. Space sends now.
+- **Mac hotkeys:** Q W E build the Wall, line A and line B, and R T the second Race's lines. On a selected tower, Q W E R pick its upgrades in the panel's order and S sells. Space sends now.
 - **How to play**, autosave every Wave and when the app is hidden, Continue, save codes and Records work as in every Game Mode.
 
 ## 12. Assumed, and tuned

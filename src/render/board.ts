@@ -30,6 +30,8 @@ export interface Board {
   /** Once per display frame. `alpha` is how far between the last two ticks to draw; `dt` is real milliseconds. */
   render(alpha: number, dt: number): void;
   setRoute(cells: readonly number[] | null, style: RouteStyle): void;
+  /** Several routes as cells, such as one from each gate of a mazing Map. */
+  setRoutes(routes: readonly (readonly number[])[], style: RouteStyle): void;
   /** The routes as lines through world points, for Maps whose creeps walk fixed routes. */
   setRoutePaths(lines: readonly (readonly Point[])[], style: RouteStyle): void;
   setGhost(ghost: GhostView | null): void;
@@ -276,6 +278,9 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
     },
     setRoute(cells, style) {
       if (map) overlay.setRoute(map, cells, style);
+    },
+    setRoutes(routes, style) {
+      if (map) overlay.setRoutes(map, routes, style);
     },
     setRoutePaths: (lines, style) => overlay.setRoutePaths(lines, style),
     worldToClient(p) {

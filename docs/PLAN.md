@@ -67,7 +67,19 @@ Phase 4 progress (2026-10-18):
   - Pace and economy: 60 s before Wave 1, then 30 s Breaks after each clear; Send now pays nothing. The bounty pool, the end-of-Wave bonus and interest. 20 lives, and the last boss's leak ends the Run. Score and Records.
 - Tested: 37 Maul tests, plus path tests for two spawns and a split Checkpoint. The replay hash and snapshot tests pass, and WebKit and Chromium match Node on a fixed Maul replay. A tick takes about 5 µs.
 - Tuned with a headless bot, on seed 1: it wins Easy with every Race, wins Normal with two of four and reaches Wave 40 with the rest, wins Hard with one, and dies on Insane during Waves 7–12. The bounty pool had to double from §4's, because a maze costs gold that adds no damage.
-- Left: the UI, then a play-test on the Mac, the iPhone and the S24.
+- Done: Maul is playable from the main menu.
+  - New Run picks the Race, with each Race's role under the choice, and the Difficulty.
+  - HUD: gold, lives, Wave n/40, the Races, the interest due at the next clear, the juggle count, and an Air or Boss warning in the Break before one. Send now shows the countdown to the next Wave.
+  - Build menu: the Wall and each Race's two Tier 1 towers. The 2 × 2 Ghost goes anywhere on open ground, shows its range and the path it would make from both gates, and turns red with the reason on a Block. A second Race's picker appears once Wave 15 is cleared.
+  - Tower panel: role, attack type, damage, speed, range and what it hits; the upgrades, both forks at Tier 2, and a Wall's lines from every Race held; Sell with its value, noting a full refund during the Break.
+  - Feedback: "Juggled: n creeps turned back", an air-Wave warning, a last-boss warning, chain lightning drawn between creeps. The wave preview tags Swarm, Fast, Armored, Regen, Unslowable, Air and Boss, with each creep's armor and what hits it hardest.
+  - The board: both gates, both live routes and both air lines. Each Race has a colour, each line a shape, Walls are stone, and Tier 3 forks wear a crest.
+  - Mac hotkeys: Q Wall, W and E the first Race's lines, R and T the second's. On a selected tower, Q W E R pick its upgrades and S sells.
+  - How to play, autosave, Continue, save codes and Records work as in every Game Mode.
+  - e2e in all four browsers: a Run that builds, upgrades a Wall in its panel, sends a Wave, autosaves and continues paused; a refused Block with its reason, and a save code exported mid-Wave that imports back. Every e2e page now plays its sound into a muted gain, so a test run is silent.
+- Assumed for the UI: the build choice stays picked after a build, so a row of Walls is one tap each; the second Race joins free.
+- Watch in play-testing: at fit zoom a tower is about 12 pt on a phone, so placing wants a pinch first. Maul's Runs are long, 35–45 min at 1×. Runecasters may be the strongest Race and Ironclad the weakest.
+- Left: a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

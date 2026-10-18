@@ -114,10 +114,10 @@ function drawPlotRims(g: Graphics, map: MapSpec, color: number): void {
   g.fill({ color, alpha: 0.9 });
 }
 
-/** The Map's spawn, and on a Map with several fixed routes the start of each. */
+/** The Map's spawns (a mazing Map may list several), and on a Map with several fixed routes the start of each. */
 function spawnCells(state: GameState): (readonly [number, number])[] {
   const map = state.map;
-  const cells: (readonly [number, number])[] = [map.spawn];
+  const cells: (readonly [number, number])[] = [...(map.spawns ?? [map.spawn])];
   for (let i = 1; i < routeCount(map); i++) {
     const p = routePolyline(state, i)[0];
     if (!p) continue;
@@ -127,10 +127,10 @@ function spawnCells(state: GameState): (readonly [number, number])[] {
   return cells;
 }
 
-/** Each fixed route's own air line, or on a mazing Map the straight line through the checkpoints. */
+/** Each fixed route's own air line, or on a mazing Map the straight line from each spawn through the checkpoints. */
 function airLines(state: GameState): Point[][] {
   const n = routeCount(state.map);
-  if (n === 0) return [airRoute(state)];
+  if (n === 0) return (state.map.spawns ?? [state.map.spawn]).map((_, i) => airRoute(state, i));
   const lines: Point[][] = [];
   for (let i = 0; i < n; i++) {
     const line = airLinePolyline(state, i);

@@ -127,3 +127,14 @@ export async function buildOnSpot(page: Page, spot: number, family: string): Pro
   await expect.poll(async () => (await towerSpecs(page)).length).toBe(before + 1);
   await expect(page.getByTestId('build-ring')).toBeHidden();
 }
+
+/** From the main menu into a fresh Maul Run with this Race. */
+export async function newMaulRun(
+  page: Page, race: 'ironclad' | 'rimeborn' | 'mirefolk' | 'runecasters', difficulty: 'easy' | 'normal' | 'hard' | 'insane' = 'normal',
+): Promise<void> {
+  await page.getByTestId('mode-maul').getByTestId('new-run').click();
+  await page.getByTestId(`option-race-${race}`).click();
+  await page.getByTestId(`difficulty-${difficulty}`).click();
+  await expect(page.getByTestId('maul-status')).toBeVisible();
+  await page.waitForFunction(() => !!window.tavern);
+}

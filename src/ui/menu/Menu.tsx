@@ -139,6 +139,7 @@ function OptionRow({ label, choices, value, testid, onPick }: {
           </button>
         ))}
       </div>
+      <span class="option-about" data-testid={`${testid}-about`}>{choices.find((c) => c.id === value)?.about ?? ''}</span>
     </div>
   );
 }
