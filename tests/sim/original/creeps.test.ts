@@ -66,12 +66,13 @@ describe('bosses', () => {
     const s = newRun();
     bossWave(s, 'gravelord');
     const g = s.creeps[0]!;
-    expect(g.maxHp).toBe(400);
+    // 12 Ghouls' worth at Threat 1.
+    expect(g.maxHp).toBe(240);
     run(s, 30);
     const step0 = g.dist!;
     run(s, 30);
     expect(g.dist! - step0).toBeCloseTo(100, 6);
-    const events = hit(s, g, 210, 'poison');
+    const events = hit(s, g, 130, 'poison');
     expect(modeEvents(events, 'original.enrage')).toHaveLength(1);
     const before = g.dist!;
     run(s, 30);
@@ -105,10 +106,10 @@ describe('bosses', () => {
     const s = newRun();
     bossWave(s, 'plague_mother');
     const m = s.creeps[0]!;
-    expect(m.maxHp).toBe(600);
-    m.hp = 300;
+    expect(m.maxHp).toBe(240);
+    m.hp = 120;
     run(s, 30);
-    expect(m.hp).toBeCloseTo(306, 6);
+    expect(m.hp).toBeCloseTo(122.4, 6);
     const events = runUntil(s, () => s.creeps.some((c) => c.spec === 'crawler'));
     expect(s.tick).toBe(1 + 6 * 30);
     const brood = modeEvents(events, 'original.brood');
@@ -126,9 +127,9 @@ describe('bosses', () => {
     const s = newRun();
     bossWave(s, 'riftlord');
     const r = s.creeps[0]!;
-    expect(r.maxHp).toBe(1000);
+    expect(r.maxHp).toBe(480);
     run(s, 30);
-    let events = hit(s, r, 260, 'poison');
+    let events = hit(s, r, 130, 'poison');
     const rift = modeEvents(events, 'original.rift');
     expect(rift).toHaveLength(1);
     expect(rift[0]!.data).toMatchObject({ phase: 1, shield: 8 });
@@ -142,7 +143,7 @@ describe('bosses', () => {
     hit(s, r, 20, 'poison');
     expect(after - r.hp).toBe(20);
     // One big hit crosses both remaining thresholds.
-    events = hit(s, r, 600, 'poison');
+    events = hit(s, r, 250, 'poison');
     expect(modeEvents(events, 'original.rift').map((e) => (e.data as { phase: number }).phase)).toEqual([2, 3]);
     expect(s.creeps.filter((c) => c.spec === 'hound')).toHaveLength(12);
   });

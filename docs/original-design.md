@@ -85,11 +85,11 @@ Ten creeps and three bosses. HP is a multiple of a Ghoul's HP at the Wave's Thre
 | Bloater | Splitting | 1.2 | 150 | Unarmored | 6 | 1.2 s | 1 | 3 | Bursts into 2 Crawlers when it dies. Crawlers that a creep drops pay no bounty |
 | Shieldbearer | Shielded | 2.0 | 140 | Unarmored | 5 | 1.4 s | 2 | 5 | Shield (§4) |
 | Gargoyle | Armored flyer | 1.2 | 170 | Armored | 6 | 1.0 s | 2 | 4 | Flies the air line |
-| Gravelord | Boss, Stage 4 | 20 | 100 | Boss | 1 | — | 5 | 30 | At half HP, enrages: +50% speed for 4 s |
-| Plague Mother | Boss, Stage 8 | 30 | 90 | Boss | 1 | — | 10 | 40 | Regains 1% per second; every 6 s drops 3 Crawlers behind her |
-| Riftlord | Final boss, Stage 12 | 50 | 80 | Boss | 1 | — | 20 | 60 | At 75%, 50% and 25% HP: a 4 s Shield four times as strong, and he calls 4 Hounds |
+| Gravelord | Boss, Stage 4 | 12 | 100 | Boss | 1 | — | 5 | 30 | At half HP, enrages: +50% speed for 4 s |
+| Plague Mother | Boss, Stage 8 | 12 | 90 | Boss | 1 | — | 10 | 40 | Regains 1% per second; every 6 s drops 3 Crawlers behind her |
+| Riftlord | Final boss, Stage 12 | 24 | 80 | Boss | 1 | — | 20 | 60 | At 75%, 50% and 25% HP: a 4 s Shield four times as strong, and he calls 4 Hounds |
 
-- **Bosses** take slows at half strength and ignore stuns and freezes. Each arrives with a few escorts.
+- **Bosses** take slows at half strength and ignore stuns and freezes. Each arrives with a few escorts. The balance bots cut their HP from 20, 30 and 50 Ghouls (§15): at those numbers no defense the Campaign can afford killed them.
 - **Air** gets less HP because it gets about a third of the exposure (research §9).
 
 **What each creep counters.** No creep shuts a family out, but each one punishes a lazy build.
@@ -132,8 +132,8 @@ In the tables, **Total** is everything spent on the tower so far. **Range** is i
 | Arrow Tower | T1 | 70 | 6 | 0.85 | 320 | 7.1 | 0.10 DPS per gold |
 | Longbow Tower | T2, +110 | 180 | 14 | 0.85 | 352 | 16.5 | |
 | Marksman Tower | T3, +165 | 345 | 26 | 0.85 | 384 | 30.6 | |
-| Ranger Lodge | Spec, +250 | 595 | 18 | 0.6 | 384 | 30, or 90 on 3 | Fires 3 arrows at 3 creeps. Swarm and air |
-| Deadeye Perch | Spec, +250 | 595 | 85 | 2.2 | 576 | ~50 | 20% crit ×2.5. Treats Armored as Unarmored. Targets Strong |
+| Ranger Lodge | Spec, +250 | 595 | 15 | 0.6 | 384 | 25, or 75 on 3 | Fires 3 arrows at 3 creeps. Swarm and air |
+| Deadeye Perch | Spec, +250 | 595 | 72 | 2.2 | 576 | ~43 | 20% crit ×2.5. Treats Armored as Unarmored. Targets Strong |
 
 ### Cannon
 
@@ -141,11 +141,11 @@ Ground only. Splash deals full damage within 48 and half within 112.
 
 | Tower | Step | Total | Damage | Cooldown | Range | DPS per creep | Notes |
 |---|---|---|---|---|---|---|---|
-| Cannon Tower | T1 | 90 | 9 | 1.8 | 288 | 5.0 | |
-| Bombard | T2, +140 | 230 | 22 | 1.8 | 304 | 12.2 | |
-| Great Bombard | T3, +210 | 440 | 40 | 1.8 | 320 | 22.2 | |
-| Thunder Mortar | Spec, +300 | 740 | 90 | 3.0 | 640 | 30 | Can't fire within 160. Splash 80 full, 176 half |
-| Flak Battery | Spec, +300 | 740 | 30 | 0.9 | 384 | 33 | Hits ground and air. Splash 40 full, 88 half |
+| Cannon Tower | T1 | 90 | 12 | 1.8 | 288 | 6.7 | |
+| Bombard | T2, +140 | 230 | 28 | 1.8 | 304 | 15.6 | |
+| Great Bombard | T3, +210 | 440 | 52 | 1.8 | 320 | 28.9 | |
+| Thunder Mortar | Spec, +300 | 740 | 115 | 3.0 | 640 | 38 | Can't fire within 160. Splash 80 full, 176 half |
+| Flak Battery | Spec, +300 | 740 | 38 | 0.9 | 384 | 42 | Hits ground and air. Splash 40 full, 88 half |
 
 ### Frost
 
@@ -176,7 +176,7 @@ Ground only. Poison prefers creeps that aren't poisoned yet, so one tower keeps 
 | Venom Dart | T1 | 80 | 2 | 2.5 per s for 3 s | 1.0 | 320 | 4.5, 9.5 | |
 | Venom Spitter | T2, +120 | 200 | 4 | 6 per s | 1.0 | 336 | 10, 22 | |
 | Venom Spire | T3, +180 | 380 | 7 | 11 per s | 1.0 | 352 | 18, 40 | |
-| Plague Cauldron | Spec, +270 | 650 | — | 16 per s | 2.0 | 384 | 16 per creep | Lobs a cloud, radius 112, that lasts 3 s and poisons everything inside |
+| Plague Cauldron | Spec, +270 | 650 | — | 10 per s | 2.0 | 384 | 10 per creep | Lobs a cloud, radius 112, that lasts 3 s and poisons everything inside |
 | Widow's Fang | Spec, +270 | 650 | 10 | 8 per s per stack | 0.8 | 352 | ~52 | Each hit adds a 4 s stack, up to 5. Sticks to one target |
 
 ### Totem
@@ -265,7 +265,11 @@ One new tool per Stage until all six families are out, while each Stage also bri
 
 **Why no interest.** Build Spots make space the limit, not gold (research §3). The early call is the Original's greed lever, and interest would pull the other way, towards waiting and banking. Overlapping Waves also blur when a Wave "ends". The end-of-Wave bonus keeps §4's income slope.
 
-**Wave recipes.** A normal Wave holds 10 Ghouls' worth of HP. A new creep's first Wave is alone at 0.8× and is followed by a Wave that mixes it with known creeps. Late mixed Waves run 1.2–1.5×. A boss Wave is the boss plus a few escorts. Each Stage's last Wave is its hardest.
+**Wave recipes.** The design started from a normal Wave of 10 Ghouls' worth of HP, a new creep's first Wave alone at 0.8× followed by a Wave that mixes it in, late Waves at 1.2–1.5×, a boss Wave of the boss plus a few escorts, and each Stage's last Wave its hardest. The bots kept the shape and changed the sizes (§15):
+- **A Stage ramps.** Its opening Waves are light, 7–10 Ghouls' worth, so the starting gold carries them even on Insane. Its last third is 1.5–3× the old recipe. A Stage is decided at its end, not in its opening.
+- **Groups keep their length.** A bigger group packs its creeps closer together instead of taking longer to arrive, so Waves of 30–70 creeps are normal by Region 2.
+- **Armor and wards show up in force.** From a third of the way into Stages 5–12, Ghoul groups became Revenants or Cultists of the same HP, so armored or warded creeps carry about a third of a Stage's HP.
+- **Still true:** each new creep's first Wave is alone and lighter than the mix after it, bosses close Stages 4, 8 and 12 with escorts, and every Stage's last Wave is its heaviest in HP at its Threat (tests/sim/original/stages.test.ts checks all of it).
 
 **Sanity model.** This compares the gold needed in towers to clear a Wave with the gold earned by then. It assumes 0.08 effective DPS per gold, 20 s of firing per tower per Wave on a route (a maze gets 25 s), 1.25× overkill, early calls taken at 40%, an average Tower Level bonus of +9%, and Talents worth +0.7% per Star earned.
 
@@ -277,6 +281,8 @@ One new tool per Stage until all six families are out, while each Stage also bri
 | 12 (Riftlord) | 0.71 | 0.56 | 0.93 |
 
 Below 0.5 is comfortable, and near 1 is tight. The final boss is meant to be tight; PLAN §4 aims for a ~60% bot win rate on Normal.
+
+The bots overruled this model (§15): it assumed too much firing time on a route and too little growth in the defense through a Stage, so Stages played front-loaded, lost early on Hard and easy at the end.
 
 ## 11. The 12 Stages
 
@@ -300,6 +306,11 @@ Every Map is 32 × 18 cells (§12). The length assumes about 40 s per Wave at 1�
 - **Spots grow from 8 to 14.** By a Stage's end, a good Run has filled most Spots and specialised a few, which matches Goal Defense's "60–70% full" target (research §6).
 - **Each Region ends on a boss** that tests what that Region taught: the Gravelord tests focus fire, the Plague Mother tests splash plus burst, and the Riftlord tests everything.
 - **Region 3 brings no new towers.** Its new creeps (Shieldbearer, Gargoyle) push you into Specialisations and Talents.
+
+**As built** (2026-10-18; `pnpm balance maps` prints each Map). Spots, Waves, Threat and gold are as in the table.
+- **Routes:** Stage 1 is 5,376 long; Stage 2, 5,504; Stage 3, 4,544; Stage 4, 5,120; Stage 5, 5,888; Stage 6, 6,016. Stage 7's two routes are 2,816 each, 1,536 of it before they join at the middle of the Map. Stage 8 is 5,120; Stage 9, 6,272; Stage 10, 5,760, with a 2,048 air line straight across the chasm. Stage 11's three routes are 4,224, 4,032 and 4,224: the north and west roads join first, the south road joins them next, and the last 2,944 is shared. Stage 12 is the longest at 7,744; its last leg crosses its own outer ring on the way north.
+- **Air lines** run 2–3 points from each spawn to the exit, and pass near some Spots.
+- **The river, the hill, the chasm and the pit** are in the Stage lines and the Map shapes only. The terrain is still road, Spot or ground.
 
 ## 12. Maps
 
@@ -352,3 +363,56 @@ The rules session (2026-10-18) built §13 as written. Where this doc left a gap,
 - "Spent since the current Break began" counts from the latest Break's start until the next one begins. The time before Wave 1 counts as a Break, and refunds round down.
 - Talent discounts round to whole gold.
 - A Run takes Stages finished as a Run setting, which sets its unlocks: the Stage before it by default. Talents are checked for shape only (known ids, one per row, rows in order); the Stage-select screen checks Stars and open trees.
+
+**Stages 2–12** (the Stages session, 2026-10-18)
+- A Spot counts as beside the road within two cells of it, so Gallows Hill's hilltop Spots stand two rows from both legs. Every Spot sees at least 448 of road from a Tier 1 tower's 320 range.
+- The boss lines and Region intros live with the UI (`src/ui/modes/original/text.ts`); the Stages carry only their select-screen line.
+- Each new creep arrives alone a third to halfway into its Stage: Wave 4 or 5.
+- Waves that name no route walk route 0. On the multi-route Stages, groups spread over every route, and a group that should start with another sets `at: 0`.
+
+## 15. Balance (2026-10-18)
+
+`pnpm balance` (`tools/balance/`) plays every Stage with scripted bots over many seeds and every Difficulty. Each bot uses the unlocks the Campaign has by then (Stages finished = Stage − 1) and the Talents a decent player would hold. It reports win rate, Wave reached, lives and Stars, then checks PLAN §4's targets. `pnpm test` runs a small sample on every push.
+
+**The bots.**
+- **Balanced** is the competent player. It judges each purchase by the lives it would save against the creep groups of the next five Waves (later ones count for less): their armor types, Shields, flyers, spacing, regeneration and overkill. It counts slows and Totem auras, picks Specialisations the same way, and builds around Arrow, adding another family's tower when it is worth 10% more. With every Spot full it may replace a Tier 1 tower. Seeds give it small quirks (Spot order, ±15% noise in its judgement, calling Waves early or not), so each seed plays like a different competent player.
+- **Greedy** buys raw damage per gold as if every creep were a Ghoul.
+- **Single** is balanced with only one family.
+
+**Assumed for the bots:** a decent player holds 2.5 Stars per Stage finished, rounded down (27 by Stage 12). It fills one Talent tree at a time: Arrow, then Arcane, Frost, Cannon, Poison and Totem, or its own family first for a single-family run. It wants 1.6 times a group's HP in damage before it feels safe. Bot choices live in `tools/balance/value.ts`.
+
+**What the bots changed** (every other number is as §4–§11 give it):
+
+| What | Was | Now | Why |
+|---|---|---|---|
+| Waves | 10 Ghouls' worth, rising to 1.5× | Light openings, endings 1.5–3× the old recipe, groups packed closer; more armored and warded creeps from Stage 5 (§10) | Stages were decided in their first Waves, and Hard and Insane lost early |
+| Stage 11's Map | Three 2,400–2,600 routes with a short shared end | Joins on the west side and a 2,944 shared road | The defense couldn't cover three short roads |
+| Boss HP, in Ghouls | Gravelord 20, Plague Mother 30, Riftlord 50 | 12, 12, 24 | No affordable defense killed them; the Riftlord's 20 lives meant a certain loss |
+| Cannon damage | 9, 22, 40; Thunder Mortar 90, Flak 30 | 12, 28, 52; 115, 38 | A Cannon catches one creep a shot at normal spacing; it dealt about a third of an Arrow's damage per gold |
+| Plague Cauldron | 16 poison a second | 10 | Its clouds dealt 2–5 times any other tower's damage per gold |
+| Ranger Lodge | 18 an arrow | 15 | The most damage per gold in the game, on air too |
+| Deadeye Perch | 85 a shot | 72 | The best single target per gold, armor ignored |
+
+**Results**, 20 seeds a cell. Win rate of the balanced bot, then the best single family on Normal:
+
+| Stage | Easy | Normal | Hard | Insane | Best single family, Normal |
+|---|---|---|---|---|---|
+| 1 The Mill Road | 100% | 75% | 0% | 0% | Cannon 100% (Arrow and Cannon only; no flyers yet) |
+| 2 Greyriver Crossing | 100% | 80% | 0% | 0% | Cannon 100% |
+| 3 Gallows Hill | 100% | 60% | 0% | 0% | none |
+| 4 Fort Harrow | 100% | 55% | 0% | 0% | Arcane 80% |
+| 5 Drowned Causeway | 100% | 55% | 0% | 0% | Poison 100% |
+| 6 Sunken Chapel | 100% | 50% | 0% | 0% | Poison 75% |
+| 7 Plague Fords | 100% | 70% | 5% | 0% | Arrow 75% |
+| 8 The Blight Pit | 90% | 65% | 0% | 0% | Arrow 50% |
+| 9 The Scar | 100% | 65% | 0% | 0% | Arrow 95% |
+| 10 Black Cliffs | 100% | 60% | 0% | 0% | Arcane 100% |
+| 11 Three Gates | 100% | 75% | 0% | 0% | Arrow 65% |
+| 12 Riftmaw | 100% | 65% | 0% | 0% | Arrow 85% |
+
+- **Met:** Easy 99% on average (90% at worst), Normal 65% (50–80% per Stage), Insane 0% everywhere. Insane now falls halfway through Stage 1 or later, not in its fourth Wave.
+- **Not met: no single family clears a Stage from Stage 5 on.** Arrow alone wins 20–95% of Stages 5–12 on Normal, Poison alone 65–100% of Stages 5, 6, 9 and 10, and Arcane alone 65–100% of Stages 5 and 10. Cannon, Frost and Totem alone never clear one.
+  - Why: counters are soft (nothing below 50%, §4), and each of the three families has its own answer to its weak point. Deadeye ignores armor; Plague Wind lets Poison hit air, and Poison already skips armor types, Shields and the boss table; Spellbreaker lifts Arcane to 70% against wards. A one-family player also fills that family's whole Talent tree. So mixing gains too little, and the balanced bot, built around Arrow, does about as well as Arrow alone.
+  - Tried and dropped: a shorter Deadeye reach, Deadeye without its armor exemption, and more armored and warded creeps. Each moved one family down and another up; dropping the exemption also sank the balanced bot on Stages 11 and 12.
+  - **Recommendation:** keep the soft counters you chose, accept one-family wins on Normal for now (on Hard and Insane nothing clears, mixed or not), and decide after the play-test whether one-family builds feel degenerate. Enforcing the rule means hard counters below 50% or taking away those in-family answers, which reverses the soft-counter decision.
+- **Watch in play-testing:** the bots' win rate falls from ~60% on Normal to almost 0% on Hard. A human plays better than the bot, but Hard may be too steep a step.

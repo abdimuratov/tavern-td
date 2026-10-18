@@ -26,13 +26,13 @@ function expectPlainJson(value: unknown, path = 'state'): void {
 
 const TALENTS = ['fletching', 'quick-nock', 'woodcutters', 'hawkeye', 'deep-chill', 'brittle', 'focus', 'mana-flow', 'echo'];
 
-/** The bot's whole Stage 1 on Normal with every family open, calling Waves early, as a replay log. */
+/** The bot's whole Stage 1 on Easy with every family open, calling Waves early, as a replay log. */
 function scripted(): { replay: Replay; final: GameState } {
   const log: ReplayEntry[] = [];
   const families = ['arrow', 'frost', 'cannon', 'arcane', 'poison', 'totem'] as const;
-  const result = playStage(31, 'normal', { record: log, cleared: 12, families, talents: TALENTS, greedy: true });
+  const result = playStage(31, 'easy', { record: log, cleared: 12, families, talents: TALENTS, greedy: true });
   return {
-    replay: { mode: 'original', seed: 31, difficulty: 'normal', options: { stage: 1, talents: TALENTS, cleared: 12 }, log, until: result.state.tick },
+    replay: { mode: 'original', seed: 31, difficulty: 'easy', options: { stage: 1, talents: TALENTS, cleared: 12 }, log, until: result.state.tick },
     final: result.state,
   };
 }

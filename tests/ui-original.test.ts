@@ -104,7 +104,7 @@ describe('the Original play screen', () => {
     const view = viewOf(newRun({ cleared: 0 }));
     const w5 = ORIGINAL_UI.wavePreview!(view, 4)!;
     expect(w5.number).toBe(5);
-    expect(w5.groups[0]).toMatchObject({ name: 'Hound', count: 11, air: false, boss: false, traits: ['Fast'] });
+    expect(w5.groups[0]).toMatchObject({ name: 'Hound', count: 16, air: false, boss: false, traits: ['Fast'] });
     expect(w5.groups[0]!.about).toMatch(/HP each/);
     expect(ORIGINAL_UI.wavePreview!(view, 12)).toBeNull();
   });
@@ -173,8 +173,10 @@ describe('the Campaign', () => {
     const one = withResult(EMPTY, 1, won(2));
     expect(stagesCleared(one)).toBe(1);
     expect(starsEarned(one)).toBe(2);
-    // Stage 2 isn't built yet, so it can't open whatever the Campaign says.
-    expect(stageOpen(one, 2)).toBe(false);
+    // Stage 2 opens once Stage 1 is won; Stage 3 waits for Stage 2.
+    expect(stageOpen(EMPTY, 2)).toBe(false);
+    expect(stageOpen(one, 2)).toBe(true);
+    expect(stageOpen(one, 3)).toBe(false);
   });
 
   it('pays only what beats a Stage\'s best, and a loss changes nothing', () => {
@@ -189,7 +191,7 @@ describe('the Campaign', () => {
   });
 
   it('names what a first win opens: Frost, Talents and the next Stage', () => {
-    expect(opened(EMPTY, withResult(EMPTY, 1, won(3)))).toEqual(['Frost towers', 'Talents', 'Stage 2, in a later version']);
+    expect(opened(EMPTY, withResult(EMPTY, 1, won(3)))).toEqual(['Frost towers', 'Talents', 'Stage 2, Greyriver Crossing']);
     const two = { ...EMPTY, stages: { 1: { stars: 3, hardest: 'normal' as const, fastest: 1 } } };
     expect(opened(two, withResult(two, 2, won(1)))).toContain('Tier 3');
   });

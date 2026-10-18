@@ -28,13 +28,13 @@ const ROWS: readonly [string, OriginalCreepSpec][] = [
   creep('shieldbearer', 'Shieldbearer', 'unarmored', 140, false, { role: 'shielded', hpMult: 2, perWave: 5, gap: 1.4, lives: 2, xp: 5, shield: 0.1 }),
   creep('gargoyle', 'Gargoyle', 'armored', 170, true, { role: 'armored flyer', hpMult: 1.2, perWave: 6, gap: 1, lives: 2, xp: 4 }),
   creep('gravelord', 'Gravelord', 'boss', 100, false, {
-    role: 'boss', hpMult: 20, perWave: 1, gap: 1, lives: 5, xp: 30, boss: { kind: 'enrage', at: 0.5, haste: 0.5, duration: 4 },
+    role: 'boss', hpMult: 12, perWave: 1, gap: 1, lives: 5, xp: 30, boss: { kind: 'enrage', at: 0.5, haste: 0.5, duration: 4 },
   }),
   creep('plague_mother', 'Plague Mother', 'boss', 90, false, {
-    role: 'boss', hpMult: 30, perWave: 1, gap: 1, lives: 10, xp: 40, regen: 0.01, boss: { kind: 'brood', every: 6, creep: 'crawler', count: 3 },
+    role: 'boss', hpMult: 12, perWave: 1, gap: 1, lives: 10, xp: 40, regen: 0.01, boss: { kind: 'brood', every: 6, creep: 'crawler', count: 3 },
   }),
   creep('riftlord', 'Riftlord', 'boss', 80, false, {
-    role: 'final boss', hpMult: 50, perWave: 1, gap: 1, lives: 20, xp: 60,
+    role: 'final boss', hpMult: 24, perWave: 1, gap: 1, lives: 20, xp: 60,
     // Its Shield is four times a Shieldbearer's.
     boss: { kind: 'rift', at: [0.75, 0.5, 0.25], shield: 0.4, duration: 4, creep: 'hound', count: 4 },
   }),

@@ -47,9 +47,9 @@ describe('the Original\'s content', () => {
     };
     expect(row('arrow_tower')).toEqual([70, 70, 6, 0.85, 320]);
     expect(row('marksman_tower')).toEqual([165, 345, 26, 0.85, 384]);
-    expect(row('deadeye_perch')).toEqual([250, 595, 85, 2.2, 576]);
-    expect(row('great_bombard')).toEqual([210, 440, 40, 1.8, 320]);
-    expect(row('thunder_mortar')).toEqual([300, 740, 90, 3, 640]);
+    expect(row('deadeye_perch')).toEqual([250, 595, 72, 2.2, 576]);
+    expect(row('great_bombard')).toEqual([210, 440, 52, 1.8, 320]);
+    expect(row('thunder_mortar')).toEqual([300, 740, 115, 3, 640]);
     expect(row('rime_lance')).toEqual([270, 650, 55, 1.4, 352]);
     expect(row('archmage_tower')).toEqual([225, 475, 70, 1.7, 352]);
     expect(row('prism_tower')).toEqual([330, 805, 60, 1.5, 352]);
@@ -86,7 +86,7 @@ describe('the Original\'s content', () => {
     expect(c['cultist']!.armorType).toBe('warded');
     expect(c['bloodbat']!.flying).toBe(true);
     expect(c['gargoyle']).toMatchObject({ flying: true, armorType: 'armored' });
-    expect(c['riftlord']).toMatchObject({ armorType: 'boss', speed: 80, leakCost: 20, original: { hpMult: 50, xp: 60 } });
+    expect(c['riftlord']).toMatchObject({ armorType: 'boss', speed: 80, leakCost: 20, original: { hpMult: 24, xp: 60 } });
     for (const spec of Object.values(c)) expect(spec.armor).toBe(0);
   });
 
@@ -134,10 +134,11 @@ describe('the Original\'s content', () => {
     for (let i = 0; i < 4; i++) expect(creeps[i]).toEqual(['ghoul']);
     expect(creeps[4]).toEqual(['hound']);
     expect(creeps[5]).toEqual(expect.arrayContaining(['ghoul', 'hound']));
-    // In Ghouls' worth of HP: about 10 a Wave, the new creep at 0.8×, the last Wave the hardest.
-    const worth = MILL_ROAD.waves.map((w) => w.groups.reduce((s, g) => s + g.count * ORIGINAL_CREEPS[g.creep]!.original.hpMult, 0));
-    expect(worth[0]).toBe(10);
-    expect(worth[4]).toBeCloseTo(7.7, 9);
-    expect(Math.max(...worth)).toBe(worth[11]);
+    // HP at each Wave's Threat: a light start that rises, the Hounds' first Wave lighter than the mix after it, the last Wave the hardest.
+    const hp = MILL_ROAD.waves.map((w, i) => w.groups.reduce((s, g) => s + g.count * ORIGINAL_CREEPS[g.creep]!.original.hpMult, 0) * 1.1 ** i);
+    expect(MILL_ROAD.waves[0]!.groups).toEqual([{ creep: 'ghoul', count: 7, gap: 1.45 }]);
+    for (let i = 1; i < 4; i++) expect(hp[i]).toBeGreaterThan(hp[i - 1]!);
+    expect(hp[4]).toBeLessThan(hp[5]!);
+    expect(Math.max(...hp)).toBe(hp[11]);
   });
 });

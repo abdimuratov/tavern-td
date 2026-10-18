@@ -59,24 +59,24 @@ const ROWS: readonly [string, OriginalTowerSpec][] = [
   tower('marksman_tower', 'Marksman Tower', 'arrow', 'pierce', { tier: 3, price: 165, total: 345, next: ['ranger_lodge', 'deadeye_perch'] },
     { damage: 26, cooldown: 0.85, range: 384, targets: 'both', speed: ARROW }),
   tower('ranger_lodge', 'Ranger Lodge', 'arrow', 'pierce', { tier: 4, price: 250, total: 595, next: [], multishot: 3 },
-    { damage: 18, cooldown: 0.6, range: 384, targets: 'both', speed: ARROW }),
+    { damage: 15, cooldown: 0.6, range: 384, targets: 'both', speed: ARROW }),
   tower('deadeye_perch', 'Deadeye Perch', 'arrow', 'pierce', {
     tier: 4, price: 250, total: 595, next: [], targeting: 'strong', crit: { chance: 0.2, multiplier: 2.5 }, ignoresArmored: true,
-  }, { damage: 85, cooldown: 2.2, range: 576, targets: 'both', speed: 2400 }),
+  }, { damage: 72, cooldown: 2.2, range: 576, targets: 'both', speed: 2400 }),
 
   // Cannon: Siege splash, ground only (Flak Battery hits air too).
   tower('cannon_tower', 'Cannon Tower', 'cannon', 'siege', { tier: 1, price: 90, total: 90, next: ['bombard'], splash: { full: 48, half: 112 } },
-    { damage: 9, cooldown: 1.8, range: 288, targets: 'ground', speed: CANNON }),
+    { damage: 12, cooldown: 1.8, range: 288, targets: 'ground', speed: CANNON }),
   tower('bombard', 'Bombard', 'cannon', 'siege', { tier: 2, price: 140, total: 230, next: ['great_bombard'], splash: { full: 48, half: 112 } },
-    { damage: 22, cooldown: 1.8, range: 304, targets: 'ground', speed: CANNON }),
+    { damage: 28, cooldown: 1.8, range: 304, targets: 'ground', speed: CANNON }),
   tower('great_bombard', 'Great Bombard', 'cannon', 'siege', {
     tier: 3, price: 210, total: 440, next: ['thunder_mortar', 'flak_battery'], splash: { full: 48, half: 112 },
-  }, { damage: 40, cooldown: 1.8, range: 320, targets: 'ground', speed: CANNON }),
+  }, { damage: 52, cooldown: 1.8, range: 320, targets: 'ground', speed: CANNON }),
   tower('thunder_mortar', 'Thunder Mortar', 'cannon', 'siege', {
     tier: 4, price: 300, total: 740, next: [], minRange: 160, splash: { full: 80, half: 176 },
-  }, { damage: 90, cooldown: 3.0, range: 640, targets: 'ground', speed: 600 }),
+  }, { damage: 115, cooldown: 3.0, range: 640, targets: 'ground', speed: 600 }),
   tower('flak_battery', 'Flak Battery', 'cannon', 'siege', { tier: 4, price: 300, total: 740, next: [], splash: { full: 40, half: 88 } },
-    { damage: 30, cooldown: 0.9, range: 384, targets: 'both', speed: 1400 }),
+    { damage: 38, cooldown: 0.9, range: 384, targets: 'both', speed: 1400 }),
 
   // Frost: Magic and slows. Slows share one key, so only the strongest applies.
   tower('frost_tower', 'Frost Tower', 'frost', 'magic', { tier: 1, price: 80, total: 80, next: ['ice_spire'], slow: { amount: 0.25, duration: FROST_SLOW } },
@@ -116,7 +116,7 @@ const ROWS: readonly [string, OriginalTowerSpec][] = [
     tier: 3, price: 180, total: 380, next: ['plague_cauldron', 'widows_fang'], poison: { dps: 11, duration: 3 },
   }, { damage: 7, cooldown: 1.0, range: 352, targets: 'ground', speed: POISON }),
   tower('plague_cauldron', 'Plague Cauldron', 'poison', 'poison', {
-    tier: 4, price: 270, total: 650, next: [], cloud: { radius: 112, duration: 3, dps: 16 },
+    tier: 4, price: 270, total: 650, next: [], cloud: { radius: 112, duration: 3, dps: 10 },
   }, { damage: 0, cooldown: 2.0, range: 384, targets: 'ground', speed: 700 }),
   tower('widows_fang', 'Widow\'s Fang', 'poison', 'poison', {
     tier: 4, price: 270, total: 650, next: [], sticky: true, stacks: { dps: 8, duration: 4, max: 5 },

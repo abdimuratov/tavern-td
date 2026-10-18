@@ -231,7 +231,7 @@ describe('poison', () => {
     const cloud = modeEvents(events, 'original.cloud')[0]!;
     expect(cloud.data).toMatchObject({ radius: 112, ticks: 90 });
     expect(s.mode.clouds).toHaveLength(1);
-    expect(c.status.find((x) => x.key === original.KEY.poison)?.value).toBe(16);
+    expect(c.status.find((x) => x.key === original.KEY.poison)?.value).toBe(10);
     expect(original.isPoisoned(near)).toBe(true);
     expect(original.isPoisoned(far)).toBe(false);
     run(s, 90);
@@ -332,7 +332,7 @@ describe('Cannon', () => {
     const none = creepOnRoute(s, 'ghoul', 1200, 1000);
     s.mode.towers[String(t.id)]!.targeting = 'first';
     run(s, 30);
-    expect([1000 - target.hp, 1000 - full.hp, 1000 - half.hp, 1000 - none.hp]).toEqual([22, 22, 11, 0]);
+    expect([1000 - target.hp, 1000 - full.hp, 1000 - half.hp, 1000 - none.hp]).toEqual([28, 28, 14, 0]);
   });
 });
 

@@ -36,8 +36,9 @@ describe('Threat and its curves', () => {
   });
 
   it('splits the pool by each creep\'s share of the Wave\'s HP', () => {
-    const s = newRun();
-    // Stage 1, Wave 6: 6 Ghouls and 6 Hounds (0.7×) at Threat 6, a pool of 20.
+    const filler = { groups: [{ creep: 'ghoul', count: 1 }] };
+    const s = newRun({ waves: [filler, filler, filler, filler, filler, { groups: [{ creep: 'ghoul', count: 6 }, { creep: 'hound', count: 6 }] }] });
+    // Wave 6: 6 Ghouls and 6 Hounds (0.7×) at Threat 6, a pool of 20.
     const groups = original.waveSpec(s, 5)!.groups;
     expect(groups.map((g) => [g.creep, g.count, g.bounty])).toEqual([['ghoul', 6, 1.96], ['hound', 6, 1.37]]);
     const total = groups.reduce((sum, g) => sum + g.count * g.bounty!, 0);
@@ -70,7 +71,8 @@ describe('Waves, Breaks and the early call', () => {
   });
 
   it('starts the 30 s Break at the Wave\'s last spawn, so Waves overlap, and then sends the next on its own', () => {
-    const s = newRun();
+    const tens = { groups: [{ creep: 'ghoul', count: 10 }] };
+    const s = newRun({ waves: [tens, tens, tens] });
     send(s, { type: 'original.sendNow' });
     expect(reasons(send(s, { type: 'original.sendNow' }))).toEqual(['the Wave is still arriving']);
     const events = runUntil(s, () => s.mode.breakUntil >= 0);

@@ -1,33 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { playStage } from './bot';
+import { STAGES } from '../../../src/content/original';
+import { talentsFor } from '../../../tools/balance/jobs';
+import { playStage, type BotOptions, type Strategy } from './bot';
 
-// Whole Runs take a moment on CI's runners, past vitest's 5 s default.
-const BOT_TIMEOUT = 30_000;
+// A small sample of the balance runner (pnpm balance), run on every push: the
+// competent bot on every Stage, with the Campaign's unlocks and a decent
+// player's Talents for each. A dozen whole Runs take a few seconds here and
+// several times that on CI's runners, so each test gets a minute.
+const BOT_TIMEOUT = 60_000;
 
-describe('a headless Original bot', () => {
-  it('clears Stage 1 on Normal with the Campaign\'s opening towers, waiting out the Breaks or calling early', { timeout: BOT_TIMEOUT }, () => {
+function play(stage: number, difficulty: 'easy' | 'normal' | 'insane', strategy: Strategy = 'balanced', more: BotOptions = {}) {
+  const family = more.families?.[0];
+  return playStage(1, difficulty, {
+    stage, cleared: stage - 1, strategy, style: 1, talents: talentsFor({ stage, strategy, ...(family ? { family } : {}) }), ...more,
+  });
+}
+
+describe('the balance bots', () => {
+  it('win every Stage on Easy with the competent bot, sending nothing the rules refuse', { timeout: BOT_TIMEOUT }, () => {
     const lines: string[] = [];
-    for (const greedy of [false, true]) {
-      for (const seed of [1, 2]) {
-        const r = playStage(seed, 'normal', { cleared: 0, greedy });
-        lines.push(`greedy ${greedy} seed ${seed}: ${r.phase}, ${r.completed} cleared, ${r.lives} lives, ${r.stars} Stars, `
-          + `${r.towers} towers at Levels ${r.levels.join(' ')}, early-call gold ${r.earlyGold}; step mean ${(r.meanStepMs * 1000).toFixed(1)} µs`);
-        expect(r.rejected).toEqual([]);
-        expect(r.won).toBe(true);
-        expect(r.completed).toBe(12);
-        expect(r.stars).toBeGreaterThanOrEqual(2);
-        // ADR-0002's budget is 4 ms a tick on an iPhone.
-        expect(r.meanStepMs).toBeLessThan(1);
-        if (greedy) expect(r.earlyGold).toBeGreaterThan(0);
-      }
+    for (const stage of STAGES) {
+      const r = play(stage.number, 'easy');
+      lines.push(`Stage ${stage.number}: ${r.phase} with ${r.lives} lives, ${r.towers} towers; step mean ${(r.meanStepMs * 1000).toFixed(1)} µs`);
+      expect(r.rejected, stage.name).toEqual([]);
+      expect(r.won, stage.name).toBe(true);
+      expect(r.completed).toBe(stage.waves.length);
+      // ADR-0002's budget is 4 ms a tick on an iPhone.
+      expect(r.meanStepMs).toBeLessThan(1);
     }
     console.log(lines.join('\n'));
   });
 
-  it('is pushed harder on Insane, as PLAN §4 wants', { timeout: BOT_TIMEOUT }, () => {
-    const easy = playStage(1, 'easy', { cleared: 0 });
-    const insane = playStage(1, 'insane', { cleared: 0 });
-    expect(easy.won).toBe(true);
-    expect(insane.lives).toBeLessThan(easy.lives);
+  it('lose Insane, the first Stage, the middle and the last', { timeout: BOT_TIMEOUT }, () => {
+    for (const stage of [1, 6, 12]) {
+      const r = play(stage, 'insane');
+      expect(r.won, `Stage ${stage}`).toBe(false);
+      // Insane is lost halfway or later, not to the Stage's opening.
+      expect(r.reached, `Stage ${stage}`).toBeGreaterThanOrEqual(STAGES[stage - 1]!.waves.length / 2);
+    }
+  });
+
+  it('can\'t hold Drowned Causeway\'s flyers with Cannons alone', { timeout: BOT_TIMEOUT }, () => {
+    const r = play(5, 'normal', 'single', { families: ['cannon'] });
+    expect(r.won).toBe(false);
+  });
+
+  it('keep the first bot: it fills Stage 1\'s Spots in a rotation and clears it on Easy, waiting or calling early', { timeout: BOT_TIMEOUT }, () => {
+    for (const greedy of [false, true]) {
+      const r = playStage(1, 'easy', { cleared: 0, greedy });
+      expect(r.rejected).toEqual([]);
+      expect(r.won).toBe(true);
+      if (greedy) expect(r.earlyGold).toBeGreaterThan(0);
+    }
   });
 });

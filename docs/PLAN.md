@@ -46,7 +46,13 @@ Phase 3 progress (2026-10-18):
   - The end card shows the Stars won, what they added and what the win opened. How to play and Records are in place, and autosave, Continue and save codes work as in every Game Mode.
   - e2e in all four browsers: a Run built through the ring that sends a Wave, autosaves, reloads and continues; a won Stage storing its Stars and opening Talents; the ring's hotkeys.
 - Assumed for the UI: Level 1 shows no number on the tower; the ring's hotkeys are WC3's top row; the end card times a win from Wave 1, as the Stage Record does.
-- Left: Stages 2–12 and the balance bots (greedy, single-family, balanced) with their tuning, in their own session. Then a play-test on the Mac, the iPhone and the S24.
+- Done: all 12 Stages ([original-design.md §11](original-design.md#11-the-12-stages) has them as built). Each has its Map, air lines, 9–14 Build Spots and 12–20 Waves, with one line for the select screen. Plague Fords has two spawns that join halfway, Three Gates three that join in two steps, and Riftmaw the longest road. Bosses close Stages 4, 8 and 12.
+- Done: the balance runner, `pnpm balance`. It plays balanced, greedy and single-family bots over seeds and Difficulties, with each Stage's unlocks and a decent player's Talents, and checks PLAN §4's targets. `pnpm test` runs a dozen whole Runs as a sample.
+- Done: tuning ([original-design.md §15](original-design.md#15-balance-2026-10-18) lists every number changed). Stages now ramp up to their last Waves. Boss HP fell to 12, 12 and 24 Ghouls. Cannon hits 30% harder, and Plague Cauldron, Ranger Lodge and Deadeye were trimmed.
+  - Met, over 20 seeds: the competent bot wins Easy 99%, Normal 65% (50–80% per Stage) and Insane 0%.
+  - Not met: Arrow, Poison or Arcane alone still clear some Stages from Stage 5 on. My recommendation is to keep the soft counters and decide after the play-test (§15).
+- Watch in play-testing: the bots go from ~60% on Normal to ~0% on Hard, so Hard may be too steep a step. Waves reach 30–70 creeps by Region 2.
+- Left: a play-test of the whole Campaign on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
@@ -201,7 +207,7 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
   | Basic tower damage | about 0.10 DPS per gold |
 
 - **Difficulty:** creep HP × 0.75 / 1 / 1.3 / 1.6. Element uses its Classic's own Hard and Insane values.
-- **Balance bots:** a headless `tools/balance` runner plays scripted strategies (greedy DPS, maze-heavy, single-family) across seeds and Difficulties, and reports Wave reached and win rate. Targets: a competent bot wins Easy ~95%, Normal ~60% and Insane under 10%. CI runs a small sample on every push.
+- **Balance bots:** a headless `tools/balance` runner (`pnpm balance`) plays scripted strategies (greedy DPS, maze-heavy, single-family) across seeds and Difficulties, and reports Wave reached and win rate. Targets: a competent bot wins Easy ~95%, Normal ~60% and Insane under 10%. CI runs a small sample on every push.
 
 ## 5. Risks
 
