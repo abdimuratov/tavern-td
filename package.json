@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "icons": "node tools/icons.mjs",
     "apk": "node tools/apk.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "balance": "node tools/balance/cli.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
