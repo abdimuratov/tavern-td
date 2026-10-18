@@ -4,7 +4,7 @@ A single-player collection of tower defense Game Modes, most recreating Warcraft
 
 ## 0. Status
 
-Planning finished on 2026-10-15. **Now: Phase 3.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
+Planning finished on 2026-10-15. **Now: Phase 4.** Tick a box when its phase meets the exit bar in §3, and keep this list current.
 
 Phase 0 finished on 2026-10-17. The Tavern TD icon opens the app offline on the Mac, the iPhone and the S24, and a tap on the board registers. The repo `abdimuratov/tavern-td` is public, CI deploys it to https://abdimuratov.github.io/tavern-td/, and `pnpm apk` builds and installs the Android app. TypeScript is pinned to 6.0 because typescript-eslint 8.71 doesn't support TS 7 yet.
 
@@ -53,6 +53,14 @@ Phase 3 progress (2026-10-18):
   - Not met: Arrow, Poison or Arcane alone still clear some Stages from Stage 5 on. My recommendation is to keep the soft counters and decide after the play-test (§15).
 - Watch in play-testing: the bots go from ~60% on Normal to ~0% on Hard, so Hard may be too steep a step. Waves reach 30–70 creeps by Region 2.
 - Left: a play-test of the whole Campaign on the Mac, the iPhone and the S24.
+
+Phase 4 started on 2026-10-18, alongside Phase 3's last steps and without waiting for any play-test.
+
+Phase 4 progress (2026-10-18):
+- Done: the research, [maul-rules.md](research/maul-rules.md), read from Wintermaul X14's own map files plus later versions' listings. X14 has 30 Waves with air at 5, 14, 23 and 27. Waves never overlap, and the last boss leaking loses the game. It has 20 lives, kill bounty, no interest, 75% sells, no upgrades and no Block check. Juggling is allowed. The map has no licence, so we port rules only.
+- Done: the design doc, [maul-design.md](maul-design.md). Four Races (Ironclad, Rimeborn, Mirefolk, Runecasters), each with a Wall and two lines that fork at Tier 3: 36 towers. One Map, the Crossing: two gates whose approaches meet at a Ford, then a shared lower field past two Posts to the exit. 40 Waves with six air Waves at uneven gaps and a boss every 10th. Breaks start after a clear, a second Race joins after Wave 15, and Blocks are refused while Juggling is allowed.
+- My calls, open to change: one shared field rather than two separate lanes; interest kept although Wintermaul had none; nothing hits only air.
+- Left: the rules and their tests, the balance bot, the UI, then a play-test on the Mac, the iPhone and the S24.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

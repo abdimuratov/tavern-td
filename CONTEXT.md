@@ -45,8 +45,12 @@ One group of creeps sent along the path in a single go; a Run is a fixed sequenc
 _Avoid_: level, round (Classics often say "level 51" when they mean a Wave)
 
 **Checkpoint**:
-A region of the Map that ground and air creeps must pass through in order on their way from the spawn to the exit.
+A region of the Map that ground and air creeps must pass through in order on their way from the spawn to the exit. It may stand in several places at once, and a creep makes for the nearest.
 _Avoid_: waypoint (in player-facing text), node, flag
+
+**Gate**:
+In Maul, where a Wave's creeps come onto the Map. The Crossing has two, and each Wave sends its creeps from both.
+_Avoid_: spawn (fine in code), portal, entrance
 
 **Aura**:
 A tower's effect on everything of one kind within a radius, such as faster attacks for nearby towers or less armor for nearby creeps.
@@ -65,15 +69,19 @@ Selling and placing towers mid-Wave so creeps keep turning back and walking the 
 _Avoid_: maze abuse, re-routing
 
 **Race**:
-In Maul, the builder chosen at the start of a Run, which fixes the set of towers you can build.
+In Maul, the builder chosen at the start of a Run, which fixes the set of towers you can build. A second Race can join once Wave 15 is cleared.
 _Avoid_: builder, faction, class
+
+**Wall**:
+In Maul, a Race's cheap 2 × 2 block with a weak attack, built to shape the maze. It upgrades into either line's Tier 1 tower of any Race in the Run.
+_Avoid_: rock (Gem's word), blocker, barricade
 
 **Leak**:
 A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again.
 _Avoid_: escape, breach, pass
 
 **Break**:
-The countdown before the next Wave starts on its own. In Element it starts once a Wave is cleared; in the Original it starts once the Wave's last creep has spawned, so Waves can overlap. "Send now" ends it early.
+The countdown before the next Wave starts on its own. In Element and Maul it starts once a Wave is cleared; in the Original it starts once the Wave's last creep has spawned, so Waves can overlap. "Send now" ends it early.
 _Avoid_: build phase (Gem's build phase has no timer), intermission, timer
 
 **Trait**:
@@ -191,7 +199,7 @@ One of the Original's six tower lines (Arrow, Cannon, Frost, Arcane, Poison, Tot
 _Avoid_: tower type, class, line
 
 **Tier**:
-An upgrade step bought with gold during a Run; a tower climbs Tiers 1–3 and then picks one of two Specialisations.
+An upgrade step bought with gold during a Run. In the Original a tower climbs Tiers 1–3 and then picks one of two Specialisations; in Maul a Wall becomes a Tier 1 tower, which climbs to Tier 2 and then forks into one of two Tier 3 towers.
 _Avoid_: upgrade level, rank
 
 **Specialisation**:
@@ -233,11 +241,11 @@ Which creep in range an Original tower attacks: First (nearest its exit, the def
 _Avoid_: target mode (in player text), priority, aggro
 
 **Bounty pool**:
-The gold a Wave's creeps carry between them in the Original, set by its Threat and split by each creep's share of the Wave's HP. Creeps that another creep drops (a Bloater's Crawlers, a boss's brood) carry none.
+The gold a Wave's creeps carry between them in the Original and Maul, set by its Threat (in Maul, its number) and split by each creep's share of the Wave's HP. Creeps that another creep drops (a Bloater's Crawlers, a boss's brood) carry none.
 _Avoid_: kill gold, reward, loot
 
 **End-of-Wave bonus**:
-The gold the Original pays once every creep of a Wave is dead or leaked, set by its Threat.
+The gold the Original and Maul pay once every creep of a Wave is dead or leaked, set by its Threat (in Maul, its number). Maul adds interest on unspent gold, capped at the bonus.
 _Avoid_: clear bonus, wave reward, income
 
 **Damage type**:
