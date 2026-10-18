@@ -95,6 +95,10 @@ test('a won Stage stores its Stars in the Campaign and opens Talents', async ({ 
   await page.getByTestId('mode-original').getByTestId('mode-page').click();
   await expect(page.getByTestId('stage-1')).toHaveClass(/won/);
   await expect(page.getByTestId('campaign-stars')).toHaveText('★3');
+  // Winning Stage 1 opens Stage 2, and the war map turns to it.
+  await expect(page.getByTestId('stage-2')).not.toHaveClass(/locked/);
+  await expect(page.getByTestId('stage-name')).toHaveText('2 · Greyriver Crossing');
+  await page.getByTestId('stage-1').click();
   await expect(page.getByTestId('stage-record')).toContainText('Hardest won: Easy');
   await expect(page.getByTestId('arsenal')).toContainText('Frost');
 
