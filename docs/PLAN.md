@@ -89,7 +89,14 @@ Phase 5 progress (2026-10-18):
   - A Leak moves a life from the defender to the sender. Sudden Death from about 25 min drains lives every tick.
   - Reforged's computer players differ by Difficulty only in an income bonus: +0%, +20% or +50%.
   - None of the maps has a licence, so we port rules only. Legion TD is left out, as you asked.
-- Doing: the design.
+- Done: the design doc, [line-wars-design.md](line-wars-design.md), and [ADR-0003](adr/0003-two-sides-and-an-ai-in-one-sim.md) on fitting two Sides and an AI into one sim.
+  - The Twin Fields: your Field and the Rival's, each 16 × 28 cells, side by side with 12 columns of rock between them. Yours is on the right, beside the HUD. Blocks are refused and Juggling is allowed.
+  - Towers are Maul's four Races and 36 towers, one Race per Side. There are no Waves: 10 Sends made from Maul's creeps cost 12 to 400 gold. They unlock from 0:20 to 10:00, with Stock that refills and at most 40 creeps a Side alive at once.
+  - Income is 10 plus what your Sends added, paid every 10 s, and the Run starts with 150 gold. Each Side has 30 lives, and a Leak steals lives once. Sudden Death from 15:00 drains a life from both Sides every Income tick, so every Run ends by 19:50.
+  - The Rival's AI runs inside the sim, acts only through the same commands you use and draws only on a seeded RNG stream in the state. A replay of the seed and your commands reproduces it, and versus can later hand its Side to a person. Difficulty sets the Rival's income (×0.85 / 1 / 1.2 / 1.5) and how well it plays.
+- My calls, open to change: a Leak steals once rather than looping; no neutral Waves; Difficulty changes the Rival, not the creeps; flyers add half the income ratio; Sends are one tap, with no confirm. The AI's commands are not stored in the log, because the replay regenerates them.
+- Needs your yes: three of Maul's creep names (Raider, Frost Wolf, Wraith) are names the research says to avoid. Line Wars calls them Brawler, Sleet Hound and Hollow, and I recommend Maul does too.
+- Doing: the deterministic rules.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

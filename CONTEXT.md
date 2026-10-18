@@ -23,15 +23,15 @@ The board a Game Mode is played on: the grid, spawns, exits, checkpoints and unb
 _Avoid_: level, board, arena
 
 **Run**:
-One playthrough of a Game Mode on a Map, from the first Wave to victory or defeat.
+One playthrough of a Game Mode on a Map, from its start to victory or defeat.
 _Avoid_: match, game, session
 
 **Difficulty**:
-The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers.
+The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty.
 _Avoid_: level, challenge
 
 **Record**:
-The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win.
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win. Line Wars keeps Runs, wins, fastest win, best score and best steal: the most lives taken in a Run.
 _Avoid_: high score, achievement, stats
 
 **Save code**:
@@ -41,7 +41,7 @@ _Avoid_: save string, password, export
 ### Play
 
 **Wave**:
-One group of creeps sent along the path in a single go; a Run is a fixed sequence of Waves.
+One group of creeps sent along the path in a single go. In most Game Modes a Run is a fixed sequence of Waves; Line Wars has none, and every creep in it is a Send.
 _Avoid_: level, round (Classics often say "level 51" when they mean a Wave)
 
 **Checkpoint**:
@@ -65,23 +65,23 @@ A placement that would leave creeps no path from spawn to exit. Every Game Mode 
 _Avoid_: wall-off, seal
 
 **Juggling**:
-Selling and placing towers mid-Wave so creeps keep turning back and walking the maze again. Maul allows it, as Wintermaul did.
+Selling and placing towers mid-Wave so creeps keep turning back and walking the maze again. Maul and Line Wars allow it, as Wintermaul did.
 _Avoid_: maze abuse, re-routing
 
 **Race**:
-In Maul, the builder chosen at the start of a Run, which fixes the set of towers you can build. A second Race can join once Wave 15 is cleared.
+In Maul and Line Wars, the builder chosen at the start of a Run, which fixes the set of towers you can build. In Maul a second Race can join once Wave 15 is cleared; in Line Wars each Side has one Race for the whole Run.
 _Avoid_: builder, faction, class
 
 **Wall**:
-In Maul, a Race's cheap 2 × 2 block with a weak attack, built to shape the maze. It upgrades into either line's Tier 1 tower of any Race in the Run.
+In Maul and Line Wars, a Race's cheap 2 × 2 block with a weak attack, built to shape the maze. It upgrades into either line's Tier 1 tower of any Race its Side holds.
 _Avoid_: rock (Gem's word), blocker, barricade
 
 **Leak**:
-A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again.
+A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again. In Line Wars it moves lives from the defending Side to the sender, and the creep is removed.
 _Avoid_: escape, breach, pass
 
 **Break**:
-The countdown before the next Wave starts on its own. In Element and Maul it starts once a Wave is cleared; in the Original it starts once the Wave's last creep has spawned, so Waves can overlap. "Send now" ends it early.
+The countdown before the next Wave starts on its own. In Element and Maul it starts once a Wave is cleared; in the Original it starts once the Wave's last creep has spawned, so Waves can overlap. "Send now" ends it early. Line Wars has none.
 _Avoid_: build phase (Gem's build phase has no timer), intermission, timer
 
 **Trait**:
@@ -259,3 +259,37 @@ _Avoid_: defence, resistance, armour
 **Shield**:
 A creep defence in the Original that blocks a flat amount from every hit. Poison over time ignores it.
 _Avoid_: block, barrier, absorb
+
+### Line Wars (Line Tower Wars rules)
+
+**Side**:
+One of the two players in Line Wars, with its own Field, Race, gold, income, lives and Stock. Side 0 is you; Side 1 is the Rival.
+_Avoid_: player (in code), team, slot, seat
+
+**Rival**:
+The other Side in Line Wars: played by the sim's AI now, by a remote player in versus later.
+_Avoid_: enemy, opponent bot, CPU, computer, AI (in player text)
+
+**Field**:
+A Side's own 16 × 28 part of the Line Wars Map, between a spawn strip and an exit strip. Only that Side builds in it, and only the Rival's Sends walk it.
+_Avoid_: lane (Element's Lane), line, board, arena
+
+**Send**:
+A creep, or a pack of them, bought in Line Wars for the Rival's Field. It enters at once and raises the buyer's Income at once and for good.
+_Avoid_: summon (Line Tower Wars' word), spawn, attack, wave
+
+**Income**:
+The gold a Side is paid each Income tick in Line Wars: 10 plus the income of every Send it has bought.
+_Avoid_: interest, salary, upkeep
+
+**Income tick**:
+The payout of Income every 10 s in Line Wars, counted down on the HUD.
+_Avoid_: payday, round, cycle
+
+**Stock**:
+How many of one Send a Side can buy right now. It starts at 1 when the Send unlocks and refills one at a time up to its cap.
+_Avoid_: charges, supply, food
+
+**Sudden Death**:
+Line Wars from 15:00: Income stops growing, every Income tick takes a life from each Side, and new Sends get tougher. It ends every Run by 19:50.
+_Avoid_: overtime, endgame, drain mode
