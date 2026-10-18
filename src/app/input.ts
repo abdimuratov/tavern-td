@@ -2,7 +2,7 @@ import type { Board } from '../render/board';
 import { boxCentre, cellAtPoint, cellsBox, sameCells, towerCells } from '../render/footprint';
 import type { PointerKind } from '../render/gestures';
 import {
-  CELL, allRouteCells, findTower, getMode, placementError, previewAllRoutes, routeCount, routePolyline, towerMods,
+  CELL, allRouteCells, findTower, getMode, placementError, previewAllRoutes, routeCells, routeCount, routePolyline, towerMods,
   type GameState, type Point, type SimEvent, type Tower,
 } from '../sim';
 import type { ModeUi, Placement, RunView } from '../ui/mode-ui';
@@ -113,13 +113,21 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       board.setRoutePaths(lines, 'current');
       return;
     }
-    // A mazing Map draws the route from every spawn (Maul has two gates).
+    // A mazing Map draws the route from every spawn (Maul has two gates), or the ones the Game Mode picks.
     const preview = routeWanted === 'preview' && ghost !== null && ghost.error === null && ghost.placement.route !== false
       ? previewAllRoutes(s, ghost.placement.cells) : null;
     routeWanted = null;
+    const style = preview ? 'preview' : 'current';
+    const picked = ui.routes?.(s);
+    if (picked) {
+      const live = picked.live.map((i) => preview?.[i] ?? routeCells(s, i));
+      routeShown = live[0] ?? [];
+      board.setRoutes(live, style, picked.faint.map((i) => routeCells(s, i)));
+      return;
+    }
     const routes = preview ?? allRouteCells(s);
     routeShown = routes[0] ?? [];
-    board.setRoutes(routes, preview ? 'preview' : 'current');
+    board.setRoutes(routes, style);
   }
 
   function updateHint(): void {

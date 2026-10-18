@@ -7,10 +7,17 @@ import type { Speed } from '../ui/state';
 export type { Speed };
 
 /**
- * Why the Run is being saved: the end of a Wave, the app going to the background,
- * the player quitting to the menu, or a new Run starting (so Continue finds it).
+ * Why the Run is being saved: the end of a Wave, a Game Mode's own checkpoint
+ * (Line Wars has no Waves, so it asks once a minute), the app going to the
+ * background, the player quitting to the menu, or a new Run starting (so
+ * Continue finds it).
  */
-export type AutosaveReason = 'waveEnd' | 'background' | 'quit' | 'start';
+export type AutosaveReason = 'waveEnd' | 'checkpoint' | 'background' | 'quit' | 'start';
+
+/** A Game Mode asks for an autosave with a mode event named `<mode>.checkpoint`, such as Line Wars' `lw.checkpoint`. */
+export function isCheckpoint(e: SimEvent): boolean {
+  return e.type === 'mode' && (e.name === 'checkpoint' || e.name.endsWith('.checkpoint'));
+}
 
 export interface RunControllerOptions {
   /** What each Run starts from; called again for "play again", so it can pick a new seed. */
@@ -120,15 +127,19 @@ export function createRunController(opts: RunControllerOptions): RunController {
     for (const l of stepListeners) l(state, events);
     let ended = false;
     let waveEnded = false;
+    let checkpoint = false;
     for (const e of events) {
       if (e.type === 'won' || e.type === 'lost') ended = true;
       else if (e.type === 'waveEnd') waveEnded = true;
+      else if (isCheckpoint(e)) checkpoint = true;
     }
     if (ended) {
       const s = state;
       if (opts.clearSave) guard('clearing the autosave', () => opts.clearSave!(s));
     } else if (waveEnded) {
       save('waveEnd');
+    } else if (checkpoint) {
+      save('checkpoint');
     }
   }
 

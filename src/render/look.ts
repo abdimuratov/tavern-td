@@ -91,8 +91,12 @@ export interface BoardExtra {
 
 /** A short effect for a Game Mode's own event, such as a pulse ring. */
 export interface EffectCue {
-  /** A beam runs from (x, y) to (x2, y2), such as a bolt jumping between creeps. */
-  readonly kind: 'ring' | 'flash' | 'burst' | 'beam';
+  /**
+   * A beam runs from (x, y) to (x2, y2), such as a bolt jumping between creeps.
+   * An arc throws a small token in `shape` from (x, y) to (x2, y2), bowing
+   * `lift` world units sideways of the straight line, such as a Line Wars Send crossing the Divide.
+   */
+  readonly kind: 'ring' | 'flash' | 'burst' | 'beam' | 'arc';
   readonly x: number;
   readonly y: number;
   readonly x2?: number;
@@ -103,6 +107,10 @@ export interface EffectCue {
   /** Milliseconds. */
   readonly ms?: number;
   readonly alpha?: number;
+  /** An arc's token. */
+  readonly shape?: Shape;
+  /** How far an arc bows from the straight line, in world units: positive bows down the screen. */
+  readonly lift?: number;
 }
 
 /** The ground's colours, for a Game Mode whose Map should read differently, such as Element's Lane and plots. */
@@ -118,6 +126,27 @@ export interface TerrainLook {
   readonly spotRim?: number;
   /** False hides the dashed air line, for Maps no creep flies over. */
   readonly airLine?: boolean;
+  /** How strongly the air lines show, 0–1 (0.28 by default): lower for a Map with many spawns, whose lines fan out. */
+  readonly airAlpha?: number;
+  /** How spawns show: a ring on each (the default), or one band along each run of them, for a Map whose whole edge spawns. */
+  readonly spawns?: 'rings' | 'strip';
+  /** A box and label round each separate piece of a Checkpoint or the exit, not one box round all of it. */
+  readonly splitRegions?: boolean;
+  /** Banners painted on the ground, such as each Side's Race on Line Wars' Divide. */
+  readonly banners?: readonly TerrainBanner[];
+}
+
+/** A pennant hanging from (x, y), its top centre in world units, with a small title and a big word down its length. */
+export interface TerrainBanner {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly color: number;
+  /** Across its head, such as "Rival". */
+  readonly title: string;
+  /** Down its length, such as the Race's name. */
+  readonly text: string;
 }
 
 /**

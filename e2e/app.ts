@@ -138,3 +138,43 @@ export async function newMaulRun(
   await expect(page.getByTestId('maul-status')).toBeVisible();
   await page.waitForFunction(() => !!window.tavern);
 }
+
+/** From the main menu into a fresh Line Wars Run with your Race, the Rival's and the Difficulty. */
+export async function newLineWarsRun(
+  page: Page,
+  race: 'ironclad' | 'rimeborn' | 'mirefolk' | 'runecasters',
+  rival: 'random' | 'ironclad' | 'rimeborn' | 'mirefolk' | 'runecasters' = 'random',
+  difficulty: 'easy' | 'normal' | 'hard' | 'insane' = 'normal',
+): Promise<void> {
+  await page.getByTestId('mode-linewars').getByTestId('new-run').click();
+  await page.getByTestId(`option-race-${race}`).click();
+  await page.getByTestId(`option-rivalRace-${rival}`).click();
+  await page.getByTestId(`difficulty-${difficulty}`).click();
+  await expect(page.getByTestId('lw-status')).toBeVisible();
+  await page.waitForFunction(() => !!window.tavern);
+}
+
+/** The tower specs standing in one Side's Field: yours (0) is columns 28–43, the Rival's (1) columns 0–15. */
+export async function fieldSpecs(page: Page, side: 0 | 1): Promise<string[]> {
+  return page.evaluate((s) => {
+    const state = window.tavern!.controller.state;
+    return state.towers.filter((t) => (t.cell % state.map.cols >= 28) === (s === 0)).map((t) => t.spec);
+  }, side);
+}
+
+/** Picks a tower in the build menu and builds it in your Field with its top-left at (col, row): a click, or tap then tap again. */
+export async function buildInField(page: Page, action: string, col: number, row: number): Promise<void> {
+  const before = (await fieldSpecs(page, 0)).length;
+  const button = page.locator(`[data-action="build-${action}"]`);
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  const [wx, wy] = spotCorner(col, row);
+  const p = await worldPoint(page, wx, wy);
+  if (touch()) {
+    await tapAt(page, p.x, p.y);
+    await expect(page.getByTestId('hint')).toHaveText(/tap again to build/);
+    expect((await fieldSpecs(page, 0)).length).toBe(before);
+  }
+  await tapAt(page, p.x, p.y);
+  await expect.poll(async () => (await fieldSpecs(page, 0)).length).toBe(before + 1);
+}

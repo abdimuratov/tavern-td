@@ -50,7 +50,7 @@ export function RunEndCard({ s, end }: { s: PlaySession; end: RunEnd }) {
   return (
     <div class="run-over interactive" data-testid="run-over">
       <div class="card">
-        <h1>{end.won ? 'Victory' : 'Defeat'}</h1>
+        <h1 data-testid="end-title">{end.title ?? (end.won ? 'Victory' : 'Defeat')}</h1>
         <p class="muted" data-testid="end-summary">{end.summary}</p>
         {End ? <End s={s} end={end} /> : <Results end={end} />}
         <div class="buttons">

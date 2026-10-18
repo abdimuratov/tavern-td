@@ -150,6 +150,8 @@ export interface RecordBoard {
 export interface EndText {
   /** Won, by the Game Mode's own measure: Element's Full is won once Wave 55 is cleared, though the boss Waves go on. */
   readonly won: boolean;
+  /** The card's heading, when it isn't Victory or Defeat, such as Line Wars' Draw. */
+  readonly title?: string;
   /** One line under Victory or Defeat. */
   readonly summary: string;
   /** The Wave reached, as the card shows it. */
@@ -171,6 +173,22 @@ export interface ModeUi {
   readonly showLives?: boolean;
   /** False hides the start-Wave button, for modes that start Waves themselves. */
   readonly showStartWave?: boolean;
+  /**
+   * How far a saved Run has got, for Continue and Import, when it isn't "Wave n",
+   * such as Line Wars' Run time.
+   */
+  progressText?(state: GameState): string;
+  /**
+   * What the Records' Wave column counts, when it isn't the best Wave reached,
+   * such as Line Wars' best steal: its heading, and a best as New Run shows it.
+   */
+  readonly recordWave?: { readonly heading: string; best(n: number): string };
+  /**
+   * Which spawns' ground routes the board draws, when it shouldn't draw every
+   * spawn's alike: `live` ones are drawn and previewed as usual, `faint` ones
+   * thin and dim, such as the Rival's route in Line Wars.
+   */
+  routes?(state: GameState): { readonly live: readonly number[]; readonly faint: readonly number[] };
   /** The HUD's Wave readout, such as "3/55" or "Boss 2"; null hides it. Default: number/total. */
   waveLabel?(view: RunView): { readonly label: string; readonly value: string } | null;
   /** What a Difficulty does, for the New Run page, when the rules keep it in their own tables. */
@@ -247,6 +265,8 @@ export interface ModeUi {
   result?(state: GameState): RunResult;
   /** A deeper check of the mode's own state in a loaded save; false refuses the save as damaged. */
   validSave?(state: GameState): boolean;
+  /** The mode's own readouts in the top row beside gold, such as Line Wars' income and its countdown. */
+  readonly Stats?: ComponentType<ModeHudProps>;
   /** The mode's own block under the speed controls, such as Gem's Draft progress. */
   readonly Status?: ComponentType<ModeHudProps>;
   /** The mode's own block in the actions area, such as Gem Quality. Hidden on a short screen while something is selected. */

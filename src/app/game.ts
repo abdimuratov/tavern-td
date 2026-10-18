@@ -63,6 +63,8 @@ const MARK_EVENTS = new Set<SimEvent['type']>(['placed', 'removed', 'changed', '
 export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts: PlayOptions = {}): Promise<Play> {
   const { ui } = target;
   const hotkeys = createHotkeys();
+  // The page knows which Game Mode is up, so its stylesheet can size the HUD for it (Line Wars' is wider).
+  document.documentElement.dataset['mode'] = ui.modeId;
   let input: Input | null = null;
   const board = await createBoard(boardHost, {
     onTap: (p, kind) => input?.tap(p, kind),
@@ -131,6 +133,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     const choices = ui.optionsOf?.(s) ?? {};
     const end: RunEnd = {
       won: text.won,
+      ...(text.title ? { title: text.title } : {}),
       summary: text.summary,
       wave: text.wave,
       score: result ? result.score : null,
@@ -259,6 +262,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     runEnd.value = null;
     hint.value = null;
     board.destroy();
+    if (document.documentElement.dataset['mode'] === ui.modeId) delete document.documentElement.dataset['mode'];
   };
 
   session.value = {

@@ -30,7 +30,7 @@ type Page =
   | { readonly name: 'import' };
 
 function savedLine(info: SavedRunInfo & { ok: true }): string {
-  return [`Wave ${info.wave}`, info.options, DIFFICULTY_NAME[info.difficulty], ago(info.savedAt)].filter(Boolean).join(' · ');
+  return [info.progress, info.options, DIFFICULTY_NAME[info.difficulty], ago(info.savedAt)].filter(Boolean).join(' · ');
 }
 
 function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) {
@@ -151,10 +151,11 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
   const boardId = ui?.recordBoard?.(choices);
   const board = ui?.recordBoards?.find((b) => b.id === boardId);
   const records = useRecords(modeId, boardId);
-  /** "Wave 12", or the board's own words past its fixed Waves, such as "Boss 3". */
+  /** "Best: Wave 12", the board's own words past its fixed Waves, such as "Boss 3", or the mode's own best (Line Wars' steal). */
   const bestText = (n: number): string => {
+    if (ui?.recordWave) return ui.recordWave.best(n);
     const w = board?.wave ? board.wave(n) : String(n);
-    return /^\d/.test(w) ? `Wave ${w}` : w;
+    return `Best: ${/^\d/.test(w) ? `Wave ${w}` : w}`;
   };
   const saved = savedRuns.value[modeId];
   const pick = (id: string, value: string): void => {
@@ -165,7 +166,7 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
     if (saved?.ok) {
       confirm({
         title: 'Start a new Run?',
-        text: `Your saved Run (Wave ${saved.wave}, ${DIFFICULTY_NAME[saved.difficulty]}) will be replaced.`,
+        text: `Your saved Run (${saved.progress}, ${DIFFICULTY_NAME[saved.difficulty]}) will be replaced.`,
         yes: 'Start new Run',
         run,
       });
@@ -175,7 +176,7 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
   return (
     <Sheet title={`New ${entry?.name ?? modeId} Run`} onBack={back}>
       {options.length > 0 && (
-        <div class="run-options" data-testid="run-options">
+        <div class={`run-options mode-${modeId}`} data-testid="run-options">
           {options.map((o) => (
             <OptionRow key={o.id} label={o.label} choices={o.choices} value={choices[o.id] ?? o.default} testid={`option-${o.id}`} onPick={(v) => pick(o.id, v)} />
           ))}
@@ -188,7 +189,7 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
             <button key={d} type="button" class={`btn difficulty${d === 'normal' ? ' primary' : ''}`} data-testid={`difficulty-${d}`} onClick={() => start(d)}>
               <span class="name">{DIFFICULTY_NAME[d]}</span>
               <span class="about">{difficultyAbout(modeId, d)}</span>
-              <span class="best-wave">{best > 0 ? `Best: ${bestText(best)}` : 'Not played yet'}</span>
+              <span class="best-wave">{best > 0 ? bestText(best) : records && records[d].played > 0 ? `Played ${records[d].played}` : 'Not played yet'}</span>
             </button>
           );
         })}
@@ -201,10 +202,11 @@ function RecordsTable({ modeId, board }: { modeId: string; board?: RecordBoard }
   const records = useRecords(modeId, board?.id);
   if (!records) return <p class="muted">Loading…</p>;
   const wave = (n: number): string => (board?.wave ? board.wave(n) : String(n));
+  const heading = catalogEntry(modeId)?.ui?.recordWave?.heading ?? 'Best Wave';
   return (
     <table class="records" data-testid={board ? `records-${modeId}-${board.id}` : `records-${modeId}`}>
       <thead>
-        <tr><th>Difficulty</th><th>Best Wave</th><th>Score</th><th>Fastest win</th><th>Runs</th><th>Won</th></tr>
+        <tr><th>Difficulty</th><th>{heading}</th><th>Score</th><th>Fastest win</th><th>Runs</th><th>Won</th></tr>
       </thead>
       <tbody>
         {DIFFICULTIES.map((d) => {
@@ -264,7 +266,7 @@ function ImportPage({ back, confirm }: { back(): void; confirm(c: ConfirmSpec): 
     if (saved?.ok) {
       confirm({
         title: 'Replace your saved Run?',
-        text: `Your saved ${catalogEntry(c.modeId)?.name ?? ''} Run (Wave ${saved.wave}, ${DIFFICULTY_NAME[saved.difficulty]}) will be replaced.`,
+        text: `Your saved ${catalogEntry(c.modeId)?.name ?? ''} Run (${saved.progress}, ${DIFFICULTY_NAME[saved.difficulty]}) will be replaced.`,
         yes: 'Replace and continue',
         run: c.start,
       });
@@ -290,7 +292,7 @@ function ImportPage({ back, confirm }: { back(): void; confirm(c: ConfirmSpec): 
         <button type="button" class="btn" disabled={busy || code.trim() === ''} data-testid="import-load" onClick={() => void load()}>Check code</button>
         {check?.ok && (
           <button type="button" class="btn primary" data-testid="import-continue" onClick={() => go(check)}>
-            Continue {catalogEntry(check.modeId)?.name} · Wave {check.wave} · {check.options ? `${check.options} · ` : ''}{DIFFICULTY_NAME[check.difficulty]}
+            Continue {catalogEntry(check.modeId)?.name} · {check.progress} · {check.options ? `${check.options} · ` : ''}{DIFFICULTY_NAME[check.difficulty]}
           </button>
         )}
       </div>

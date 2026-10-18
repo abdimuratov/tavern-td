@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { airLinePolyline, airRoute, BUILD_SPOT, CELL, routeCount, routePolyline, type GameState, type MapSpec, type Point } from '../sim';
 import { cellsBox } from './footprint';
-import type { TerrainLook } from './look';
+import type { TerrainBanner, TerrainLook } from './look';
 
 export const TERRAIN_COLORS = {
   background: 0x12100e,
@@ -41,26 +41,40 @@ export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain 
   root.addChild(grid);
 
   const marks = new Graphics();
-  if (look.airLine !== false) drawAirLine(marks, state);
+  if (look.airLine !== false) drawAirLine(marks, state, look.airAlpha ?? 0.28);
   const labels: Text[] = [];
   map.waypoints.forEach((region, i) => {
     const exit = i === map.waypoints.length - 1;
     const color = exit ? TERRAIN_COLORS.exit : TERRAIN_COLORS.checkpoint;
     for (const [c, r] of region) marks.rect(c * CELL, r * CELL, CELL, CELL);
     marks.fill({ color, alpha: 0.22 });
-    const box = cellsBox(map, region.map(([c, r]) => r * map.cols + c));
-    marks.roundRect(box.col * CELL + 3, box.row * CELL + 3, box.w * CELL - 6, box.h * CELL - 6, 12)
-      .stroke({ color, width: 4, alpha: 0.85 });
-    labels.push(label(exit ? 'Exit' : String(i + 1), (box.col + box.w / 2) * CELL, (box.row + box.h / 2) * CELL, Math.min(box.w, box.h) * CELL));
+    const cells = region.map(([c, r]) => r * map.cols + c);
+    for (const piece of look.splitRegions ? pieces(map, cells) : [cells]) {
+      const box = cellsBox(map, piece);
+      marks.roundRect(box.col * CELL + 3, box.row * CELL + 3, box.w * CELL - 6, box.h * CELL - 6, 12)
+        .stroke({ color, width: 4, alpha: 0.85 });
+      labels.push(label(exit ? 'Exit' : String(i + 1), (box.col + box.w / 2) * CELL, (box.row + box.h / 2) * CELL, Math.min(box.w, box.h) * CELL));
+    }
   });
-  for (const [sc, sr] of spawnCells(state)) {
-    const sx = (sc + 0.5) * CELL;
-    const sy = (sr + 0.5) * CELL;
-    marks.circle(sx, sy, CELL * 0.42).fill({ color: TERRAIN_COLORS.spawn, alpha: 0.25 });
-    marks.circle(sx, sy, CELL * 0.42).stroke({ color: TERRAIN_COLORS.spawn, width: 5 });
-    marks.circle(sx, sy, CELL * 0.2).stroke({ color: TERRAIN_COLORS.spawn, width: 3, alpha: 0.8 });
+  if (look.spawns === 'strip') {
+    const spawns = spawnCells(state).map(([c, r]) => r * map.cols + c);
+    for (const piece of pieces(map, spawns)) {
+      const box = cellsBox(map, piece);
+      marks.roundRect(box.col * CELL + 4, box.row * CELL + 6, box.w * CELL - 8, box.h * CELL - 12, 14)
+        .fill({ color: TERRAIN_COLORS.spawn, alpha: 0.16 })
+        .stroke({ color: TERRAIN_COLORS.spawn, width: 4, alpha: 0.75 });
+    }
+  } else {
+    for (const [sc, sr] of spawnCells(state)) {
+      const sx = (sc + 0.5) * CELL;
+      const sy = (sr + 0.5) * CELL;
+      marks.circle(sx, sy, CELL * 0.42).fill({ color: TERRAIN_COLORS.spawn, alpha: 0.25 });
+      marks.circle(sx, sy, CELL * 0.42).stroke({ color: TERRAIN_COLORS.spawn, width: 5 });
+      marks.circle(sx, sy, CELL * 0.2).stroke({ color: TERRAIN_COLORS.spawn, width: 3, alpha: 0.8 });
+    }
   }
   root.addChild(marks);
+  for (const b of look.banners ?? []) root.addChild(banner(b));
   for (const l of labels) root.addChild(l);
 
   const border = new Graphics().rect(0, 0, map.cols * CELL, map.rows * CELL).stroke({ color: TERRAIN_COLORS.border, width: 4 });
@@ -148,9 +162,65 @@ function drawSpotRims(g: Graphics, map: MapSpec, color: number): void {
   g.stroke({ color, width: 5, alpha: 0.9 });
 }
 
-function drawAirLine(g: Graphics, state: GameState): void {
+function drawAirLine(g: Graphics, state: GameState, alpha: number): void {
   for (const pts of airLines(state)) dashed(g, pts);
-  g.stroke({ color: TERRAIN_COLORS.air, width: 3, alpha: 0.28, cap: 'round' });
+  g.stroke({ color: TERRAIN_COLORS.air, width: 3, alpha, cap: 'round' });
+}
+
+/** Cells split into the pieces that touch side by side or end to end. */
+function pieces(map: MapSpec, cells: readonly number[]): number[][] {
+  const left = new Set(cells);
+  const out: number[][] = [];
+  for (const start of cells) {
+    if (!left.delete(start)) continue;
+    const piece = [start];
+    for (let i = 0; i < piece.length; i++) {
+      const c = piece[i]!;
+      const col = c % map.cols;
+      for (const n of [col > 0 ? c - 1 : -1, col < map.cols - 1 ? c + 1 : -1, c - map.cols, c + map.cols]) {
+        if (n >= 0 && left.delete(n)) piece.push(n);
+      }
+    }
+    out.push(piece);
+  }
+  return out;
+}
+
+/** A pennant with a swallowtail, its title across the head and its word running down it. */
+function banner(b: TerrainBanner): Container {
+  const root = new Container();
+  const g = new Graphics();
+  const { x, y, width: w, height: h, color } = b;
+  const notch = w * 0.4;
+  g.rect(x - w / 2 - 14, y - 12, w + 28, 16).fill({ color: TERRAIN_COLORS.border, alpha: 0.9 });
+  g.poly([x - w / 2, y, x + w / 2, y, x + w / 2, y + h, x, y + h - notch, x - w / 2, y + h])
+    .fill({ color, alpha: 0.2 })
+    .stroke({ color, width: 5, alpha: 0.75, join: 'round' });
+  root.addChild(g);
+  const title = new Text({
+    text: b.title,
+    resolution: 3,
+    style: { fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '700', fontSize: w * 0.24, fill: 0xf1e6d2, stroke: { color: 0x0b0908, width: 5 } },
+  });
+  title.anchor.set(0.5);
+  title.alpha = 0.85;
+  title.position.set(x, y + w * 0.28);
+  root.addChild(title);
+  const room = h - notch - w * 0.62;
+  const word = new Text({
+    text: b.text.toUpperCase(),
+    resolution: 3,
+    style: {
+      fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '800', fontSize: Math.min(w * 0.46, room / (b.text.length * 0.7)),
+      fill: color, letterSpacing: 6, stroke: { color: 0x0b0908, width: 6 },
+    },
+  });
+  word.anchor.set(0.5);
+  word.rotation = -Math.PI / 2;
+  word.alpha = 0.9;
+  word.position.set(x, y + w * 0.55 + room / 2);
+  root.addChild(word);
+  return root;
 }
 
 function dashed(g: Graphics, pts: readonly Point[]): void {

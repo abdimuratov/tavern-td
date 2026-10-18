@@ -7,6 +7,9 @@ import type { TowerLook } from './look';
 /** `current` is the route creeps walk now; `preview` is the route a ghost's placement would make. */
 export type RouteStyle = 'current' | 'preview';
 
+/** Routes drawn thin and dim beside the live ones, such as the Rival's in Line Wars. */
+const FAINT = { color: 0xe0a64a, alpha: 0.26, width: 5 };
+
 export interface GhostView {
   readonly box: Box;
   readonly valid: boolean;
@@ -72,41 +75,12 @@ export class Overlay {
     this.setRoutes(map, cells ? [cells] : [], style);
   }
 
-  /** Several routes as cells at once, such as one from each of Maul's gates. */
-  setRoutes(map: MapSpec, routes: readonly (readonly number[])[], style: RouteStyle): void {
+  /** Several routes as cells at once, such as one from each of Maul's gates, and any `faint` ones under them. */
+  setRoutes(map: MapSpec, routes: readonly (readonly number[])[], style: RouteStyle, faint: readonly (readonly number[])[] = []): void {
     const g = this.route;
     g.clear();
-    const { color, alpha, width } = ROUTE[style];
-    const x = (cell: number): number => ((cell % map.cols) + 0.5) * CELL;
-    const y = (cell: number): number => (Math.floor(cell / map.cols) + 0.5) * CELL;
-    const drawn = routes.filter((cells) => cells.length >= 2);
-    if (drawn.length === 0) return;
-    for (const cells of drawn) {
-      g.moveTo(x(cells[0]!), y(cells[0]!));
-      for (let i = 1; i < cells.length; i++) {
-        const prev = cells[i - 1]!;
-        const cell = cells[i]!;
-        const next = cells[i + 1];
-        // Skip points in the middle of a straight run: fewer vertices, cleaner joins.
-        if (next !== undefined && cell - prev === next - cell) continue;
-        g.lineTo(x(cell), y(cell));
-      }
-    }
-    g.stroke({ color, alpha, width, cap: 'round', join: 'round' });
-    for (const cells of drawn) {
-      for (let i = ARROW_EVERY; i < cells.length - 1; i += ARROW_EVERY) {
-        const ax = x(cells[i]!);
-        const ay = y(cells[i]!);
-        const dx = x(cells[i + 1]!) - ax;
-        const dy = y(cells[i + 1]!) - ay;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const ux = dx / len;
-        const uy = dy / len;
-        const s = width * 1.5;
-        g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
-      }
-    }
-    g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
+    drawCellRoutes(g, map, faint, FAINT);
+    drawCellRoutes(g, map, routes, ROUTE[style]);
   }
 
   /** Fixed routes through world points: the same line and arrowheads, spaced by distance along each. */
@@ -182,6 +156,42 @@ export class Overlay {
     this.ring.scale.set((sel.span * 1.05) / ATLAS_UNIT);
     drawRange(this.range, sel.x, sel.y, sel.range, 0xffe7a8);
   }
+}
+
+/** Route lines through cell centres, with an arrowhead every few cells, in one stroke and one fill. */
+function drawCellRoutes(
+  g: Graphics, map: MapSpec, routes: readonly (readonly number[])[], { color, alpha, width }: { color: number; alpha: number; width: number },
+): void {
+  const x = (cell: number): number => ((cell % map.cols) + 0.5) * CELL;
+  const y = (cell: number): number => (Math.floor(cell / map.cols) + 0.5) * CELL;
+  const drawn = routes.filter((cells) => cells.length >= 2);
+  if (drawn.length === 0) return;
+  for (const cells of drawn) {
+    g.moveTo(x(cells[0]!), y(cells[0]!));
+    for (let i = 1; i < cells.length; i++) {
+      const prev = cells[i - 1]!;
+      const cell = cells[i]!;
+      const next = cells[i + 1];
+      // Skip points in the middle of a straight run: fewer vertices, cleaner joins.
+      if (next !== undefined && cell - prev === next - cell) continue;
+      g.lineTo(x(cell), y(cell));
+    }
+  }
+  g.stroke({ color, alpha, width, cap: 'round', join: 'round' });
+  for (const cells of drawn) {
+    for (let i = ARROW_EVERY; i < cells.length - 1; i += ARROW_EVERY) {
+      const ax = x(cells[i]!);
+      const ay = y(cells[i]!);
+      const dx = x(cells[i + 1]!) - ax;
+      const dy = y(cells[i + 1]!) - ay;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const s = width * 1.5;
+      g.poly([ax + ux * s, ay + uy * s, ax - ux * s - uy * s, ay - uy * s + ux * s, ax - ux * s + uy * s, ay - uy * s - ux * s]);
+    }
+  }
+  g.fill({ color, alpha: Math.min(1, alpha + 0.15) });
 }
 
 function drawRange(g: Graphics, x: number, y: number, r: number, color: number): void {

@@ -4,7 +4,7 @@ import { draftCount, newGemRun, OPEN_SPOTS, placeDraft, spotCorner, tapAt, touch
 // The app boots into the main menu. These check the play screen itself on a
 // fresh Gem Run: taps and clicks, ghosts, pan, the HUD, hotkeys, and the shell.
 
-test('the main menu lists the four Game Modes, every one playable', async ({ page }) => {
+test('the main menu lists the five Game Modes, every one playable', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByTestId('menu')).toBeVisible();
   await expect(page.getByTestId('mode-gem')).toContainText('Gem TD');
@@ -13,6 +13,8 @@ test('the main menu lists the four Game Modes, every one playable', async ({ pag
   await expect(page.getByTestId('mode-original').getByTestId('mode-page')).toHaveText('Campaign');
   await expect(page.getByTestId('mode-maul')).toContainText('Wintermaul');
   await expect(page.getByTestId('mode-maul').getByTestId('new-run')).toBeVisible();
+  await expect(page.getByTestId('mode-linewars')).toContainText('A duel against the Rival');
+  await expect(page.getByTestId('mode-linewars').getByTestId('new-run')).toBeVisible();
   await expect(page.getByText('Coming later')).toHaveCount(0);
   await expect(page.getByTestId('continue')).toBeHidden();
 });

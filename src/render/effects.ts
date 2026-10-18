@@ -1,5 +1,6 @@
 import type { Container, Sprite } from 'pixi.js';
 import { ATLAS_UNIT, type Atlas } from './atlas';
+import type { Shape } from './look';
 import { ObjectPool, SpritePool } from './pool';
 
 interface Effect {
@@ -16,6 +17,8 @@ interface Effect {
   vx: number;
   vy: number;
   beam: boolean;
+  /** An arc's ends and how far it bows; null for every other effect. */
+  arc: { x0: number; y0: number; x1: number; y1: number; lift: number } | null;
 }
 
 /** Past this many live effects new ones are dropped: a 300-creep splash Wave mustn't cost frames. */
@@ -31,18 +34,20 @@ const WHITE = 8;
 export class Effects {
   private active: Effect[] = [];
   private readonly records = new ObjectPool<Effect>(() => ({
-    sprite: null, pool: null, t: 0, dur: 1, s0: 1, s1: 1, a0: 1, vx: 0, vy: 0, beam: false,
+    sprite: null, pool: null, t: 0, dur: 1, s0: 1, s1: 1, a0: 1, vx: 0, vy: 0, beam: false, arc: null,
   }));
   private readonly glows: SpritePool;
   private readonly rings: SpritePool;
   private readonly shards: SpritePool;
   private readonly beams: SpritePool;
+  private readonly tokens: SpritePool;
 
-  constructor(atlas: Atlas, layer: Container, under: Container) {
+  constructor(private readonly atlas: Atlas, layer: Container, under: Container) {
     this.glows = new SpritePool(layer, atlas.glyph('glow'));
     this.shards = new SpritePool(layer, atlas.shape('diamond'));
     this.beams = new SpritePool(layer, atlas.glyph('white'));
     this.rings = new SpritePool(under, atlas.glyph('ring'));
+    this.tokens = new SpritePool(layer, atlas.shape('circle'));
   }
 
   clear(): void {
@@ -90,6 +95,20 @@ export class Effects {
     e.beam = true;
   }
 
+  /**
+   * A token thrown from (x0, y0) to (x1, y1) along a curve bowing `lift`
+   * world units down the screen, swelling as it flies, as if it rose and fell.
+   */
+  arc(x0: number, y0: number, x1: number, y1: number, color: number, size: number, shape: Shape, lift: number, dur = 650): void {
+    if (this.active.length >= MAX_EFFECTS) return;
+    const e = this.spawn(this.tokens, x0, y0, color, dur, size / ATLAS_UNIT, size / ATLAS_UNIT, 1);
+    if (!e) return;
+    e.sprite!.texture = this.atlas.shape(shape);
+    // Pointing where it flies, so a Harpy's wings lead.
+    e.sprite!.rotation = Math.atan2(y1 - y0, x1 - x0);
+    e.arc = { x0, y0, x1, y1, lift };
+  }
+
   update(dt: number): void {
     const list = this.active;
     let w = 0;
@@ -102,6 +121,16 @@ export class Effects {
       }
       const k = e.t / e.dur;
       const s = e.sprite!;
+      if (e.arc) {
+        // A parabola without trigonometry: 0 at both ends, 1 halfway.
+        const up = 4 * k * (1 - k);
+        const a = e.arc;
+        s.position.set(a.x0 + (a.x1 - a.x0) * k, a.y0 + (a.y1 - a.y0) * k + a.lift * up);
+        s.scale.set(e.s0 * (1 + 0.6 * up));
+        s.alpha = k > 0.85 ? e.a0 * (1 - (k - 0.85) / 0.15) : e.a0;
+        list[w++] = e;
+        continue;
+      }
       const scale = e.s0 + (e.s1 - e.s0) * k;
       if (e.beam) s.scale.y = scale;
       else s.scale.set(scale);
@@ -131,6 +160,7 @@ export class Effects {
     e.vx = 0;
     e.vy = 0;
     e.beam = false;
+    e.arc = null;
     this.active.push(e);
     return e;
   }

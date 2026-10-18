@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, type Settings } from './storage';
 export type SoundName =
   | 'place' | 'rock' | 'merge' | 'upgrade' | 'shoot' | 'hit' | 'splash' | 'kill'
   | 'leak' | 'waveStart' | 'waveEnd' | 'click' | 'error' | 'win' | 'lose'
-  | 'levelUp' | 'summon' | 'resource' | 'rise';
+  | 'levelUp' | 'summon' | 'resource' | 'rise' | 'horn' | 'arrive';
 
 /** Attack sounds for `shoot`, named after the kinds of tower that fire them. */
 export type ShootVariant = 'arrow' | 'cannon' | 'frost' | 'arcane' | 'poison';
@@ -166,6 +166,24 @@ export const SOUNDS: Readonly<Record<SoundName, Sound>> = {
     tones: [
       { wave: 'triangle', freq: 180, slide: 520, dur: 0.22, gain: 0.2 },
       { wave: 'noise', filter: 'highpass', freq: 2500, slide: 4000, dur: 0.12, gain: 0.06 },
+    ],
+  },
+  /** Flyers or a boss coming onto the board: a soft, low two-note horn. */
+  horn: {
+    important: true,
+    tones: [
+      { wave: 'triangle', freq: 196, dur: 0.32, gain: 0.22 },
+      { wave: 'sawtooth', freq: 196, dur: 0.3, gain: 0.04 },
+      { wave: 'triangle', freq: 261.63, at: 0.26, dur: 0.46, gain: 0.24 },
+      { wave: 'sawtooth', freq: 261.63, at: 0.26, dur: 0.42, gain: 0.04 },
+    ],
+  },
+  /** Creeps coming onto the board one Send at a time: a soft low knock. */
+  arrive: {
+    jitter: 0.04,
+    tones: [
+      { wave: 'triangle', freq: 150, slide: 95, dur: 0.12, gain: 0.2 },
+      { wave: 'noise', filter: 'lowpass', freq: 500, slide: 200, dur: 0.07, gain: 0.08 },
     ],
   },
   lose: {

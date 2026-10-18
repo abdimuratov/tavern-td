@@ -119,6 +119,7 @@ function WaveStat({ s }: { s: PlaySession }) {
 }
 
 function Stats({ s }: { s: PlaySession }) {
+  const Extra = s.ui.Stats;
   return (
     <div class="stats">
       <span class="stat" title="Gold">
@@ -132,6 +133,7 @@ function Stats({ s }: { s: PlaySession }) {
         </span>
       )}
       <WaveStat s={s} />
+      {Extra && <Extra s={s} />}
     </div>
   );
 }

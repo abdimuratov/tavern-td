@@ -69,6 +69,8 @@ export const runMenu = signal<RunMenuPage | null>(null);
 /** How the Run ended, for the end screen. `update` arrives once the Record is merged. */
 export interface RunEnd {
   readonly won: boolean;
+  /** The heading, when it isn't Victory or Defeat (Line Wars' Draw). */
+  readonly title?: string;
   /** The line under Victory or Defeat. */
   readonly summary: string;
   /** The Wave reached, as shown. */
@@ -93,6 +95,8 @@ export const screen = signal<'boot' | 'menu' | 'play'>('boot');
 export type SavedRunInfo =
   | {
     readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly savedAt: number;
+    /** How far it has got, such as "Wave 12". */
+    readonly progress: string;
     /** The Run's other choices in a few words, such as "Express"; '' for none. */
     readonly options: string;
   }
@@ -105,6 +109,8 @@ export const savedRuns = signal<Readonly<Record<string, SavedRunInfo>>>({});
 export type CodeCheck =
   | {
     readonly ok: true; readonly modeId: string; readonly wave: number; readonly difficulty: Difficulty; readonly gold: number;
+    /** How far it has got, such as "Wave 12". */
+    readonly progress: string;
     readonly options: string; start(): void;
   }
   | { readonly ok: false; readonly message: string };

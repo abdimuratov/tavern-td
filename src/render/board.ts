@@ -30,8 +30,8 @@ export interface Board {
   /** Once per display frame. `alpha` is how far between the last two ticks to draw; `dt` is real milliseconds. */
   render(alpha: number, dt: number): void;
   setRoute(cells: readonly number[] | null, style: RouteStyle): void;
-  /** Several routes as cells, such as one from each gate of a mazing Map. */
-  setRoutes(routes: readonly (readonly number[])[], style: RouteStyle): void;
+  /** Several routes as cells, such as one from each gate of a mazing Map, and any drawn faint under them. */
+  setRoutes(routes: readonly (readonly number[])[], style: RouteStyle, faint?: readonly (readonly number[])[]): void;
   /** The routes as lines through world points, for Maps whose creeps walk fixed routes. */
   setRoutePaths(lines: readonly (readonly Point[])[], style: RouteStyle): void;
   setGhost(ghost: GhostView | null): void;
@@ -110,6 +110,8 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
   let looks: LookCache = createLookCache({ id: '', towers: {}, creeps: {}, damageTable: {}, setup() {} });
   let map: GameState['map'] | null = null;
   let terrain: Terrain | null = null;
+  /** The terrain look it was drawn with, so a new Run on the same Map with other banners (Line Wars' Races) redraws it. */
+  let terrainKey = '';
   const entities = new Entities(atlas, layers, looks);
   const effects = new Effects(atlas, effectsOver, effectsUnder);
 
@@ -227,6 +229,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
             if (cue.kind === 'ring') effects.ring(cue.x, cue.y, cue.color, cue.size, cue.ms, cue.alpha);
             else if (cue.kind === 'flash') effects.flash(cue.x, cue.y, cue.color, cue.size, cue.ms);
             else if (cue.kind === 'beam') effects.beam(cue.x, cue.y, cue.x2 ?? cue.x, cue.y2 ?? cue.y, cue.color, cue.size, cue.ms);
+            else if (cue.kind === 'arc') effects.arc(cue.x, cue.y, cue.x2 ?? cue.x, cue.y2 ?? cue.y, cue.color, cue.size, cue.shape ?? 'circle', cue.lift ?? 0, cue.ms);
             else effects.burst(cue.x, cue.y, cue.color, cue.size);
           }
           break;
@@ -246,16 +249,22 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
       looks = createLookCache(rules, look);
       entities.reset(looks);
       effects.clear();
-      if (state.map !== map || !terrain) {
+      const terrainLook = looks.terrain(state);
+      const key = JSON.stringify(terrainLook);
+      if (state.map !== map || !terrain || key !== terrainKey) {
+        const newMap = state.map !== map;
         map = state.map;
+        terrainKey = key;
         if (terrain) {
           terrainLayer.removeChild(terrain.root);
           terrain.root.destroy({ children: true });
         }
-        terrain = buildTerrain(state, looks.terrain(state));
+        terrain = buildTerrain(state, terrainLook);
         terrainLayer.addChild(terrain.root);
-        worldSize = { width: map.cols * CELL, height: map.rows * CELL };
-        apply(fitCamera(screen, worldSize));
+        if (newMap) {
+          worldSize = { width: map.cols * CELL, height: map.rows * CELL };
+          apply(fitCamera(screen, worldSize));
+        }
       }
       terrain.grid.visible = showGrid;
       overlay.setGhost(null);
@@ -279,8 +288,8 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
     setRoute(cells, style) {
       if (map) overlay.setRoute(map, cells, style);
     },
-    setRoutes(routes, style) {
-      if (map) overlay.setRoutes(map, routes, style);
+    setRoutes(routes, style, faint) {
+      if (map) overlay.setRoutes(map, routes, style, faint);
     },
     setRoutePaths: (lines, style) => overlay.setRoutePaths(lines, style),
     worldToClient(p) {

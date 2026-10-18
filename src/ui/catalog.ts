@@ -2,6 +2,7 @@ import { DEFAULT_DIFFICULTY_HP, getMode, hasMode, type Difficulty } from '../sim
 import type { ModeUi } from './mode-ui';
 import { ELEMENT_UI } from './modes/element';
 import { GEM_UI } from './modes/gem';
+import { LINEWARS_UI } from './modes/linewars';
 import { MAUL_UI } from './modes/maul';
 import { ORIGINAL_UI } from './modes/original';
 
@@ -25,6 +26,10 @@ export const CATALOG: readonly CatalogEntry[] = [
   {
     id: 'maul', name: 'Maul', origin: 'Wintermaul',
     blurb: 'Pick a Race and maze an open field with its towers. Juggling allowed; the last boss must not get through.', ui: MAUL_UI,
+  },
+  {
+    id: 'linewars', name: 'Line Wars', origin: 'A duel against the Rival',
+    blurb: 'Maze your own Field and buy Sends for the Rival\'s. Every Send raises your Income, and every Leak steals a life.', ui: LINEWARS_UI,
   },
 ];
 

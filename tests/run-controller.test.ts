@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRunController, MAX_FRAME_MS, TICK_MS, type RunControllerOptions } from '../src/app/controller';
+import { createRunController, isCheckpoint, MAX_FRAME_MS, TICK_MS, type RunControllerOptions } from '../src/app/controller';
 import { hashState, replay, type GameState, type RunOptions, type SimEvent } from '../src/sim';
 import '../src/sim/testing';
 
@@ -117,6 +117,22 @@ describe('run controller', () => {
     two.c.background();
     expect(two.c.paused).toBe(true);
     expect(autosave).toHaveBeenLastCalledWith(two.c.state, 'background');
+  });
+
+  it('autosaves on a Game Mode\'s own checkpoint, such as Line Wars\' once a minute', () => {
+    const autosave = vi.fn();
+    const { c } = setup({
+      autosave,
+      runOptions: () => ({ mode: 'linewars', seed: 7, difficulty: 'normal', options: { race: 'ironclad', rivalRace: 'rimeborn' } }),
+    });
+    c.fastForward(1800);
+    expect(autosave).not.toHaveBeenCalled();
+    c.fastForward(1);
+    expect(c.state.tick).toBe(1801);
+    expect(autosave).toHaveBeenCalledTimes(1);
+    expect(autosave).toHaveBeenLastCalledWith(c.state, 'checkpoint');
+    expect(isCheckpoint({ type: 'mode', name: 'lw.checkpoint', data: null })).toBe(true);
+    expect(isCheckpoint({ type: 'mode', name: 'lw.income', data: null })).toBe(false);
   });
 
   it('resumes a saved Run paused, and its commands go on from where it was', () => {

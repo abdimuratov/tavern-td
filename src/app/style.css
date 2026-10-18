@@ -531,7 +531,8 @@ textarea.code[readonly] { font-size: 12px; }
 .run-option .option-about:empty { display: none; }
 .run-option .option-label { flex: none; width: 66px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
 .run-option .seg .btn { font-size: 13.5px; }
-.howto-modes { max-width: 320px; margin-bottom: 10px; }
+.howto-modes { max-width: 460px; margin-bottom: 10px; }
+.howto-modes .btn { white-space: nowrap; }
 .records-board h3 { margin: 6px 0 2px; font-size: 12px; font-weight: 650; color: var(--muted); }
 .btn.difficulty { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 68px; padding: 8px 14px; text-align: left; }
 .difficulty .name { font-size: 16px; font-weight: 750; }
@@ -1113,4 +1114,107 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .ml-role { display: none; }
   .ml-tower dl.or-stats, .ml-tower .abilities { display: none; }
   .ml-races > .muted { display: none; }
+}
+
+/* --- Line Wars ------------------------------------------------------------- */
+
+/* Line Wars: two Fields with the Divide between, the Rival's red and yours green. */
+.mode-icon.linewars {
+  background: linear-gradient(90deg, #c4574a 0 36%, transparent 36% 64%, #74c98a 64%);
+  clip-path: inset(6% 0 round 5px);
+}
+
+/* A wider HUD for the send menu: the board is height-bound on a phone and on a 16:9 Mac, so the Fields stay as big. */
+:root[data-mode='linewars'] { --hud-w: 288px; }
+.hud.mode-linewars { gap: 5px; }
+.run-options.mode-linewars { grid-template-columns: minmax(0, 1fr); }
+
+.lw-income { gap: 4px; }
+.lw-income .muted { font-weight: 500; font-size: 12px; }
+.lw-ring { flex: none; width: 17px; height: 17px; }
+.lw-ring circle { fill: none; stroke-width: 3.2; }
+.lw-ring .track { stroke: var(--button-line); }
+.lw-ring .fill { stroke: var(--accent); stroke-linecap: round; }
+
+.lw-status { gap: 3px; }
+.lw-tug { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.lw-tug b { font-size: 14px; }
+.lw-tug .bar { position: relative; flex: 1; height: 10px; border-radius: 3px; overflow: hidden; background: #b4473c; }
+.lw-tug .mine { position: absolute; inset: 0 auto 0 0; background: #74c98a; transition: width 0.25s; }
+/* A tick every five lives while the two Sides hold 60 between them. */
+.lw-tug .bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent calc(100% - 1px), rgba(18, 16, 14, 0.8) 0) 0 0 / calc(100% / 12) 100%;
+}
+.lw-line { display: flex; justify-content: space-between; align-items: baseline; gap: 2px 8px; flex-wrap: wrap; font-size: 11.5px; }
+.lw-rival { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.lw-clock { white-space: nowrap; font-weight: 650; }
+.lw-clock.sudden { color: var(--error); }
+
+.lw-field ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; }
+.lw-field .group.rich { align-items: center; }
+.lw-creep { flex: none; width: 18px; height: 15px; }
+.lw-none { margin: 0; font-size: 12px; }
+.lw-next { margin: 2px 0 0; font-size: 11.5px; }
+.lw-next.air { color: #9fd2ff; font-weight: 700; }
+
+.lw-sends { flex: none; display: grid; gap: 3px; }
+.lw-send-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.btn.lw-send {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  min-height: 50px;
+  padding: 5px 1px 6px;
+  line-height: 1.05;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.lw-send .lw-creep { width: 26px; height: 18px; }
+.lw-send .price { font-size: 12px; font-weight: 750; }
+.lw-send .inc { font-size: 9.5px; font-weight: 650; color: var(--ok); }
+.lw-send .stock {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+.lw-send .key { position: absolute; top: 2px; right: 2px; }
+.lw-send .restock { position: absolute; left: 5px; right: 5px; bottom: 2px; height: 2px; border-radius: 1px; background: rgba(0, 0, 0, 0.45); }
+.lw-send .restock span { display: block; height: 100%; border-radius: 1px; background: var(--accent); }
+.btn.lw-send.dim { opacity: 0.48; }
+.btn.lw-send.locked .price { color: var(--muted); font-weight: 650; }
+.btn.lw-send.locked .inc { color: var(--muted); }
+.btn.lw-send.air { border-color: #3d6488; }
+.btn.lw-send.boss { border-color: #8a3a30; }
+.lw-live { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); }
+.lw-live [data-testid='live'] { color: var(--text); font-weight: 650; }
+
+.lw-theirs { flex: none; margin-left: auto; padding: 2px 7px; border-radius: 4px; background: #3a2018; color: #ffb8a0; font-size: 11px; font-weight: 750; white-space: nowrap; }
+
+@media (max-height: 520px) {
+  .hud.mode-linewars { gap: 4px; }
+  .hud.mode-linewars .controls .btn { min-height: 40px; }
+  .btn.lw-send { min-height: 46px; padding: 4px 1px 5px; }
+  .lw-send .lw-creep { width: 24px; height: 16px; }
+  .lw-field ul { font-size: 11.5px; }
+  /* A Rival's tower has no upgrades to show, so its numbers get the room. */
+  .lw-tower.theirs dl.or-stats { display: grid; }
+}
+@media (hover: none) {
+  .lw-again { display: none; }
 }

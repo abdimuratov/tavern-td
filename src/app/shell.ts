@@ -44,6 +44,11 @@ function optionsLine(entry: CatalogEntry | undefined, state: GameState): string 
   return entry?.ui?.optionsText?.(choicesOf(entry, state)) ?? '';
 }
 
+/** How far a saved Run has got: "Wave 12", or the mode's own words. */
+function progressLine(entry: CatalogEntry | undefined, state: GameState): string {
+  return entry?.ui?.progressText?.(state) ?? `Wave ${state.wave.number}`;
+}
+
 interface Loaded {
   readonly info: SavedRunInfo;
   readonly state?: GameState;
@@ -65,8 +70,10 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
     }
     try {
       const state = checkRun(saved.data, RULES);
-      const options = optionsLine(catalogEntry(modeId), state);
-      return { info: { ok: true, modeId, wave: state.wave.number, difficulty: state.difficulty, savedAt: saved.savedAt, options }, state };
+      const entry = catalogEntry(modeId);
+      const options = optionsLine(entry, state);
+      const progress = progressLine(entry, state);
+      return { info: { ok: true, modeId, wave: state.wave.number, difficulty: state.difficulty, savedAt: saved.savedAt, progress, options }, state };
     } catch (err) {
       const why = err instanceof SaveProblem ? err.message : 'It is damaged.';
       return { info: { ok: false, modeId, problem: `Your saved Run can't be continued. ${why}` } };
@@ -163,6 +170,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
           wave: state.wave.number,
           difficulty: state.difficulty,
           gold: state.gold,
+          progress: progressLine(entry, state),
           options: optionsLine(entry, state),
           start: () => void begin(targetFor(entry, state.difficulty, choicesOf(entry, state)), { initial: state, save: true }),
         };
