@@ -6,7 +6,8 @@ import { LAST_TICK, playLw } from './bots';
 import { col, modeEvents, newRun, reasons, run, runTo, send } from './helpers';
 
 describe('the Rival\'s AI', () => {
-  it('never issues a command the handler refuses, over whole Runs on every Difficulty, and builds, upgrades and sends', () => {
+  // Four whole Runs with the AI on both Sides: seconds locally, longer on a slow CI runner.
+  it('never issues a command the handler refuses, over whole Runs on every Difficulty, and builds, upgrades and sends', { timeout: 60_000 }, () => {
     for (const d of DIFFICULTIES) {
       const r = playLw(2, d);
       expect(r.aiRefused, d).toEqual([]);
