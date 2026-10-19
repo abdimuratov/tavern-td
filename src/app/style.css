@@ -1218,3 +1218,109 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 @media (hover: none) {
   .lw-again { display: none; }
 }
+
+/* ---------- Versus (docs/versus-design.md §2–§6) ---------- */
+.warn { color: #f0c060; }
+.mode-card .versus-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.versus-row .versus-label { font-weight: 700; }
+.versus-row .versus-label .muted { font-weight: 500; font-size: 12px; }
+.versus-row .buttons { margin-top: 0; }
+.versus-row .btn { padding: 0 18px; font-weight: 650; }
+.howto .versus-help { grid-column: 1 / -1; }
+
+.vs-swap, .vs-paste { display: grid; gap: 6px; }
+.vs-step { margin: 0; font-weight: 650; }
+.vs-step b { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; background: var(--accent); color: #1b140c; font-size: 12px; }
+.vs-offer { display: flex; gap: 14px; align-items: flex-start; }
+.vs-offer-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.vs-offer-main .note, .vs-swap .note { margin: 0; }
+.vs-share { margin-top: 0; align-items: center; }
+.qr { flex: none; width: 168px; height: 168px; border-radius: 6px; background: #fff; }
+.vs-wait { margin: 4px 0; font-weight: 650; color: var(--accent); }
+.vs-failed h2 { margin: 0 0 4px; font-size: 17px; }
+.vs-failed p { margin: 0 0 6px; }
+.vs-lobby { display: grid; gap: 8px; }
+.vs-lobby .run-option .seg .btn { font-size: 13px; }
+.vs-lobby-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.vs-lobby-line .option-label { flex: none; width: 66px; color: var(--muted); font-size: 12.5px; font-weight: 650; }
+.vs-lobby .buttons { margin-top: 2px; }
+.btn.vs-ready { min-width: 160px; }
+.vs-lobby .note { margin: 0; }
+.vs-reconnect p { margin: 0; }
+
+/* Over the board in a Run: the 3-2-1, a banner, the pause and Connection lost sheets. */
+.vs-banner { position: absolute; top: calc(var(--safe-t) + 58px); left: 50%; transform: translateX(-50%); color: #f0c060; white-space: nowrap; }
+.vs-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 120px;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.vs-sheet {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-y: auto;
+  padding: calc(var(--safe-t) + 10px) 10px 10px;
+  background: rgba(10, 8, 6, 0.5);
+  pointer-events: auto;
+}
+.vs-sheet .card {
+  margin: auto;
+  width: min(380px, 100%);
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+.vs-sheet .card.wide { width: min(640px, 100%); text-align: left; }
+.vs-sheet h2 { margin: 0 0 4px; font-size: 19px; }
+.vs-sheet p { margin: 0 0 10px; }
+.vs-sheet .buttons { justify-content: center; margin-top: 0; }
+.vs-sheet .card.wide .buttons { justify-content: flex-start; }
+.vs-sheet .note { margin: 8px 0 0; }
+.vs-readies { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; }
+.vs-readies .btn { min-width: 150px; }
+.vs-rival-ready { color: var(--muted); font-weight: 650; }
+.vs-rival-ready.on { color: var(--ok); }
+.vs-sheet .qr { width: 128px; height: 128px; }
+
+/* The HUD's connection line. */
+.vs-line { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vs-line .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.vs-line.warn { color: #f0c060; }
+.vs-line.warn .dot { background: #f0c060; }
+.vs-line.error { color: var(--error); }
+.vs-line.error .dot { background: var(--error); }
+
+/* A Send bought whose tick hasn't landed yet. */
+.btn.lw-send.pending { border-color: var(--accent); }
+.lw-send .pending-count {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #1b140c;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 12px;
+  animation: vs-breathe 0.9s ease-in-out infinite alternate;
+}
+@keyframes vs-breathe { from { opacity: 0.45; } to { opacity: 1; } }
+
+@media (max-height: 520px) {
+  .qr { width: 132px; height: 132px; }
+  .vs-sheet .qr { width: 108px; height: 108px; }
+  .vs-countdown { font-size: 88px; }
+  .vs-sheet .card { padding: 10px 14px; }
+}

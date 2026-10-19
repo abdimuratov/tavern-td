@@ -67,6 +67,11 @@ export function createFeedback(out: FeedbackOutputs, looks: () => LookCache, ui:
     tap(): void {
       out.haptic('tap');
     },
+    /** A command sent in Versus, which lands Input Delay Turns later: it clicks and buzzes now (versus-design §4.3). */
+    sent(): void {
+      out.play('click');
+      out.haptic('tap');
+    },
   };
 }
 

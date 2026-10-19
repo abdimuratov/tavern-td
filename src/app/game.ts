@@ -53,6 +53,12 @@ export interface PlayOptions {
   readonly ticks?: TickSource;
   /** Replaces what the pause button and P do: Versus asks the lockstep, so both devices stop on one tick. */
   onPause?(): void;
+  /**
+   * Versus: this player's commands sent but not applied yet (the lockstep's
+   * in-flight list). The board marks them faintly and the HUD shows a pending
+   * Send until their tick lands, Input Delay Turns after the tap.
+   */
+  inFlight?(): readonly Command[];
   /** Called by Quit to menu once the Run is saved. */
   onQuit?(): void;
   fps?(fps: number): void;
@@ -60,6 +66,8 @@ export interface PlayOptions {
 
 export interface Play {
   readonly controller: RunController;
+  /** The Side this device shows as you (PlayOptions.viewer). */
+  readonly viewer: ViewerSide;
   /** Client (CSS pixel) position of a world point, for tests and debugging. */
   worldToClient(x: number, y: number): { x: number; y: number };
   /** Resolves once the latest autosave (or clearing it), and the mode's record of a finished Run, have been written. */
@@ -81,6 +89,9 @@ export interface Play {
 const HUD_EVENTS = new Set<SimEvent['type']>([
   'placed', 'removed', 'changed', 'waveStart', 'waveEnd', 'won', 'lost', 'goldChanged', 'livesChanged', 'mode', 'kill',
 ]);
+/** A pending Versus command's mark: the board's pale gold, so it reads as not there yet. */
+const PENDING_COLOR = 0xf1e6d2;
+
 /** Events after which the mode's marks on structures may have moved or changed. */
 const MARK_EVENTS = new Set<SimEvent['type']>(['placed', 'removed', 'changed', 'waveStart', 'waveEnd', 'mode']);
 
@@ -110,11 +121,28 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
   let lastWrite: Promise<unknown> = Promise.resolve();
   /** The mode folding the last finished Run into its own progress, such as the Original's Campaign. */
   let finishing: Promise<unknown> = Promise.resolve();
+  /**
+   * With a tick source a command lands Input Delay Turns after the tap
+   * (versus-design §4.3), so the tap clicks and buzzes as it's sent, and the
+   * HUD and the board's pending marks are read again at once.
+   */
+  const source = opts.ticks;
+  const ticks: TickSource | undefined = source && {
+    submit(command) {
+      source.submit(command);
+      feedback.sent();
+      dirty = true;
+      updateMarks(controller.state);
+    },
+    take: (tick) => source.take(tick),
+    stepped: (state) => source.stepped(state),
+    pace: () => source.pace(),
+  };
   const controller = createRunController({
     runOptions: target.runOptions,
     ...(opts.initial ? { initial: opts.initial } : {}),
     paused: opts.paused ?? false,
-    ...(opts.ticks ? { ticks: opts.ticks } : {}),
+    ...(ticks ? { ticks } : {}),
     // A Versus Run can't go on alone, so it is never saved (design §6).
     ...(versus ? {} : {
       autosave: (s: GameState) => (lastWrite = saveRun(s.modeId, s, SAVE_VERSION)),
@@ -162,6 +190,11 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
       const box = cellsBox(s.map, towerCells(t));
       marks.push({ x: t.x, y: t.y, span: Math.min(box.w, box.h) * CELL, color: m.color, style: m.style, ...(m.pulse ? { pulse: true } : {}) });
     }
+    // Versus: what this player sent that hasn't landed yet, faintly, until its tick.
+    for (const c of opts.inFlight?.() ?? []) {
+      const at = ui.pendingMark?.(s, c);
+      if (at) marks.push({ ...at, color: PENDING_COLOR, style: 'brackets', pulse: true });
+    }
     board.setMarks(marks);
   };
 
@@ -171,7 +204,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
    */
   const ended = (s: GameState): void => {
     const result = opts.record === false ? null : ui.result?.(s, side) ?? null;
-    const text = ui.endText?.(s, side) ?? defaultEndText(s);
+    const text = ui.endText?.(s, side, versus) ?? defaultEndText(s);
     const choices = ui.optionsOf?.(s, side) ?? {};
     const end: RunEnd = {
       won: text.won,
@@ -208,7 +241,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     feedback.events(s, events);
     inp.afterStep(s, events);
     ui.onEvents?.(view, events);
-    let marks = ui.marksEvery !== undefined && s.tick % ui.marksEvery === 0;
+    // In Versus a Turn starts every 3 ticks and may land a pending command, so its marks are read again then.
+    let marks = (ui.marksEvery !== undefined && s.tick % ui.marksEvery === 0) || (opts.inFlight !== undefined && s.tick % 3 === 0);
     for (const e of events) {
       if (!dirty && HUD_EVENTS.has(e.type)) dirty = true;
       if (MARK_EVENTS.has(e.type)) marks = true;
@@ -334,11 +368,13 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     },
     // A Versus Run has no save code (design §6).
     ...(versus ? {} : { exportCode: () => writeCode(controller.state) }),
+    ...(opts.inFlight ? { inFlight: opts.inFlight } : {}),
   };
   controller.start();
 
   return {
     controller,
+    viewer: side,
     worldToClient: (x, y) => board.worldToClient({ x, y }),
     flush: () => Promise.all([lastWrite, finishing]),
     recordVersus: (outcome) => (opts.record === false ? Promise.resolve(null) : recordVersus(ui, controller.state, side, outcome)),

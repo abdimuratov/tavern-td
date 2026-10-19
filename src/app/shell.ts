@@ -1,3 +1,4 @@
+import type { VersusRun } from '../net';
 import { setAudioSettings } from '../platform/audio';
 import { setHapticsEnabled } from '../platform/native';
 import { loadRun, saveSettings, type Settings } from '../platform/storage';
@@ -7,11 +8,12 @@ import type { RunChoices } from '../ui/mode-ui';
 import { appActions, savedRuns, screen, settings, type CodeCheck, type SavedRunInfo } from '../ui/state';
 import { startPlay, type Play, type PlayOptions, type PlayTarget } from './game';
 import { checkRun, readCode, SAVE_VERSION, SaveProblem, type SaveRules } from './saves';
+import { createVersus, type VersusDebug } from './versus';
 
 declare global {
   interface Window {
-    /** The running play screen, for the e2e tests and the Safari inspector. */
-    tavern?: Play;
+    /** The running play screen, for the e2e tests and the Safari inspector; a Versus Run's adds its session (`versus`). */
+    tavern?: Play & { readonly versus?: VersusDebug };
     /**
      * Dev and e2e: a Line Wars Run seen from Side 1, as a Versus Guest sees
      * it, with no network: your Race on Side 1 against the AI's on Side 0, the
@@ -152,7 +154,18 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
     play?.setShowGrid(next.showGrid);
   }
 
+  const vs = createVersus({
+    playVersus,
+    showVersus() {
+      stopPlay();
+      screen.value = 'versus';
+    },
+    showMenu,
+  });
+
   appActions.value = {
+    hostVersus: () => vs.host(),
+    joinVersus: (code) => vs.openJoin(code),
     newRun(modeId, difficulty, choices) {
       const entry = catalogEntry(modeId);
       if (entry?.ui) void begin(targetFor(entry, difficulty, choices), { save: true });
@@ -192,6 +205,34 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
     },
   };
 
+  /**
+   * A Versus Run on the play screen (src/app/versus.ts): the lockstep as its
+   * tick source and this device's Side as its Viewer Side. Not through
+   * begin(), whose guard would drop a Rematch's Run while another starts.
+   */
+  async function playVersus(run: VersusRun, extra: PlayOptions, debug: VersusDebug, live: () => boolean): Promise<Play | null> {
+    const entry = catalogEntry('linewars');
+    if (!entry?.ui) throw new Error('Line Wars is missing from the catalog');
+    stopPlay();
+    screen.value = 'play';
+    const p = await startPlay({ ui: entry.ui, runOptions: () => run.options }, boardHost, {
+      showGrid: settings.value.showGrid,
+      viewer: run.viewer,
+      versus: true,
+      ticks: run.lockstep,
+      ...(opts.fps ? { fps: opts.fps } : {}),
+      ...extra,
+    });
+    if (!live()) {
+      p.stop();
+      return null;
+    }
+    stopPlay();
+    play = p;
+    window.tavern = Object.assign(p, { versus: debug });
+    return p;
+  }
+
   /** The rehearsal of a Versus Guest's screen behind window.tavernMirror. */
   function playMirror(race: string, rival: string): Promise<void> {
     const entry = catalogEntry('linewars');
@@ -213,5 +254,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
     applySettings,
     /** Plays a target outside the catalog, such as the dev sandbox; Quit returns to the menu. */
     playTarget: (target: PlayTarget) => begin(target, { save: false }),
+    /** Opens Versus' Join box with a code from a link (`#join=…`). */
+    joinVersus: (code: string) => vs.openJoin(code),
   };
 }

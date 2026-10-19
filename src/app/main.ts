@@ -7,8 +7,13 @@ import { isPortrait, watchViewport } from '../platform/viewport';
 import { App } from '../ui/App';
 import { offlineReady, pendingUpdate, portrait } from '../ui/state';
 import { createShell } from './shell';
+import { joinInUrl } from './versus-link';
 
 async function boot(): Promise<void> {
+  // A Versus Join link (`…/tavern-td/#join=TTDJ1.…`): read the code, and drop it from the address at once.
+  const link = joinInUrl(location.href);
+  if (link) history.replaceState(null, '', link.clean);
+
   const boardHost = document.getElementById('board');
   const uiHost = document.getElementById('ui');
   if (!boardHost || !uiHost) throw new Error('index.html is missing #board or #ui');
@@ -37,6 +42,14 @@ async function boot(): Promise<void> {
     return;
   }
   await shell.showMenu();
+  if (link) shell.joinVersus(link.code);
+  // A link opened while the app is up only changes the fragment, so the page doesn't load again.
+  window.addEventListener('hashchange', () => {
+    const next = joinInUrl(location.href);
+    if (!next) return;
+    history.replaceState(null, '', next.clean);
+    shell.joinVersus(next.code);
+  });
 }
 
 function fpsReadout(): HTMLElement {

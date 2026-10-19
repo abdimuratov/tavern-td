@@ -352,6 +352,14 @@ _Avoid_: room, waiting room, menu
 In Versus, both players going back from the end card to the Lobby with their picks, for a new Run with a new seed. It takes the place of single-player's Play again.
 _Avoid_: replay (a seed and its commands), restart, play again
 
+**Reconnect**:
+In Versus, connecting again after the connection drops, on the same session: the Host makes a new Join code, and the Guest pastes it and sends back a new Answer code. Both then stop on one tick and press Ready.
+_Avoid_: retry, resume, ICE restart
+
+**Rejoin**:
+In Versus, a Guest whose app restarted taking up its Side again from the Host's state, through the Host's Reconnect code ("Rejoin the Host's Run"). A Host whose app restarted can't be rejoined: its Run is gone.
+_Avoid_: reload, restore, resume
+
 **Concede**:
 Leaving a Versus Run before it ends, a loss for you and a win for the Rival. After the Rival's app has been gone 2 minutes, the player who stayed may claim the win, which counts as the Rival conceding.
 _Avoid_: forfeit, surrender, quit

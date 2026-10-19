@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { press } from './Hud';
 import { SettingsPanel } from './menu/Settings';
 import { runMenu, type PlaySession, type RunMenuPage } from './state';
+import { versus, versusActions } from './versus/state';
 
 /** Copies the code if the browser lets us, and always shows it in a box to select by hand: iOS can refuse the clipboard. */
 function ExportCode({ s, exportCode }: { s: PlaySession; exportCode(): Promise<string> }) {
@@ -59,14 +60,31 @@ const TITLE: Readonly<Record<RunMenuPage, string>> = {
   settings: 'Settings',
   howto: 'How to play',
   export: 'Export save code',
+  concede: 'Concede',
 };
+
+/** Copy desync report, saying whether the copy took. */
+function CopyReport({ s, copy }: { s: PlaySession; copy(): Promise<boolean> }) {
+  const [copied, setCopied] = useState<boolean | null>(null);
+  return (
+    <button type="button" class="btn" data-testid="copy-report" onClick={press(s, () => void copy().then(setCopied))}>
+      {copied === null ? 'Copy desync report' : copied ? 'Copied the desync report' : "Couldn't copy the report"}
+    </button>
+  );
+}
 
 /**
  * The in-Run menu: Resume, Settings, How to play, Export save code (not in
- * Versus), Quit to menu. The Run stays paused while it is open.
+ * Versus), Quit to menu. The Run stays paused while it is open. In a Versus
+ * session it doesn't pause, since the Rival plays on (versus-design §5.1):
+ * Pause asks both devices to stop, Concede replaces Quit, and Copy desync
+ * report appears after a Desync.
  */
 export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
   const HowTo = s.ui.HowTo;
+  // A Versus session's Run; the mirror rehearsal (Versus' display, no session) keeps Resume and Quit.
+  const vs = s.versus && versus.value ? versusActions.value : null;
+  const report = vs !== null && versus.value?.report === true;
   const back = (): void => {
     if (page === 'main') s.closeMenu();
     else runMenu.value = 'main';
@@ -78,10 +96,39 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
           <button type="button" class="btn icon" aria-label={page === 'main' ? 'Resume' : 'Back'} title="Back (Esc)" onClick={press(s, back)}>
             {page === 'main' ? '×' : '‹'}
           </button>
-          <h1>{TITLE[page]}</h1>
+          <h1>{page === 'main' && vs ? 'Menu' : TITLE[page]}</h1>
         </header>
         <div class="sheet-body">
-          {page === 'main' && (
+          {page === 'main' && vs && (
+            <nav class="menu-list">
+              <button type="button" class="btn primary" data-testid="resume" onClick={press(s, s.closeMenu)}>Back to the Run</button>
+              <button
+                type="button"
+                class="btn"
+                data-testid="versus-menu-pause"
+                onClick={press(s, () => {
+                  s.closeMenu();
+                  vs.pause();
+                })}
+              >
+                Pause
+              </button>
+              {HowTo && <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'howto'))}>How to play</button>}
+              <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'settings'))}>Settings</button>
+              {report && <CopyReport s={s} copy={vs.copyReport} />}
+              <button type="button" class="btn danger" data-testid="concede" onClick={press(s, () => (runMenu.value = 'concede'))}>Concede</button>
+            </nav>
+          )}
+          {page === 'concede' && vs && (
+            <>
+              <p>Concede this Run? It counts as a loss for you and a win for the Rival, and you go back to the menu.</p>
+              <div class="buttons">
+                <button type="button" class="btn danger" data-testid="concede-yes" onClick={press(s, vs.concede)}>Concede</button>
+                <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'main'))}>Keep playing</button>
+              </div>
+            </>
+          )}
+          {page === 'main' && !vs && (
             <nav class="menu-list">
               <button type="button" class="btn primary" data-testid="resume" onClick={press(s, s.closeMenu)}>Resume</button>
               <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'settings'))}>Settings</button>

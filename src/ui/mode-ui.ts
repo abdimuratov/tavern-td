@@ -241,8 +241,11 @@ export interface ModeUi {
   readonly recordBoards?: readonly RecordBoard[];
   /** The board a Run with these choices counts toward. A Versus Run counts toward `versus` instead. */
   recordBoard?(choices: RunChoices): string;
-  /** The end card's words from the Viewer Side; the core's defaults otherwise. */
-  endText?(state: GameState, side?: ViewerSide): EndText;
+  /**
+   * The end card's words from the Viewer Side; the core's defaults otherwise.
+   * `versus` is a Versus Run, which always plays Normal, so it isn't named.
+   */
+  endText?(state: GameState, side?: ViewerSide, versus?: boolean): EndText;
   /**
    * Called once when a Run ends, to fold it into the mode's own progress, such
    * as the Original's Campaign. The end card's `End` shows what it changed.
@@ -284,6 +287,14 @@ export interface ModeUi {
   pending?(view: RunView): boolean;
   /** Marks on structures, re-read after every tick that changed a structure or the mode's state. */
   marks?(state: GameState): readonly StructureMark[];
+  /**
+   * Versus: where a command of this player's that hasn't landed yet will act,
+   * in world units, so the board marks it faintly until its tick (a build's
+   * footprint, an upgraded or sold tower); null for one with no place.
+   */
+  pendingMark?(state: GameState, command: Command): { readonly x: number; readonly y: number; readonly span: number } | null;
+  /** The mode plays Versus (Line Wars): its main-menu card offers Host and Join. */
+  readonly versus?: boolean;
   /** The hint line when no ghost or message is up, such as what to do next. */
   hint?(view: RunView): Hint | null;
   /** The finished Run as the Viewer Side's Record entry; modes without one keep no Records. */

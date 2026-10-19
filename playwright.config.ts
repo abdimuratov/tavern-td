@@ -5,6 +5,16 @@ const landscape = (device: (typeof devices)[string]) => ({
   viewport: { width: device.viewport.height, height: device.viewport.width },
 });
 
+/**
+ * Chromium flags for Versus' test, two pages connected over loopback WebRTC
+ * (docs/versus-design.md §9): loopback candidates allowed, and host candidates
+ * as plain addresses rather than mDNS names a CI machine may not resolve.
+ * Only the Chromium projects get them; they change nothing but WebRTC.
+ */
+const loopbackWebRtc = {
+  launchOptions: { args: ['--allow-loopback-in-peer-connection', '--disable-features=WebRtcHideLocalIpsWithMdns'] },
+};
+
 // Runs against the production build, so the service worker and base path are real.
 export default defineConfig({
   testDir: 'e2e',
@@ -19,9 +29,9 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   projects: [
-    { name: 'mac-chrome', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mac-chrome', use: { ...devices['Desktop Chrome'], ...loopbackWebRtc } },
     { name: 'mac-safari', use: { ...devices['Desktop Safari'] } },
     { name: 'iphone', use: landscape(devices['iPhone 15']) },
-    { name: 'android', use: landscape(devices['Pixel 7']) },
+    { name: 'android', use: { ...landscape(devices['Pixel 7']), ...loopbackWebRtc } },
   ],
 });

@@ -63,6 +63,15 @@ function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) 
           </button>
         )}
       </div>
+      {entry.ui?.versus && (
+        <div class="versus-row" data-testid="versus-row">
+          <span class="versus-label">Versus <span class="muted">a friend on another device</span></span>
+          <div class="buttons">
+            <button type="button" class="btn" data-testid="versus-host" onClick={() => appActions.value?.hostVersus()}>Host</button>
+            <button type="button" class="btn" data-testid="versus-join" onClick={() => appActions.value?.joinVersus()}>Join</button>
+          </div>
+        </div>
+      )}
       {saved && !saved.ok && <p class="note">{saved.problem}</p>}
     </section>
   );

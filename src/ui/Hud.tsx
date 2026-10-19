@@ -6,6 +6,9 @@ import { RunEndCard } from './RunEnd';
 import {
   gold, hint, lives, paused, phase, revision, runEnd, runMenu, selected, speed, waveNumber, waveTotal, type PlaySession,
 } from './state';
+import { VersusEndCard } from './versus/EndCard';
+import { VersusHudLine, VersusLayer } from './versus/Overlay';
+import { versus } from './versus/state';
 
 /** WC3 shows hotkeys as the letter on the button; we show it as a small badge. */
 export function keyLabel(key: string): string {
@@ -322,15 +325,24 @@ function StartWave({ s }: { s: PlaySession }) {
   );
 }
 
+/**
+ * The Run is over: the sim ended it, or in Versus the session did (a Concede,
+ * a claimed win, a second Desync), which only the end card's RunEnd says.
+ */
+function runOver(s: PlaySession): boolean {
+  return phase.value === 'won' || phase.value === 'lost' || (s.versus && runEnd.value !== null);
+}
+
 /** The sidebar: gold, lives, Wave, speed, the mode's status, the wave preview, its buttons and the selected structure. */
 export function Hud({ s }: { s: PlaySession }) {
   const Status = s.ui.Status;
   // Once the Run is over only the outcome is left to show; the end card has the buttons.
-  const over = phase.value === 'won' || phase.value === 'lost';
+  const over = runOver(s);
   return (
     <aside class={`hud interactive mode-${s.ui.modeId}${selected.value && !over ? ' has-selection' : ''}`} data-testid="hud">
       <Stats s={s} />
       {!over && <Controls s={s} />}
+      {s.versus && !over && <VersusHudLine />}
       {Status && <Status s={s} />}
       {!over && <WavePreviewList s={s} />}
       {!over && (
@@ -339,7 +351,8 @@ export function Hud({ s }: { s: PlaySession }) {
           <ModeActions s={s} />
         </div>
       )}
-      <StartWave s={s} />
+      {/* A Versus Run the session ended (a Concede) is over though the sim isn't, so its Sends go too. */}
+      {!(over && s.versus) && <StartWave s={s} />}
     </aside>
   );
 }
@@ -347,8 +360,7 @@ export function Hud({ s }: { s: PlaySession }) {
 /** Over the board: the menu button, the hint line, the paused banner and the end of the Run. */
 export function BoardOverlay({ s }: { s: PlaySession }) {
   void revision.value;
-  const p = phase.value;
-  const over = p === 'won' || p === 'lost';
+  const over = runOver(s);
   const h = hint.value ?? (over ? null : s.ui.hint?.(s.view) ?? null);
   const menu = runMenu.value;
   const Layer = s.ui.Board;
@@ -375,7 +387,9 @@ export function BoardOverlay({ s }: { s: PlaySession }) {
         )}
         {h && !over && !menu && <div class={`pill hint ${h.tone}`} data-testid="hint">{h.text}</div>}
       </div>
-      {over && runEnd.value && <RunEndCard s={s} end={runEnd.value} />}
+      {s.versus && <VersusLayer s={s} />}
+      {/* A Versus session's end card offers Rematch; the mirror rehearsal has none and keeps the usual card. */}
+      {over && runEnd.value && (s.versus && versus.value ? <VersusEndCard s={s} end={runEnd.value} /> : <RunEndCard s={s} end={runEnd.value} />)}
     </div>
   );
 }

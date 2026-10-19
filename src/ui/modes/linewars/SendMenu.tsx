@@ -32,7 +32,7 @@ export function trySend(s: PlaySession, send: SendId): void {
   lastSend.value = { seed: state.seed, send };
 }
 
-function SendButton({ s, o, why }: { s: PlaySession; o: linewars.SendOption; why: string | null }) {
+function SendButton({ s, o, why, pending }: { s: PlaySession; o: linewars.SendOption; why: string | null; pending: number }) {
   const key = o.key.toLowerCase();
   const run = (): void => trySend(s, o.send);
   useHotkey(s, key, `Send ${o.name}`, run);
@@ -44,8 +44,10 @@ function SendButton({ s, o, why }: { s: PlaySession; o: linewars.SendOption; why
   const stop = (): void => clearTimeout(timer.current);
   const filling = !locked && o.stock < o.cap && o.restockTicks > 0 && o.restockIn > 0;
   const restock = filling ? Math.min(1, Math.max(0, 1 - o.restockIn / o.restockTicks)) : o.stock >= o.cap ? 1 : 0;
-  const cls = ['btn', 'lw-send', o.blocked !== null && 'dim', locked && 'locked', tags.includes('Air') && 'air', tags.includes('Boss') && 'boss']
-    .filter(Boolean).join(' ');
+  const cls = [
+    'btn', 'lw-send', o.blocked !== null && 'dim', locked && 'locked', tags.includes('Air') && 'air', tags.includes('Boss') && 'boss',
+    pending > 0 && 'pending',
+  ].filter(Boolean).join(' ');
   return (
     <button
       type="button"
@@ -79,6 +81,8 @@ function SendButton({ s, o, why }: { s: PlaySession; o: linewars.SendOption; why
       }}
     >
       {!locked && <span class="stock" data-testid={`stock-${o.send}`} title="In Stock">{o.stock}</span>}
+      {/* Versus: bought, but its tick hasn't landed yet. */}
+      {pending > 0 && <span class="pending-count" data-testid={`pending-${o.send}`} title="On its way">+{pending}</span>}
       <CreepIcon creep={o.creep} count={o.count} />
       <span class="price">{locked ? countdown(o.unlockIn / TICK_RATE) : num(o.price)}</span>
       <span class="inc">+{num(o.income)}</span>
@@ -101,6 +105,11 @@ export function SendMenu({ s }: ModeHudProps) {
   const [me] = sidesFrom(st, s.view.side);
   const options = linewars.sendOptions(state, s.view.side);
   const last = lastSend.value?.seed === state.seed ? lastSend.value.send : null;
+  const pending = new Map<string, number>();
+  for (const c of s.inFlight?.() ?? []) {
+    const send = c.type === 'lw.send' ? (c as { send?: unknown }).send : undefined;
+    if (typeof send === 'string') pending.set(send, (pending.get(send) ?? 0) + 1);
+  }
   const again = (): void => {
     const repeat = lastSend.value?.seed === s.view.state.seed ? lastSend.value.send : null;
     if (repeat) trySend(s, repeat);
@@ -112,7 +121,7 @@ export function SendMenu({ s }: ModeHudProps) {
   return (
     <section class="lw-sends" data-testid="send-menu">
       <div class="lw-send-grid" role="group" aria-label="Send">
-        {options.map((o) => <SendButton key={o.send} s={s} o={o} why={sendWhy(o, me.gold, me.live, me.cap)} />)}
+        {options.map((o) => <SendButton key={o.send} s={s} o={o} why={sendWhy(o, me.gold, me.live, me.cap)} pending={pending.get(o.send) ?? 0} />)}
       </div>
       <div class="lw-live">
         <span data-testid="live" title="Your creeps out in the Rival's Field, of the most you can have at once">Live {me.live}/{me.cap}</span>

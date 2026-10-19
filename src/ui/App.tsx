@@ -3,6 +3,8 @@ import { BoardOverlay, Hud } from './Hud';
 import { Menu } from './menu/Menu';
 import { RunMenu } from './RunMenu';
 import { offlineReady, pendingUpdate, portrait, runMenu, screen, session } from './state';
+import { VersusScreen } from './versus/Screens';
+import { versus, versusRunOn } from './versus/state';
 
 const OFFLINE_TOAST_MS = 5000;
 
@@ -18,9 +20,10 @@ function RotateScreen() {
   );
 }
 
+/** Waits while a Versus Run is on: reloading would drop the Rival (versus-design §6). */
 function UpdateToast() {
   const reload = pendingUpdate.value;
-  if (!reload) return null;
+  if (!reload || versusRunOn(versus.value)) return null;
   return (
     <div class="toast interactive">
       New version ready.
@@ -48,6 +51,7 @@ export function App() {
   return (
     <>
       {screen.value === 'menu' && <Menu />}
+      {screen.value === 'versus' && <VersusScreen />}
       {s && <BoardOverlay s={s} />}
       {s && <Hud s={s} />}
       {s && menu && <RunMenu s={s} page={menu} />}

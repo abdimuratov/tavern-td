@@ -254,6 +254,20 @@ export const LINEWARS_UI: ModeUi = {
 
   endText: lwEndText,
 
+  // Versus: a build marks its footprint, an upgrade or sale its tower, until the tick lands.
+  pendingMark(state, command) {
+    const c = command as { type: string; col?: unknown; row?: unknown; tower?: unknown };
+    if (c.type === 'lw.build' && typeof c.col === 'number' && typeof c.row === 'number') {
+      return { x: (c.col + 1) * CELL, y: (c.row + 1) * CELL, span: FOOTPRINT * CELL };
+    }
+    if ((c.type === 'lw.upgrade' || c.type === 'lw.sell') && typeof c.tower === 'number') {
+      const t = findTower(state, c.tower);
+      return t ? { x: t.x, y: t.y, span: FOOTPRINT * CELL } : null;
+    }
+    return null;
+  },
+  versus: true,
+
   // The core's gold is Side 0's copy; a Versus Guest sees its own purse.
   gold: (state, side = 0) => linewars.sideOf(state, side).gold,
 

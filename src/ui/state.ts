@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { DEFAULT_SETTINGS, type RecordUpdate, type Settings } from '../platform/storage';
-import type { Difficulty, Phase } from '../sim';
+import type { Command, Difficulty, Phase } from '../sim';
 import type { Hotkeys } from './hotkeys';
 import type { ModeUi, RunChoices, RunView } from './mode-ui';
 
@@ -39,6 +39,11 @@ export interface PlaySession {
   quit(): void;
   /** The Run as it stands as a save code; absent for a Run that has none (Versus). */
   exportCode?(): Promise<string>;
+  /**
+   * Versus: this player's commands not applied yet, which land Input Delay
+   * Turns after the tap, so a pending Send can show faintly until it lands.
+   */
+  inFlight?(): readonly Command[];
 }
 
 export const session = signal<PlaySession | null>(null);
@@ -68,7 +73,7 @@ export interface Hint {
 export const hint = signal<Hint | null>(null);
 
 /** The in-Run menu's page, null while it is closed. */
-export type RunMenuPage = 'main' | 'settings' | 'howto' | 'export';
+export type RunMenuPage = 'main' | 'settings' | 'howto' | 'export' | 'concede';
 export const runMenu = signal<RunMenuPage | null>(null);
 
 /** How the Run ended, for the end screen. `update` arrives once the Record is merged. */
@@ -93,8 +98,8 @@ export const runEnd = signal<RunEnd | null>(null);
 
 export const settings = signal<Settings>({ ...DEFAULT_SETTINGS });
 
-/** Which screen is up: nothing yet, the main menu, or a Run. */
-export const screen = signal<'boot' | 'menu' | 'play'>('boot');
+/** Which screen is up: nothing yet, the main menu, Versus' code swap and Lobby, or a Run. */
+export const screen = signal<'boot' | 'menu' | 'versus' | 'play'>('boot');
 
 /** A Run saved for Continue, or why the save can't be used. */
 export type SavedRunInfo =
@@ -127,6 +132,10 @@ export interface AppActions {
   checkCode(code: string): Promise<CodeCheck>;
   /** Saves and applies new settings at once. */
   updateSettings(next: Settings): void;
+  /** Versus: make a Join code and wait for the Rival as Host. */
+  hostVersus(): void;
+  /** Versus: the Join box, empty or filled in from a link. */
+  joinVersus(code?: string): void;
 }
 
 export const appActions = signal<AppActions | null>(null);

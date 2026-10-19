@@ -20,6 +20,9 @@ importers:
       '@capacitor/screen-orientation':
         specifier: ^8.0.2
         version: 8.0.2(@capacitor/core@8.5.3)
+      '@capacitor/share':
+        specifier: 8.0.3
+        version: 8.0.3(@capacitor/core@8.5.3)
       '@capacitor/status-bar':
         specifier: ^8.0.4
         version: 8.0.4(@capacitor/core@8.5.3)
@@ -35,6 +38,9 @@ importers:
       preact:
         specifier: 11.0.1
         version: 11.0.1
+      uqr:
+        specifier: 0.1.3
+        version: 0.1.3
     devDependencies:
       '@capacitor/cli':
         specifier: 8.5.3
@@ -632,6 +638,11 @@ packages:
 
   '@capacitor/screen-orientation@8.0.2':
     resolution: {integrity: sha512-4hC/LBRI3m0Mm3J+U7NyFd3WtQt/GryYgutOqygP1NTw3eAn1p1d+88Z8GwsuGpRj2vxyWySDUJSndXyAfxwUw==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/share@8.0.3':
+    resolution: {integrity: sha512-gnvZBV1NPu2B8vd1UKncR56G15ueHd0aZLqgDov++t3SmTBG9Q0VrAZ1VnHn5stxlmglVaTb4RwopMgbpLzroA==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -2797,6 +2808,9 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
+  uqr@0.1.3:
+    resolution: {integrity: sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==}
+
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
@@ -3767,6 +3781,10 @@ snapshots:
       '@capacitor/core': 8.5.3
 
   '@capacitor/screen-orientation@8.0.2(@capacitor/core@8.5.3)':
+    dependencies:
+      '@capacitor/core': 8.5.3
+
+  '@capacitor/share@8.0.3(@capacitor/core@8.5.3)':
     dependencies:
       '@capacitor/core': 8.5.3
 
@@ -5964,6 +5982,8 @@ snapshots:
       browserslist: 4.29.3
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  uqr@0.1.3: {}
 
   uri-js@4.4.1:
     dependencies:

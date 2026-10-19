@@ -136,17 +136,18 @@ export function progressText(state: GameState): string {
 /**
  * Victory, Defeat or Draw from the Viewer Side, and why the Run ended (design
  * §10). `state.phase` is `won` only when Side 0 wins, so this reads the result
- * against `me`: Side 1 winning is a Versus Guest's Victory.
+ * against `me`: Side 1 winning is a Versus Guest's Victory. A Versus Run
+ * always plays Normal, so its card doesn't say "on Normal" (versus-design §6).
  */
-export function lwEndText(state: GameState, me: ViewerSide = 0): EndText {
+export function lwEndText(state: GameState, me: ViewerSide = 0, versus = false): EndText {
   const r = linewars.lwRecord(state, me);
-  const d = DIFFICULTY_NAME[state.difficulty];
+  const on = versus ? '' : ` on ${DIFFICULTY_NAME[state.difficulty]}`;
   const wave = String(r.wave);
-  if (r.draw) return { won: false, title: 'Draw', summary: `Both Sides ran out of lives together, on the same Income, on ${d}`, wave };
+  if (r.draw) return { won: false, title: 'Draw', summary: `Both Sides ran out of lives together, on the same Income${on ? `,${on}` : ''}`, wave };
   if (r.won) {
-    const summary = r.why === 'drain' ? `Sudden Death drained the Rival first, on ${d}`
-      : r.why === 'income' ? `Both Sides ran out together, and your Income was higher, on ${d}`
-        : `You took the Rival's last life on ${d}`;
+    const summary = r.why === 'drain' ? `Sudden Death drained the Rival first${on ? `,${on}` : ''}`
+      : r.why === 'income' ? `Both Sides ran out together, and your Income was higher${on ? `,${on}` : ''}`
+        : `You took the Rival's last life${on}`;
     return { won: true, title: 'Victory', summary, wave };
   }
   const summary = r.why === 'drain' ? 'Sudden Death drained your last life first'
