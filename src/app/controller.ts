@@ -19,6 +19,30 @@ export function isCheckpoint(e: SimEvent): boolean {
   return e.type === 'mode' && (e.name === 'checkpoint' || e.name.endsWith('.checkpoint'));
 }
 
+/**
+ * Where a Run's ticks get their commands. Without one the controller is its
+ * own source: its queue, speed and pause. Versus passes the lockstep
+ * (src/net/lockstep.ts), which holds a tick until both players' Batches are in.
+ */
+export interface TickSource {
+  /** This device's player's command. Local play: the next tick. Lockstep: the next Batch. */
+  submit(command: Command): void;
+  /** The commands tick `tick` applies, or null while it can't step (a Batch isn't in, or a pause lands on it). */
+  take(tick: number): readonly Command[] | null;
+  /** After each step: lockstep hashes on its interval here. */
+  stepped(state: GameState): void;
+  /** 1, or up to 2 while this device is behind its own clock, to make up a long frame (docs/versus-design.md §4.4). */
+  pace(): number;
+}
+
+/** What a tick source may ask of the controller it drives: a resync or rejoin swaps the Run in place. */
+export interface RunTarget {
+  readonly state: GameState;
+  readonly log: readonly ReplayEntry[];
+  adopt(state: GameState, log?: readonly ReplayEntry[]): void;
+  replay(): Replay;
+}
+
 export interface RunControllerOptions {
   /** What each Run starts from; called again for "play again", so it can pick a new seed. */
   runOptions(): RunOptions;
@@ -30,27 +54,43 @@ export interface RunControllerOptions {
   autosave?(state: GameState, reason: AutosaveReason): unknown;
   /** Forgets the autosave of a Run that has ended, so Continue isn't offered for it. */
   clearSave?(state: GameState): unknown;
+  /**
+   * Where the ticks get their commands. With one, send() goes to its submit(),
+   * setSpeed() and setPaused() do nothing, and a null take() holds the loop
+   * without banking time.
+   */
+  ticks?: TickSource;
   /** Defaults to window.requestAnimationFrame; tests pass their own. */
   requestFrame?(callback: (now: number) => void): number;
   cancelFrame?(handle: number): void;
 }
 
-export interface RunController {
+export interface RunController extends RunTarget {
   /** The Run being played. Replaced by restart(); read it, never mutate it. */
   readonly state: GameState;
   readonly speed: Speed;
   readonly paused: boolean;
-  /** Every command applied this Run with its tick: a seed plus this replays the Run. */
+  /** Every command applied this Run with its tick, in the order applied: a seed plus this replays the Run. */
   readonly log: readonly ReplayEntry[];
   /** How far between the last two ticks to draw, 0–1. */
   readonly alpha: number;
-  /** Queues a command for the next tick. While paused, it is applied by a single tick of its own. */
+  /**
+   * Queues a command for the next tick. While paused, it is applied by a single
+   * tick of its own. With a tick source, it goes to the source's submit().
+   */
   send(command: Command): void;
+  /** Ignored with a tick source: Versus plays 1× and pauses through the lockstep. */
   setSpeed(speed: Speed): void;
   setPaused(paused: boolean): void;
   /** Starts a fresh Run from runOptions(). */
   restart(): void;
-  /** Pauses and saves: for the app going to the background. */
+  /**
+   * Swaps in another state of this Run, such as the Host's after a Versus
+   * resync or rejoin, and tells onRun listeners so the board and HUD reset.
+   * With `log`, it replaces the log too (a rejoin brings the Host's).
+   */
+  adopt(state: GameState, log?: readonly ReplayEntry[]): void;
+  /** Pauses and saves: for the app going to the background. With a tick source it only saves; the source pauses. */
   background(): void;
   /** Saves now, unless the Run is over. */
   save(reason: AutosaveReason): void;
@@ -73,6 +113,8 @@ export interface RunController {
 export const TICK_MS = 1000 / TICK_RATE;
 /** A frame longer than this (a GC pause, a tab in the background) counts as this long, so play never fast-forwards. */
 export const MAX_FRAME_MS = 100;
+/** A tick source may run this device at up to twice real time while it makes up a long frame. */
+export const MAX_PACE = 2;
 const NO_COMMANDS: readonly Command[] = [];
 /** Frame times summed in floating point fall a hair short of a whole tick; this keeps 60 Hz at exactly two frames a tick. */
 const EPSILON_MS = 1e-3;
@@ -89,13 +131,14 @@ export function createRunController(opts: RunControllerOptions): RunController {
   const stepListeners = new Set<(state: GameState, events: readonly SimEvent[]) => void>();
   const frameListeners = new Set<(alpha: number, dt: number) => void>();
   const runListeners = new Set<(state: GameState) => void>();
+  const source = opts.ticks ?? null;
 
   let runOptions = opts.runOptions();
   let state = opts.initial ?? createRun(runOptions);
   let log: ReplayEntry[] = [];
   let queue: Command[] = [];
   let speed: Speed = 1;
-  let paused = opts.paused ?? false;
+  let paused = source ? false : opts.paused ?? false;
   let acc = 0;
   let alpha = 0;
   let last: number | null = null;
@@ -116,14 +159,18 @@ export function createRunController(opts: RunControllerOptions): RunController {
     guard('autosave', () => opts.autosave!(s, reason));
   };
 
-  function tick(): void {
-    let commands = NO_COMMANDS;
-    if (queue.length > 0) {
-      commands = queue;
-      queue = [];
-      for (const command of commands) log.push({ tick: state.tick, command });
-    }
+  /** The local source's commands for the next tick: everything queued. */
+  function queued(): readonly Command[] {
+    if (queue.length === 0) return NO_COMMANDS;
+    const commands = queue;
+    queue = [];
+    return commands;
+  }
+
+  function tick(commands: readonly Command[]): void {
+    for (const command of commands) log.push({ tick: state.tick, command });
     const events = step(state, commands);
+    source?.stepped(state);
     for (const l of stepListeners) l(state, events);
     let ended = false;
     let waveEnded = false;
@@ -143,18 +190,28 @@ export function createRunController(opts: RunControllerOptions): RunController {
     }
   }
 
+  /** One tick if it can step now: always for the local source, when the tick source has its commands otherwise. */
+  function tryTick(): boolean {
+    const commands = source ? source.take(state.tick) : queued();
+    if (commands === null) return false;
+    tick(commands);
+    return true;
+  }
+
   const over = (): boolean => state.phase === 'won' || state.phase === 'lost';
 
   function frame(now: number): void {
     const dt = last === null ? 0 : Math.min(MAX_FRAME_MS, Math.max(0, now - last));
     last = now;
-    if (!paused && !over()) {
+    if (source) {
+      if (!over()) sourceFrame(dt);
+    } else if (!paused && !over()) {
       acc += dt * speed;
       // MAX_FRAME_MS already bounds the catch-up; this only guards against a misbehaving clock.
       const maxTicks = Math.ceil((MAX_FRAME_MS * speed) / TICK_MS);
       let n = 0;
       while (acc >= TICK_MS - EPSILON_MS && n < maxTicks) {
-        tick();
+        tryTick();
         acc -= TICK_MS;
         n++;
         if (over()) break;
@@ -163,9 +220,32 @@ export function createRunController(opts: RunControllerOptions): RunController {
       acc = Math.max(0, acc);
       alpha = over() ? 1 : acc / TICK_MS;
     } else if (queue.length > 0 && !over()) {
-      tick();
+      tryTick();
     }
     for (const l of frameListeners) l(alpha, dt);
+  }
+
+  /**
+   * A frame under a tick source: 1× time, or up to 2× while the source says
+   * this device is behind its clock. A tick the source can't give yet holds
+   * the loop, and the time held is not banked, so a device that waited for
+   * the Rival doesn't race ahead afterwards.
+   */
+  function sourceFrame(dt: number): void {
+    acc += dt * Math.min(MAX_PACE, Math.max(1, source!.pace()));
+    const maxTicks = Math.ceil((MAX_FRAME_MS * MAX_PACE) / TICK_MS);
+    let n = 0;
+    while (acc >= TICK_MS - EPSILON_MS && n < maxTicks) {
+      if (!tryTick()) {
+        acc = Math.min(acc, TICK_MS);
+        break;
+      }
+      acc -= TICK_MS;
+      n++;
+      if (over()) break;
+    }
+    acc = Math.min(Math.max(0, acc), TICK_MS * MAX_PACE);
+    alpha = over() ? 1 : Math.min(1, acc / TICK_MS);
   }
 
   const loop = (now: number): void => {
@@ -191,13 +271,14 @@ export function createRunController(opts: RunControllerOptions): RunController {
       return alpha;
     },
     send(command) {
-      queue.push(command);
+      if (source) source.submit(command);
+      else queue.push(command);
     },
     setSpeed(next) {
-      speed = next;
+      if (!source) speed = next;
     },
     setPaused(next) {
-      paused = next;
+      if (!source) paused = next;
     },
     restart() {
       runOptions = opts.runOptions();
@@ -209,13 +290,21 @@ export function createRunController(opts: RunControllerOptions): RunController {
       paused = false;
       for (const l of runListeners) l(state);
     },
+    adopt(next, nextLog) {
+      state = next;
+      if (nextLog) log = [...nextLog];
+      queue = [];
+      acc = 0;
+      alpha = 0;
+      for (const l of runListeners) l(state);
+    },
     background() {
-      paused = true;
+      if (!source) paused = true;
       save('background');
     },
     save,
     fastForward(ticks) {
-      for (let i = 0; i < ticks && !over(); i++) tick();
+      for (let i = 0; i < ticks && !over(); i++) if (!tryTick()) break;
     },
     replay() {
       return { ...runOptions, log: [...log], until: state.tick };

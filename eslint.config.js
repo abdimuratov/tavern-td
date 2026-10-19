@@ -45,4 +45,26 @@ export default tseslint.config(
       }],
     },
   },
+  // docs/versus-design.md §8: the net code runs in Node tests on a virtual
+  // clock, so only rtc.ts touches WebRTC and only clock.ts reads real time.
+  {
+    files: ['src/net/**/*.ts'],
+    ignores: ['src/net/rtc.ts', 'src/net/clock.ts'],
+    rules: {
+      'no-restricted-globals': ['error',
+        ...['Date', 'performance', 'setTimeout', 'setInterval', 'requestAnimationFrame'].map((name) => ({
+          name, message: 'Time comes only from the injected Clock in src/net.',
+        })),
+        ...['RTCPeerConnection', 'window', 'document', 'navigator'].map((name) => ({
+          name, message: 'Only src/net/rtc.ts touches browser APIs.',
+        })),
+      ],
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['**/sim/**'], message: 'src/net reaches the sim only through src/sim/index.ts.' },
+          { group: ['pixi.js', 'preact', 'preact/*', '@preact/*', '**/render/**', '**/ui/**'], message: 'src/net draws nothing.' },
+        ],
+      }],
+    },
+  },
 );

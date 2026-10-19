@@ -1,5 +1,5 @@
 import {
-  INCOME_SECONDS, LIVE_CAP, LW_CREEPS, RIVAL_INCOME, SEND_LIST, sendOfCreep, type SendId,
+  INCOME_SECONDS, LIVE_CAP, LW_CREEPS, RIVAL_INCOME, SCORE, SEND_LIST, sendOfCreep, type SendId,
 } from '../../../content/linewars';
 import { RACE_SPECS, type RaceId, type TowerLine } from '../../../content/maul';
 import { towerMods } from '../../combat/mods';
@@ -11,7 +11,7 @@ import {
   fullSaleOpen, lwBuildError, lwNextOf, lwSellValue, lwSpotError, lwUpgradeError, towerById,
 } from './build';
 import { sendError, sendHp, sendIncome, sendLocked, suddenTick, unlockTick } from './sends';
-import { creepField, lwState, payOf, sideOf, ticks, towerSide, type Driver, type LwState, type SideId } from './state';
+import { creepField, lwState, other, payOf, sideOf, ticks, towerSide, type Driver, type LwState, type SideId } from './state';
 
 // Pure questions the UI, the AI and the bots ask about a Line Wars Run. None
 // of them change the state. The AI asks the same ones before it acts, so it
@@ -213,7 +213,7 @@ export function nextUnlock(state: GameState): { readonly send: SendId; readonly 
   return null;
 }
 
-/** The finished (or running) Run as a Record entry (§14): `wave` is the lives your Leaks stole. */
+/** The finished (or running) Run as a Record entry (§14), from one Side's view: `wave` is the lives that Side's Leaks stole. */
 export interface LwRecord {
   readonly wave: number;
   readonly won: boolean;
@@ -221,14 +221,34 @@ export interface LwRecord {
   readonly score: number;
   /** The Run's length in seconds, once it is over; null while it runs. */
   readonly seconds: number | null;
+  /** That Side's Race, then the other's. */
   readonly races: readonly [RaceId, RaceId];
   readonly why: LwState['why'];
 }
 
-export function lwRecord(state: GameState): LwRecord {
+/**
+ * A Side's score by §14's formula, from its own tallies: 100 a life its Leaks
+ * stole, plus the bounty of its kills, plus a win's 1,000, 5 a second left
+ * before 20:00 and 20 a life left. The sim keeps only Side 0's (`score`), and
+ * this gives the same number for it.
+ */
+export function lwScore(state: GameState, side: SideId): number {
+  const ms = lwState(state);
+  const s = ms.sides[side];
+  let score = SCORE.perSteal * s.stolen + s.bounty;
+  if (ms.result === (side === 0 ? 'side0' : 'side1')) {
+    const left = Math.max(0, Math.floor((ticks(SCORE.clock) - ms.endTick) / TICK_RATE));
+    score += SCORE.win + SCORE.perSecond * left + SCORE.perLife * s.lives;
+  }
+  return score;
+}
+
+/** The Record entry for `side`: Side 0 by default, Side 1 for a Versus Guest. */
+export function lwRecord(state: GameState, side: SideId = 0): LwRecord {
   const ms = lwState(state);
   return {
-    wave: ms.sides[0].stolen, won: ms.result === 'side0', draw: ms.result === 'draw', score: ms.score,
-    seconds: ms.endTick >= 0 ? ms.endTick / TICK_RATE : null, races: [ms.sides[0].race, ms.sides[1].race], why: ms.why,
+    wave: ms.sides[side].stolen, won: ms.result === (side === 0 ? 'side0' : 'side1'), draw: ms.result === 'draw',
+    score: side === 0 ? ms.score : lwScore(state, side),
+    seconds: ms.endTick >= 0 ? ms.endTick / TICK_RATE : null, races: [ms.sides[side].race, ms.sides[other(side)].race], why: ms.why,
   };
 }

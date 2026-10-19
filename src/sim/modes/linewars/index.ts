@@ -19,7 +19,7 @@ export {
 } from './build';
 export { sendError, sendHp, sendIncome, sendLocked, unlockTick, suddenTick, clock } from './sends';
 export {
-  lwStatus, sendOptions, buildOptions, buildSpot, towerActions, inField, nextUnlock, lwRecord,
+  lwStatus, sendOptions, buildOptions, buildSpot, towerActions, inField, nextUnlock, lwRecord, lwScore,
   type LwStatus, type LwSideStatus, type SendOption, type LwBuildOption, type LwUpgradeOption, type LwTowerActions,
   type InFieldGroup, type LwRecord,
 } from './queries';

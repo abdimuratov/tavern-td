@@ -10,8 +10,9 @@ import {
 // Headless Line Wars players for the tests and the balance runner
 // (docs/line-wars-design.md §13). The player-side bot is the AI itself on the
 // `competent` profile (`drivers: ['ai', 'ai']`). The scripted sanity bots are
-// independent of the AI and play Side 0 through the command log, as a person
-// would:
+// independent of the AI and play through the command log, as a person would:
+// Side 0 in playLw, and either Side through sideBot (the Versus net tests run
+// one on each fake peer):
 // - turtle: mazes and upgrades, and never sends after the opening;
 // - rusher: Snowlings and Brawlers only, with no towers after the opening;
 // - flyer: defends, and sends Harpies whenever they are in Stock;
@@ -66,6 +67,7 @@ export function pairingFor(seed: number): readonly [RaceId, RaceId] {
 }
 
 type State = linewars.LwGameState;
+type SideId = linewars.SideId;
 
 /** Side 0's serpentine, top to bottom, gaps alternating from the Divide side: its own plan, not the AI's blueprint. */
 function serpentine(): [number, number][] {
@@ -82,45 +84,53 @@ function serpentine(): [number, number][] {
   return out;
 }
 
-const PLAN = serpentine();
+/** Each Side's plan: Side 1's is Side 0's mirrored, so its gaps also start from the Divide side. */
+const PLANS: readonly (readonly [number, number][])[] = (() => {
+  const plan = serpentine();
+  const [west, east] = FIELD_COLS[0];
+  // A 2 × 2 anchored at local column l covers l and l + 1; mirrored, it is anchored at 14 − l.
+  const mirrored = plan.map(([c, row]): [number, number] => [FIELD_COLS[1][0] + (east - west - 1) - (c - west), row]);
+  return [plan, mirrored];
+})();
 
 interface Ctx {
   readonly state: State;
   readonly race: RaceId;
+  readonly side: SideId;
 }
 
 function me(c: Ctx): linewars.LwSide {
-  return c.state.mode.sides[0];
+  return c.state.mode.sides[c.side];
 }
 
 function nextWall(c: Ctx): Command | null {
   const wall = RACE_SPECS[c.race].builds[0];
   if (MAUL_TOWERS[wall]!.maul.total > me(c).gold) return null;
-  for (const [col, row] of PLAN) {
-    if (linewars.lwSpotError(c.state, 0, col, row) === null) return { type: 'lw.build', side: 0, spec: wall, col, row };
+  for (const [col, row] of PLANS[c.side]!) {
+    if (linewars.lwSpotError(c.state, c.side, col, row) === null) return { type: 'lw.build', side: c.side, spec: wall, col, row };
   }
   return null;
 }
 
 /** The cheapest upgrade it can afford, lowest Tier first, line A at a Wall and the first fork at Tier 2. */
 function nextUpgrade(c: Ctx): Command | null {
-  const towers = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === 0);
+  const towers = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === c.side);
   let best: { tower: number; to: string; tier: number; price: number } | null = null;
   for (const t of towers) {
     const info = MAUL_TOWERS[t.spec]!.maul;
-    const options = linewars.lwNextOf(c.state, 0, t.spec);
+    const options = linewars.lwNextOf(c.state, c.side, t.spec);
     const to = info.tier === 0 ? options.find((o) => MAUL_TOWERS[o]!.maul.line === 'a') : options[0];
     if (!to) continue;
     const price = MAUL_TOWERS[to]!.maul.price;
-    if (linewars.lwUpgradeError(c.state, 0, t, to) !== null) continue;
+    if (linewars.lwUpgradeError(c.state, c.side, t, to) !== null) continue;
     if (!best || info.tier < best.tier || (info.tier === best.tier && price < best.price)) best = { tower: t.id, to, tier: info.tier, price };
   }
-  return best ? { type: 'lw.upgrade', side: 0, tower: best.tower, to: best.to } : null;
+  return best ? { type: 'lw.upgrade', side: c.side, tower: best.tower, to: best.to } : null;
 }
 
 /** A Wall while Walls have under `share` of all gold earned, otherwise an upgrade. */
 function defend(c: Ctx, share = 0.35): Command | null {
-  const walls = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === 0 && MAUL_TOWERS[t.spec]!.maul.tier === 0).length;
+  const walls = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === c.side && MAUL_TOWERS[t.spec]!.maul.tier === 0).length;
   const wallCost = MAUL_TOWERS[RACE_SPECS[c.race].builds[0]]!.maul.total;
   if (walls * wallCost < share * me(c).earned) {
     const w = nextWall(c);
@@ -130,29 +140,29 @@ function defend(c: Ctx, share = 0.35): Command | null {
 }
 
 function send(c: Ctx, id: SendId): Command | null {
-  return linewars.sendError(c.state, 0, id) === null ? { type: 'lw.send', side: 0, send: id } : null;
+  return linewars.sendError(c.state, c.side, id) === null ? { type: 'lw.send', side: c.side, send: id } : null;
 }
 
 /** The opening every scripted bot plays: a Wall upgraded at once, then Walls. */
 function opening(c: Ctx): Command | null {
-  const ours = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === 0);
+  const ours = c.state.towers.filter((t) => linewars.towerSide(c.state, t) === c.side);
   if (ours.length === 1 && MAUL_TOWERS[ours[0]!.spec]!.maul.tier === 0) return nextUpgrade(c);
   return nextWall(c);
 }
 
 function towersWorth(c: Ctx): number {
   let n = 0;
-  for (const t of c.state.towers) if (linewars.towerSide(c.state, t) === 0) n += c.state.mode.towers[String(t.id)] ?? 0;
+  for (const t of c.state.towers) if (linewars.towerSide(c.state, t) === c.side) n += c.state.mode.towers[String(t.id)] ?? 0;
   return n;
 }
 
 function bestRatio(c: Ctx): Command | null {
   let best: SendId | null = null;
   for (const s of SEND_LIST) {
-    if (linewars.sendError(c.state, 0, s.id) !== null) continue;
+    if (linewars.sendError(c.state, c.side, s.id) !== null) continue;
     if (!best || s.income / s.price > LW_SENDS[best].income / LW_SENDS[best].price) best = s.id;
   }
-  return best ? { type: 'lw.send', side: 0, send: best } : null;
+  return best ? { type: 'lw.send', side: c.side, send: best } : null;
 }
 
 /** One decision of a scripted bot, or null to wait. */
@@ -191,7 +201,7 @@ export function playLw(seed: number, difficulty: Difficulty, o: LwPlay = {}): Lw
   const state = createRun({
     mode: 'linewars', seed, difficulty, options: { race, rivalRace, drivers, skills: [...skills] },
   }) as State;
-  const ctx: Ctx = { state, race };
+  const ctx: Ctx = { state, race, side: 0 };
   const maxTicks = o.maxTicks ?? 40 * 60 * TICK_RATE;
   const aiRefused: string[] = [];
   const botRefused: string[] = [];
@@ -237,6 +247,29 @@ export function playLw(seed: number, difficulty: Difficulty, o: LwPlay = {}): Lw
     result: ms.result, why: ms.why, won: ms.result === 'side0', ticks: state.tick, seconds: state.tick / TICK_RATE,
     lives: [ms.sides[0].lives, ms.sides[1].lives], stolen: [ms.sides[0].stolen, ms.sides[1].stolen], income, leaks,
     aiRefused, botRefused, aiCommands, meanStepMs: total / Math.max(1, steps), maxStepMs: max, state,
+  };
+}
+
+/** A scripted bot playing one Side of a Run it doesn't own, as a person would: a Versus peer in the net tests. */
+export interface SideBot {
+  readonly side: SideId;
+  /** Its move on this state, or null to wait. playLw asks every 15 ticks, and so should its callers. */
+  next(state: State): Command | null;
+  /** The events of a step, so it notices Leaks out of its Field (Greedy defends for 20 s after one). */
+  seen(state: State, events: readonly SimEvent[]): void;
+}
+
+/** One of the scripted bots for either Side; the same decisions playLw makes for Side 0. */
+export function sideBot(bot: Exclude<LwBot, 'competent'>, side: SideId): SideBot {
+  let leakTick = -1;
+  return {
+    side,
+    next: (state) => decide(bot, { state, race: state.mode.sides[side].race, side }, leakTick),
+    seen(state, events) {
+      for (const e of events) {
+        if (e.type === 'mode' && e.name === 'lw.leak' && (e.data as { from: SideId }).from === side) leakTick = state.tick;
+      }
+    },
   };
 }
 

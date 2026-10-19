@@ -72,7 +72,8 @@ The Host makes the Join code and plays Side 0. It sends Start, Go and Resume, an
 - **Input Delay D**, in Turns: as a device begins Turn n, it seals everything its player did since the last seal into its Batch n + D and sends it. Batches 0 to D − 1 are empty on both devices.
 - **Tick 3n steps only once both Batches of Turn n are in.** Ticks 3n + 1 and 3n + 2 follow without asking.
 - **Order:** Side 0's Batch, then Side 1's, as [ADR-0003](adr/0003-two-sides-and-an-ai-in-one-sim.md) requires.
-- **Own Side only.** Before applying, each device drops from Side s's Batch every command that isn't an `lw.*` command naming `side: s`, and all after the first 16. It does this to both Batches, its own included, so a misbehaving peer can't move the other's pieces and the two states still agree.
+- **Own Side only.** Before applying, each device drops from Side s's Batch every command that isn't an `lw.*` command naming `side: s`, and keeps at most the first 16 of the rest. It does this to both Batches, its own included, so a misbehaving peer can't move the other's pieces and the two states still agree. A device seals at most 16 of its own player's commands into one Batch and carries the rest to the next, so a burst of taps is late, never lost.
+- **What both apply is what was sent.** A device applies its own Batch as it parses back from the text it sent, so both sims see identical command objects (a field JSON drops is gone on both).
 - A Batch also carries a pause (§5.1) and a hash (§4.6) when it has one.
 
 ### 4.3 Input Delay
@@ -87,16 +88,17 @@ One DataChannel, `negotiated: true, id: 0`, reliable and ordered: lockstep needs
 | `t` | From | Holds | When |
 |---|---|---|---|
 | `hello` | both | protocol version, `SNAPSHOT_VERSION`, sim hash, build, session (null when new), last Turn stepped, last Batch received | first, on every connection |
-| `pick`, `ready` | both | Race; Ready on or off | the lobby, and Ready to resume |
-| `ping`, `pong` | both | the sender's clock | every 500 ms in the lobby, every 1 s while paused |
+| `pick`, `ready` | both | Race; Ready on or off, and in a Run the Turn of the pause | the lobby, and Ready to resume |
+| `ping`, `pong` | both | the sender's clock | every 500 ms in the lobby, every 1 s while paused or on the end card |
 | `start` | Host | session id, `RunOptions`, D, Turn length 3, hash every 30, the initial hash | both Ready |
 | `started` | Guest | its initial hash | after building the Run |
 | `go`, `resume` | Host | the Turn, the countdown | to start, and after a pause |
-| `turn` | both | `n`, the commands, a pause flag and `[tick, hash]` when present | every Turn |
+| `turn` | both | `n`, the commands, the pause's kind (`pause`, `away`, `link` or `sync`) and `[tick, hash]` when present | every Turn |
 | `away`, `back` | both | | the app hidden or shown again |
 | `desync` | both | the tick and both hashes | a hash differs |
-| `snap` | Host | the Turn, its hash, part k of n; on a rejoin also the options and the log | resync and rejoin |
+| `snap` | Host | the Turn, its hash, part k of n of the deflated payload: the state, and on a rejoin also the options, the log, the Input Delay and the Guest's Batches | resync and rejoin |
 | `end` | both | `concede` | Concede |
+| `rematch` | both | | Rematch on the end card |
 
 ### 4.6 The handshake and the hash check
 1. **Hello**, both ways. The **sim hash** is FNV-1a over `src/sim` (less `testing/`) and `src/content`, computed by `vite.config.ts` and defined beside `__PLATFORM__` as `__SIM_HASH__`, with the git commit as `__BUILD__`. Versus needs the protocol version, `SNAPSHOT_VERSION` and the sim hash to match, but not the build: an APK installed weeks ago still plays the newest Pages build until a rule or number changes. A mismatch shows both players "You have different versions of Tavern TD (yours a1b2c3d, the Rival's e4f5a6b). Update both: reload the web app, or reinstall the Android app." Codes carry the sim hash too, so a Join code from another version says so before connecting.
@@ -139,8 +141,9 @@ When the app is hidden (`onBackground` in `src/platform/lifecycle.ts`), the devi
 
 ### 5.4 Reconnect
 A failed WebRTC connection can't be revived without signaling, and here the players are the signaling. So Reconnect is always a fresh swap with a new `RTCPeerConnection`, never `restartIce`: the Host's sheet makes a new Join code, marked as a rejoin with the session id, and the Guest's takes it as in §2. Each Hello then names the session, the last Turn it stepped and the last Batch it received.
-- **Both still have the Run:** each resends the Batches the other lacks, and both press Ready. A device keeps all its Batches; a whole Run is about 12,000, a few hundred KB.
-- **The Guest's app restarted:** the rejoin link offers "Rejoin the Host's Run". The Host sends its state at its pause, the options, the log and the last Guest Batch it has. The Guest seals empty Batches from there to the pause, and both press Ready. The Guest loses at most its last half second of taps.
+- **When the channel closes,** each device seals its next Batch with a `link` pause, as it would going to the background. Neither can deliver it yet, so each plays on until it lacks a Batch.
+- **Both still have the Run:** each resends the Batches the other lacks, and both stop at the first `link` pause, on the same tick, and press Ready. A device keeps all its Batches; a whole Run is about 12,000, a few hundred KB.
+- **The Guest's app restarted:** the rejoin link offers "Rejoin the Host's Run". Once the Host is held at a Turn, it sends its state there, the options, the log, the Input Delay and every Guest Batch it holds from that Turn on, then resends its own Batches from there. The Guest takes those as its own, seals empty Batches up to Input Delay Turns ahead, and both play on to the Host's `link` pause and press Ready. The Guest loses at most its last half second of taps.
 - **The Host's app restarted:** the Run is gone, because the Host's state is the one that counts and Versus keeps nothing on disk. The Guest waits out the 2 min and claims the win.
 
 ### 5.5 Concede, and claiming the win
@@ -175,7 +178,7 @@ export interface TickSource {
   submit(command: Command): void;
   /** The commands tick t applies, or null while it can't step (a Batch isn't in, or a pause lands on it). */
   take(tick: number): readonly Command[] | null;
-  /** After each step: lockstep hashes on its interval and seals Batches here. */
+  /** After each step: lockstep hashes on its interval here, and notices the Run's end. It seals Batches in take(), as each Turn begins. */
   stepped(state: GameState): void;
   /** 1, or 2 while this device is behind its own clock (§4.4). */
   pace(): number;
@@ -203,7 +206,7 @@ export interface TickSource {
 ## 9. Testing plan
 
 **Step 2, unit tests in Node** (vitest, no browser):
-- **Codes:** round trips over real SDPs captured once from Chrome, Safari and the Android WebView and kept as fixtures; the rebuilt SDP has every line `setRemoteDescription` needs; a cut-off code says damaged; another sim hash says version.
+- **Codes:** round trips over hand-written SDPs shaped like Chrome's, Safari's, the Android WebView's and Firefox's (mDNS hosts, IPv4 and IPv6 server-reflexives, TCP candidates to drop); the rebuilt SDP has every line `setRemoteDescription` needs; a cut-off code says damaged; another sim hash says version. Step 3's e2e test feeds the codes real browsers' SDPs.
 - **Protocol:** malformed, oversized and unknown messages are refused; a Batch's commands for the other Side, and those past 16, are dropped on both devices.
 - **Lockstep over a fake transport:** two devices in one process, each with a controller, its lockstep source and a scripted bot for its own Side (the Line Wars sanity bots, generalized to either Side), on a virtual clock. The fake delivers in order with a set latency and jitter, and can stall or close. Every test checks that both devices' hashes agree at every check, that the Run ends the same on both, and that either controller's replay reaches the same final hash. A whole Run is about 36,000 ticks a device at 7 µs plus 1,200 hashes, about a second for both.
   - One full Run to its end at 40 ± 30 ms each way; the rest a few minutes each.
@@ -244,3 +247,24 @@ export interface TickSource {
 - **The Guest's board mirrored,** so every player has their Field on the right beside the HUD.
 - **One query in `src/sim` gains a Side** (`lwRecord`); nothing else there changes.
 - **The seed is the Host app's alone,** and no player names: the other person is "the Rival".
+
+## 11. Filled in by the build
+
+Step 2, the net layer, is in `src/net/` (the app imports `src/net/index.ts`), its tests and the fake transport in `tests/net/`. Where it fills in or departs from the sections above:
+
+- **Files.** Besides §8's: `transport.ts` (the `Transport` interface), `clock.ts` (the injected `Clock`, and `browserClock` on `performance.now()` and `setInterval`) and `version.ts` (`SIM_HASH` and `BUILD` from the defines, falling back to `00000000` and `dev` outside Vite). A lint rule keeps `Date`, `performance`, timers and browser APIs out of `src/net` except `rtc.ts` and `clock.ts`, and deep imports of `src/sim`.
+- **The sim hash** is FNV-1a, over UTF-16 code units as `hashState` does, of each file's repo path, a NUL, its text with line ends made `\n` and a NUL, files sorted by path. `__BUILD__` is `git rev-parse --short=7 HEAD`, or `dev`. Vitest reads `vite.config.ts`, so tests see both.
+- **`src/sim`** gains two exports and no rules: `SNAPSHOT_VERSION` from its index, for Hello, and `lwScore(state, side)`, the formula `lwRecord(state, side)` uses for Side 1. `lwRecord`'s `races` lists that Side's Race first.
+- **Codes.** Byte 0 is the format (1), byte 1 the kind (1 Join, 2 Answer), byte 2 the flags (bit 0: a session id follows the candidates). Then the sim hash, the length-prefixed ufrag and password, the 32-byte fingerprint, the setup role (0 actpass, 1 active, 2 passive), the length-prefixed mid, the count and the candidates (kind in the high nibble, family in the low; port big-endian), the session id and the CRC-32 of all before it. Up to 4 UDP candidates of component 1 are kept, taking a host, a server-reflexive, a peer-reflexive and a relay in turn. A pasted code may be a bare code or any text with `#join=` (or `?join=`, `&join=`) before it; spaces and zero-width characters are dropped. Errors: `not-a-code`, `damaged`, `version`, `wrong-kind` (an Answer code in the Join box or the other way round) and `unsupported` (a description without a SHA-256 fingerprint or ICE credentials).
+- **The rebuilt SDP** adds `a=group:BUNDLE` with the mid, gives each candidate the priority RFC 8445's formula makes from its kind and order, and writes `raddr 0.0.0.0 rport 0` on non-host candidates, as Chrome does when it hides addresses, since Firefox's parser wants a related address there. The code itself carries none.
+- **Messages.** §4.5's table as built: `ready` carries the pause's Turn in a Run, a Batch's pause is a kind (`pause`, `away`, `link`, `sync`), `snap`'s options, log and Batches travel inside its deflated payload, and `rematch` is new. A refused message closes the channel; another version's Hello leaves it open, so the Rival still reads this Hello and shows the version message too. A snapshot inflating past 8 MiB, or of more than 256 parts, is refused.
+- **Sealing and hashing.** A device seals in `take()`: as it reaches tick 3n it seals up to Batch n + D, before checking that Turn's Batches are in, so its Batches never wait on the Rival. `stepped()` hashes at multiples of 30 and carries the hash in the next Batch sealed.
+- **Pauses.** A Turn whose Batch from either Side carries a pause holds both at its start. Once both are Ready the Host sends Resume, starts its countdown half a ping later than 3 s, and the Guest counts 3 s from receiving it. Resuming at Turn n clears every pause sealed for Turns up to n + D, so two pauses pressed together, or a pause and the app going to the background, stop the Run once. Pause while a pause is due does nothing. Going to the background while paused sends `away` and takes back this player's Ready, sealing no second pause.
+- **The clock.** A device anchors its clock where it last started stepping (Go, a resume, or the end of a wait) and runs at 2× while it is more than 2 ticks behind it, at most 6 ticks a frame; any held time re-anchors, so waiting is never made up.
+- **Desync.** Hash checks between a Desync and the tick that repaired it are void, as are any at or before a rejoin's tick. A second Desync ends both with outcome `desync`, and the report then holds the state at the second one. A resynced state whose hash isn't the Host's ends the Run as a second Desync does.
+- **Input Delay.** The 90th percentile is by nearest rank over the last 20 round trips; with none yet, D is 3. The "slow connection" warning reads the same percentile.
+- **Lobby and Start.** The session id is 16 hex digits from the app's random source, new at every Start, and names the Run for a rejoin. The Host starts the moment both are Ready. The Guest refuses a Start whose options aren't Line Wars, Normal, two human Sides and its own Race as the Rival's. A connection lost between Start and Go sends both back to the lobby once they reconnect.
+- **Rematch.** Pressing it sends `rematch` and puts this device in the lobby with its pick; the Rival's device shows it's back, and the Host starts once both are Ready again. After a Run the Rival counts as away from the lobby until its `rematch` arrives.
+- **Claiming the win** opens 2 min after the Rival's last message, while the Run is on, for a device that wasn't in the background at any moment since that message.
+- **`rtc.ts`** labels the channel `tavern`. ICE servers are the option passed, else `globalThis.TAVERN_ICE_SERVERS` (e2e sets `[]`), else §2's two. ICE `disconnected` is `unstable`, `failed` or `closed` and a closed channel are `closed`. It collects candidates from `icecandidate` events as well as the description.
+- **Tests** use hand-written fixture SDPs rather than captured ones (§9), since this step runs no browser; the bots in `tests/sim/linewars/bots.ts` play either Side through `sideBot`, with Side 1's maze Side 0's mirrored, and every existing bot Run and replay hash is unchanged.

@@ -312,6 +312,10 @@ _Avoid_: server, owner, player 1
 In Versus, the player who joins with the Host's Join code and plays Side 1.
 _Avoid_: client, joiner, player 2
 
+**Session**:
+In code only (`src/net/session.ts`), one Versus connection's life: Hello, the Lobby, each Run and each Rematch. A session id names each Run, so a rejoin finds it. Never a Run, and never player-facing.
+_Avoid_: match, Run, game
+
 **Join code**:
 The Host's text that lets a Guest connect, passed on as a link, a QR or a copy. It holds only what can't be rebuilt of WebRTC's offer.
 _Avoid_: invite, room code, password, offer (fine in code)
@@ -339,6 +343,14 @@ _Avoid_: divergence, mismatch, out of sync (fine in player text)
 **Viewer Side**:
 The Side a device shows as you: Side 0, except on a Versus Guest's device, where it is Side 1 and the board is mirrored so its Field is on the right. The sim never knows it.
 _Avoid_: local player, perspective, me
+
+**Lobby**:
+In Versus, where both players pick their Race and press Ready before a Run, and return to after a Rematch. The Host starts the Run once both are Ready.
+_Avoid_: room, waiting room, menu
+
+**Rematch**:
+In Versus, both players going back from the end card to the Lobby with their picks, for a new Run with a new seed. It takes the place of single-player's Play again.
+_Avoid_: replay (a seed and its commands), restart, play again
 
 **Concede**:
 Leaving a Versus Run before it ends, a loss for you and a win for the Rival. After the Rival's app has been gone 2 minutes, the player who stayed may claim the win, which counts as the Rival conceding.

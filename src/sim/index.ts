@@ -1,6 +1,6 @@
 // The game logic's public surface. Outer layers (render, ui, app) import from here only.
 
-export { TICK_RATE, CELL, BUILD_SPOT, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP } from './core/constants';
+export { TICK_RATE, CELL, BUILD_SPOT, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP, SNAPSHOT_VERSION } from './core/constants';
 export type { Json, Cell } from './core/types';
 export type {
   GameState, Creep, Tower, Projectile, Status, Difficulty, Phase, WaveState, ActiveWave, SpawnGroup,

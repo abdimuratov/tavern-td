@@ -22,8 +22,19 @@ export class SaveCodeError extends Error {
 export async function encodeSave(value: unknown): Promise<string> {
   const json = JSON.stringify(value);
   if (json === undefined) throw new TypeError('encodeSave needs a JSON value');
-  const packed = await transform(new TextEncoder().encode(json), new CompressionStream('deflate-raw'));
+  const packed = await deflate(json);
   return `${FORMAT}${VERSION}.${hex(crc32(packed))}.${toBase64Url(packed)}`;
+}
+
+/** Text as deflate-raw bytes, the compression save codes use; Versus reuses it for snapshots and desync reports. */
+export function deflate(text: string): Promise<Uint8Array<ArrayBuffer>> {
+  return transform(new TextEncoder().encode(text), new CompressionStream('deflate-raw'));
+}
+
+/** The text deflate() packed. Throws on damaged bytes, invalid UTF-8, or more than `limit` bytes inflated. */
+export async function inflate(packed: Uint8Array<ArrayBuffer>, limit = MAX_JSON_BYTES): Promise<string> {
+  const bytes = await transform(packed, new DecompressionStream('deflate-raw'), limit);
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
 /** Throws a SaveCodeError whose message can be shown to the player as is. */
@@ -42,8 +53,7 @@ export async function decodeSave<T = unknown>(code: string): Promise<T> {
   const packed = fromBase64Url(payload);
   if (!packed || hex(crc32(packed)) !== checksum.toLowerCase()) throw damaged();
   try {
-    const bytes = await transform(packed, new DecompressionStream('deflate-raw'), MAX_JSON_BYTES);
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as T;
+    return JSON.parse(await inflate(packed)) as T;
   } catch {
     throw damaged();
   }
@@ -80,7 +90,7 @@ async function transform(
   return out;
 }
 
-function toBase64Url(bytes: Uint8Array): string {
+export function toBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x2000) {
     binary += String.fromCharCode(...bytes.subarray(i, i + 0x2000));
@@ -88,9 +98,10 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function fromBase64Url(text: string): Uint8Array<ArrayBuffer> | undefined {
+/** Bytes from base64url, or undefined when the text can't be whole bytes (a paste that lost characters). */
+export function fromBase64Url(text: string): Uint8Array<ArrayBuffer> | undefined {
   // A length of 1 mod 4 can't come from whole bytes: the paste lost characters.
-  if (text.length % 4 === 1) return undefined;
+  if (text.length % 4 === 1 || !/^[A-Za-z0-9_-]*$/.test(text)) return undefined;
   const binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -107,12 +118,12 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
-function crc32(bytes: Uint8Array): number {
+export function crc32(bytes: Uint8Array): number {
   let crc = 0xffffffff;
   for (const byte of bytes) crc = (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0) ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function hex(n: number): string {
+export function hex(n: number): string {
   return n.toString(16).padStart(8, '0');
 }
