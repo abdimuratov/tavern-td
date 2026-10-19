@@ -173,14 +173,17 @@ function towerLabel(tower: Tower, state: GameState): TowerLabel | null {
   return { text: String(ts.level), color: ts.level >= 5 ? LEVEL_GOLD : 0xffffff };
 }
 
-/** Each Region's ground: the road, the Build Spots on it and the land around. */
+/**
+ * Each Region's ground: the road, the Open ground beside it in the land's own
+ * colour, and Scenery darker, as land nothing stands on.
+ */
 export const REGION_TERRAIN: Readonly<Record<Region, TerrainLook>> = {
   // Scorched wheat, smoke grey, ember red.
-  ashfield: { blocked: 0x231c15, blockedRim: 0x231c15, walkable: 0x5a4834, buildable: 0x3d3833, spotRim: 0x9a7a44, gridLine: 0x3a3026 },
+  ashfield: { buildable: 0x231c15, walkable: 0x5a4834, blocked: 0x110d09, blockedRim: 0x1a140f, gridLine: 0x3a3026 },
   // Sick green, bruise violet, black water.
-  blightfen: { blocked: 0x121812, blockedRim: 0x121812, walkable: 0x3e4630, buildable: 0x332a3c, spotRim: 0x7a8a40, gridLine: 0x283024 },
+  blightfen: { buildable: 0x121812, walkable: 0x3e4630, blocked: 0x070a07, blockedRim: 0x0d110d, gridLine: 0x283024 },
   // Obsidian, hellfire orange, blood red.
-  rift: { blocked: 0x0f0b11, blockedRim: 0x0f0b11, walkable: 0x43241e, buildable: 0x28212b, spotRim: 0xc0542e, gridLine: 0x30222a },
+  rift: { buildable: 0x0f0b11, walkable: 0x43241e, blocked: 0x050306, blockedRim: 0x0a070c, gridLine: 0x30222a },
 };
 
 export function regionOf(state: GameState): Region {

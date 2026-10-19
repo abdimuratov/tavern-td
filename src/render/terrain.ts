@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { airLinePolyline, airRoute, BUILD_SPOT, CELL, routeCount, routePolyline, type GameState, type MapSpec, type Point } from '../sim';
+import { airLinePolyline, airRoute, CELL, routeCount, routePolyline, type GameState, type MapSpec, type Point } from '../sim';
 import { cellsBox } from './footprint';
 import type { TerrainBanner, TerrainLook } from './look';
 
@@ -31,7 +31,6 @@ export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain 
   const ground = new Graphics();
   drawGround(ground, map, colors);
   if (look.plotRim !== undefined) drawPlotRims(ground, map, look.plotRim);
-  if (look.spotRim !== undefined) drawSpotRims(ground, map, look.spotRim);
   root.addChild(ground);
 
   const grid = new Graphics();
@@ -151,15 +150,6 @@ function airLines(state: GameState): Point[][] {
     if (line.length >= 2) lines.push(line);
   }
   return lines;
-}
-
-/** Each Build Spot as its own pad: an inset edge round its 2 × 2 cells. */
-function drawSpotRims(g: Graphics, map: MapSpec, color: number): void {
-  const INSET = 5;
-  for (const [col, row] of map.buildSpots ?? []) {
-    g.roundRect(col * CELL + INSET, row * CELL + INSET, BUILD_SPOT * CELL - INSET * 2, BUILD_SPOT * CELL - INSET * 2, 10);
-  }
-  g.stroke({ color, width: 5, alpha: 0.9 });
 }
 
 function drawAirLine(g: Graphics, state: GameState, alpha: number): void {

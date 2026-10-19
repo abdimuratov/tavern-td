@@ -5,7 +5,7 @@ import { STAGES, challengeOfStage, type Family } from '../../src/content/origina
 import { DIFFICULTIES, original, type Difficulty } from '../../src/sim';
 import type { Strategy } from './bot';
 import type { Job, Outcome } from './jobs';
-import { drawStage } from './maps';
+import { drawStage, openCells } from './maps';
 
 // The Original's balance runner (docs/PLAN.md §4). It plays every Stage with
 // scripted strategies over many seeds and Difficulties, using the unlocks the
@@ -235,7 +235,7 @@ function report(args: Args, jobs: readonly Job[], outcomes: readonly Outcome[]):
     const spec = STAGES[stage - 1]!;
     const last = spec.threat + spec.waves.length - 1;
     lines.push('');
-    lines.push(`Stage ${stage}, ${spec.name}: Threat ${spec.threat}–${last}, ${spec.gold} gold, ${spec.waves.length} Waves, ${spec.map.buildSpots?.length ?? 0} Spots`);
+    lines.push(`Stage ${stage}, ${spec.name}: Threat ${spec.threat}–${last}, ${spec.gold} gold, ${spec.waves.length} Waves, ${openCells(spec.map)} Open cells`);
     lines.push(`  ${''.padEnd(15)}${args.difficulties.map((d) => d.padEnd(22)).join('')}`);
     const labels = [...new Set(jobs.filter((j) => j.stage === stage).map(label))];
     for (const l of labels) {

@@ -5,7 +5,7 @@ import {
 import { TICK_RATE } from '../../core/constants';
 import type { Difficulty, GameState } from '../../core/state';
 import { attackRange, auraRadius } from './auras';
-import { buildError, priceOf, runUnlocks, sellValue, spotError, towerById, towerOnSpot, upgradeError } from './build';
+import { buildError, capError, placeCells, placeError, priceOf, runUnlocks, sellValue, towerById, upgradeError } from './build';
 import { runChallenge } from './challenge';
 import { starsFor, type StageResult, type Unlocks } from './progression';
 import { sendNowError } from './rules';
@@ -75,28 +75,29 @@ export interface BuildOption {
   readonly name: string;
   readonly family: Family;
   readonly price: number;
-  /** Why it can't be built now (locked, or gold), or null. */
+  /** Why it can't be built there now (the ground, the Tower cap, locked, or gold), or null. */
   readonly blocked: string | null;
 }
 
-export interface SpotInfo {
-  readonly spot: number;
-  /** The tower on it, 0 for none. */
-  readonly tower: number;
-  /** The ring of families a tap shows on an empty Spot, unlocked ones only, in unlock order. */
+/** A 2 × 2 place by its top-left cell, as the build ring shows it. */
+export interface PlaceInfo {
+  readonly col: number;
+  readonly row: number;
+  /** The cells a tower there covers, top-left first; empty when it would run off the Map. */
+  readonly cells: readonly number[];
+  /** The ring of families a tap shows there, unlocked ones only, in unlock order. */
   readonly options: readonly BuildOption[];
-  /** Why it can't take a tower, or null. */
+  /** Why no tower can stand there now, whatever the family (the ground, another tower, the Tower cap), or null. */
   readonly error: string | null;
 }
 
-export function spotInfo(state: GameState, spot: number): SpotInfo {
-  const tower = towerOnSpot(state, spot);
-  const error = spotError(state, spot);
+export function placeInfo(state: GameState, col: number, row: number): PlaceInfo {
+  const error = placeError(state, col, row) ?? capError(state);
   const options = runUnlocks(state).families.map((family): BuildOption => {
     const spec = FAMILY_BASE[family];
     return { spec, name: towerSpec(spec)!.name, family, price: priceOf(state, spec), blocked: error ?? buildError(state, spec) };
   });
-  return { spot, tower: tower?.id ?? 0, options, error };
+  return { col, row, cells: placeCells(state, col, row), options, error };
 }
 
 export interface UpgradeOption {

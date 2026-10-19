@@ -9,7 +9,7 @@ export interface MapSpec {
   readonly id: string;
   readonly cols: number;
   readonly rows: number;
-  /** One string per row: `.` buildable, `,` walkable but unbuildable, `#` neither. */
+  /** One string per row: `.` buildable (the Original's Open ground), `,` walkable but unbuildable, `#` neither. */
   readonly terrain: readonly string[];
   readonly spawn: Cell;
   /**
@@ -32,10 +32,25 @@ export interface MapSpec {
    */
   readonly routes?: readonly RouteSpec[];
   /**
-   * Build Spots: the top-left cells of the BUILD_SPOT × BUILD_SPOT places a
-   * tower may stand. When present, towers stand only there. Absent where placement is free.
+   * Named pieces of the Map nothing is built on (the Original's Scenery). The
+   * terrain holds them as `#` wherever they don't cross the road; the list
+   * says what each is, so the board can draw it and the Ghost name it. Absent
+   * on Maps whose terrain says it all.
    */
-  readonly buildSpots?: readonly Cell[];
+  readonly scenery?: readonly ScenerySpec[];
+}
+
+/** What a piece of Scenery is, for the board: a Challenge's Burnt ground is `burnt`. */
+export type SceneryKind = 'water' | 'building' | 'cliff' | 'pit' | 'burnt';
+
+export interface ScenerySpec {
+  readonly kind: SceneryKind;
+  /** Such as "the Greyriver". */
+  readonly name: string;
+  /** The words the Ghost shows on it, such as "in the river". */
+  readonly at: string;
+  /** Its cells as rectangles; a rectangle may cross the road, and the road stays road. */
+  readonly rects: readonly (readonly [col: number, row: number, width: number, height: number])[];
 }
 
 export interface RouteSpec {

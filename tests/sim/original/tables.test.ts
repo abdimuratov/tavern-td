@@ -107,24 +107,24 @@ describe('the Original\'s content', () => {
     expect(LEVEL_XP).toEqual([0, 8, 20, 36, 56, 80, 108, 140, 176, 216]);
   });
 
-  it('builds Stage 1 as a valid 32 × 18 Map with 8 Build Spots beside one S-bend road', () => {
+  it('builds Stage 1 as a valid 32 × 18 Map of Open ground beside one S-bend road, with the mill and its pond', () => {
     expect(CAMPAIGN_LENGTH).toBe(12);
     expect(STAGES[0]).toBe(MILL_ROAD);
     const map = MILL_ROAD.map;
     expect(validateMap(map)).toBeNull();
     expect([map.cols, map.rows]).toEqual([32, 18]);
     expect(map.routes).toHaveLength(1);
-    expect(map.buildSpots).toHaveLength(8);
     expect(routeData(map)!.length).toBe(5376);
     expect(map.routes![0]!.air!.length).toBeGreaterThanOrEqual(2);
-    // Every Spot touches the road, and none is on it.
-    const road = (c: number, r: number): boolean => map.terrain[r]?.[c] === ',';
-    for (const [col, row] of map.buildSpots!) {
-      const cells = [[col, row], [col + 1, row], [col, row + 1], [col + 1, row + 1]] as const;
-      for (const [c, r] of cells) expect(map.terrain[r]![c]).toBe('.');
-      const touches = cells.some(([c, r]) => road(c - 1, r) || road(c + 1, r) || road(c, r - 1) || road(c, r + 1));
-      expect(touches, `Spot (${col}, ${row})`).toBe(true);
-    }
+    expect(map.scenery!.map((p) => [p.kind, p.name, p.at, p.rects])).toEqual([
+      ['building', 'the mill', 'on the mill', [[13, 4, 4, 4]]],
+      ['water', 'the millpond', 'in the millpond', [[17, 10, 4, 4]]],
+    ]);
+    // Everything but the road and those 32 cells is Open ground: 576 − 168 − 32.
+    const cells = map.terrain.join('');
+    expect([...cells].filter((c) => c === ',').length).toBe(168);
+    expect([...cells].filter((c) => c === '#').length).toBe(32);
+    expect([...cells].filter((c) => c === '.').length).toBe(376);
     expect(MILL_ROAD).toMatchObject({ number: 1, threat: 1, gold: 250, region: 'ashfield' });
     expect(MILL_ROAD.waves).toHaveLength(12);
   });

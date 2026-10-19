@@ -126,7 +126,8 @@ export function challengeLines(spec: ChallengeSpec): string[] {
       ? `No ${listOf(barred.map((f) => FAMILY_NAME[f]), 'or')} towers`
       : `${listOf(allowed.map((f) => FAMILY_NAME[f]))} only`);
   }
-  if (m.spots) out.push(`${m.spots.length} Build Spots`);
+  if (m.burnt) out.push(m.burnt.name);
+  if (m.maxTowers !== undefined) out.push(`${m.maxTowers} towers at most`);
   if (m.maxTier !== undefined) out.push(`Tiers 1–${m.maxTier}`);
   if (m.noSpecialisations) out.push('No Specialisations');
   if (m.hp !== undefined) out.push(`+${Math.round((m.hp - 1) * 100)}% creep HP`);

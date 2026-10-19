@@ -1,10 +1,11 @@
-import type { Cell, MapSpec, RouteSpec } from '../../sim';
+import type { Cell, MapSpec, RouteSpec, ScenerySpec } from '../../sim';
 
-// Original Maps (docs/original-design.md §12): 32 × 18 cells of 64 units. A
-// Stage declares only its routes, air lines and Build Spots; stageMap paints
+// Original Maps (docs/original-design.md §12, §17): 32 × 18 cells of 64 units.
+// A Stage declares only its routes, air lines and Scenery; stageMap paints
 // the terrain from them, so the cells and the polylines can never disagree.
 // Every route leg runs along a row or column boundary and is two cells wide:
-// `,` is road, `.` a Build Spot, `#` everything else.
+// `,` is road, `#` Scenery, `.` Open ground (everything else, where a 2 × 2
+// tower may stand).
 
 export const MAP_COLS = 32;
 export const MAP_ROWS = 18;
@@ -43,9 +44,13 @@ function endCell(p: readonly [number, number]): Cell {
   return [clamp(Math.floor(p[0] / CELL), MAP_COLS), clamp(Math.floor(p[1] / CELL), MAP_ROWS)];
 }
 
-/** A Stage's Map: its routes (the first one's spawn is the Map's spawn) and its Build Spots' top-left cells. */
-export function stageMap(id: string, routes: readonly StageRoute[], spots: readonly Cell[]): MapSpec {
-  const grid = Array.from({ length: MAP_ROWS }, () => Array.from({ length: MAP_COLS }, () => '#'));
+/**
+ * A Stage's Map: its routes (the first one's spawn is the Map's spawn) and its
+ * Scenery. The road is painted first and Scenery after, on every cell but the
+ * road's: a rectangle may cross the road, which stays road (a bridge, a ford).
+ */
+export function stageMap(id: string, routes: readonly StageRoute[], scenery: readonly ScenerySpec[]): MapSpec {
+  const grid = Array.from({ length: MAP_ROWS }, () => Array.from({ length: MAP_COLS }, () => '.'));
   for (const r of routes) {
     for (let i = 1; i < r.points.length; i++) {
       for (const [col, row] of legCells(r.points[i - 1]!, r.points[i]!)) {
@@ -53,10 +58,10 @@ export function stageMap(id: string, routes: readonly StageRoute[], spots: reado
       }
     }
   }
-  for (const [col, row] of spots) {
-    for (const [c, rr] of [[col, row], [col + 1, row], [col, row + 1], [col + 1, row + 1]] as const) {
-      if (grid[rr]?.[c] !== '#') throw new Error(`Map ${id}: Build Spot (${col}, ${row}) is on the road or off the Map`);
-      grid[rr]![c] = '.';
+  for (const piece of scenery) {
+    for (const [col, row, w, h] of piece.rects) {
+      if (col < 0 || row < 0 || col + w > MAP_COLS || row + h > MAP_ROWS) throw new Error(`Map ${id}: ${piece.name} runs off the Map`);
+      for (let rr = row; rr < row + h; rr++) for (let c = col; c < col + w; c++) if (grid[rr]![c] !== ',') grid[rr]![c] = '#';
     }
   }
   const exits = routes.map((r) => endCell(r.points[r.points.length - 1]!));
@@ -69,6 +74,6 @@ export function stageMap(id: string, routes: readonly StageRoute[], spots: reado
     spawn: endCell(routes[0]!.points[0]!),
     waypoints: [exits],
     routes: routeSpecs,
-    buildSpots: spots,
+    scenery,
   };
 }

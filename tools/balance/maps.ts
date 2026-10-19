@@ -1,31 +1,27 @@
 import type { StageSpec } from '../../src/content/original';
-import { CELL, airLineData, routeCount, routeData, routePoint, type MapSpec } from '../../src/sim';
+import { CELL, airLineData, routeCount, routeData, routePoint, type MapSpec, type SceneryKind } from '../../src/sim';
 
-// A text preview of a Stage's Map: `,` road, `#` other ground, a Build Spot as
-// its index (0–9, then a, b, c…), `^` where an air line flies over. Below it,
-// each route's and air line's length, and how much route each Spot covers.
+// A text preview of a Stage's Map: `,` road, `.` Open ground, Scenery by its
+// kind, `^` where an air line flies over Open ground. Below it, each route's
+// and air line's length, and the Open cells left.
 
-const SPOT_MARKS = '0123456789abcdefghijklmnopqrstuvwxyz';
+const SCENERY_MARKS: Readonly<Record<SceneryKind, string>> = { water: '~', building: 'H', cliff: 'A', pit: 'O', burnt: 'x' };
 
-/** World units of every route within `range` of a Spot's centre. */
-export function spotCoverage(map: MapSpec, spot: number, range: number): number {
-  const [col, row] = map.buildSpots![spot]!;
-  const cx = (col + 1) * CELL;
-  const cy = (row + 1) * CELL;
-  let covered = 0;
-  for (let r = 0; r < routeCount(map); r++) {
-    const route = routeData(map, r)!;
-    for (let d = 8; d < route.length; d += 16) {
-      const p = routePoint(route, d);
-      if ((p.x - cx) * (p.x - cx) + (p.y - cy) * (p.y - cy) <= range * range) covered += 16;
-    }
-  }
-  return covered;
+/** Cells of Open ground on the Map: where towers may stand. */
+export function openCells(map: MapSpec): number {
+  let n = 0;
+  for (const line of map.terrain) for (const ch of line) if (ch === '.') n++;
+  return n;
 }
 
 export function drawStage(stage: StageSpec): string[] {
   const map = stage.map;
   const grid = map.terrain.map((line) => line.split(''));
+  for (const piece of map.scenery ?? []) {
+    for (const [col, row, w, h] of piece.rects) {
+      for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) if (grid[r]![c] === '#') grid[r]![c] = SCENERY_MARKS[piece.kind];
+    }
+  }
   for (let r = 0; r < routeCount(map); r++) {
     const air = airLineData(map, r);
     if (!air) continue;
@@ -33,18 +29,14 @@ export function drawStage(stage: StageSpec): string[] {
       const p = routePoint(air, d);
       const col = Math.min(map.cols - 1, Math.floor(p.x / CELL));
       const row = Math.min(map.rows - 1, Math.floor(p.y / CELL));
-      if (grid[row]![col] === '#') grid[row]![col] = '^';
+      if (grid[row]![col] === '.') grid[row]![col] = '^';
     }
   }
-  (map.buildSpots ?? []).forEach(([col, row], i) => {
-    for (const [c, rr] of [[col, row], [col + 1, row], [col, row + 1], [col + 1, row + 1]] as const) grid[rr]![c] = SPOT_MARKS[i]!;
-  });
-  const lines = [`Stage ${stage.number}: ${stage.name} (${stage.region}), ${map.buildSpots?.length ?? 0} Spots, ${stage.waves.length} Waves`];
+  const scenery = (map.scenery ?? []).map((s) => `${SCENERY_MARKS[s.kind]} ${s.name}`).join(', ');
+  const lines = [`Stage ${stage.number}: ${stage.name} (${stage.region}), ${openCells(map)} Open cells, ${stage.waves.length} Waves; ${scenery}`];
   lines.push(...grid.map((row) => '  ' + row.join('')));
   for (let r = 0; r < routeCount(map); r++) {
     lines.push(`  route ${r}: ${routeData(map, r)!.length.toFixed(0)} long, air line ${airLineData(map, r)?.length.toFixed(0) ?? 'none'}`);
   }
-  const cover = (map.buildSpots ?? []).map((_, i) => `${SPOT_MARKS[i]} ${spotCoverage(map, i, 320)}`);
-  lines.push(`  route within 320 of each Spot: ${cover.join(', ')}`);
   return lines;
 }

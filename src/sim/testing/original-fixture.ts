@@ -3,8 +3,9 @@ import type { Replay } from '../core/replay';
 /**
  * A fixed Original Run (Stage 1's Map, Easy, every family open) with Waves of
  * its own that bring flyers, a Bloater, Shieldbearers, Flesh Golems, Revenants,
- * Gargoyles and two bosses. It touches builds on Build Spots, Tier upgrades,
- * three Specialisations, targeting, refused commands, early calls, the Arrow
+ * Gargoyles and two bosses. It touches builds on Open ground (Stage 1's
+ * former Build Spots, and one refused on the road), Tier upgrades, three
+ * Specialisations, targeting, refused commands, early calls, the Arrow
  * capstone's crits, auras, poison, slows, splits, broods and enrage;
  * then it sells its best towers mid-Wave, and the Plague Mother's Leak ends
  * the Run. Node and WebKit must reach the same replayHash on it (e2e/determinism.spec.ts).
@@ -29,13 +30,13 @@ export const ORIGINAL_FIXTURE_REPLAY: Replay = {
   },
   until: 9000,
   log: [
-    { tick: 0, command: { type: 'original.build', spot: 1, spec: 'arrow_tower' } },
-    { tick: 0, command: { type: 'original.build', spot: 3, spec: 'cannon_tower' } },
-    { tick: 0, command: { type: 'original.build', spot: 0, spec: 'venom_dart' } },
-    { tick: 0, command: { type: 'original.build', spot: 2, spec: 'drum_totem' } },
-    { tick: 0, command: { type: 'original.build', spot: 4, spec: 'frost_tower' } },
-    { tick: 0, command: { type: 'original.build', spot: 5, spec: 'mage_tower' } },
-    { tick: 0, command: { type: 'original.build', spot: 9, spec: 'arrow_tower' } },
+    { tick: 0, command: { type: 'original.build', col: 23, row: 4, spec: 'arrow_tower' } },
+    { tick: 0, command: { type: 'original.build', col: 23, row: 6, spec: 'cannon_tower' } },
+    { tick: 0, command: { type: 'original.build', col: 19, row: 4, spec: 'venom_dart' } },
+    { tick: 0, command: { type: 'original.build', col: 19, row: 6, spec: 'drum_totem' } },
+    { tick: 0, command: { type: 'original.build', col: 7, row: 10, spec: 'frost_tower' } },
+    { tick: 0, command: { type: 'original.build', col: 11, row: 10, spec: 'mage_tower' } },
+    { tick: 0, command: { type: 'original.build', col: 0, row: 2, spec: 'arrow_tower' } },
     { tick: 0, command: { type: 'original.upgrade', tower: 1, to: 'marksman_tower' } },
     { tick: 1, command: { type: 'original.sendNow' } },
     { tick: 2, command: { type: 'original.sendNow' } },
@@ -49,7 +50,7 @@ export const ORIGINAL_FIXTURE_REPLAY: Replay = {
     { tick: 700, command: { type: 'original.upgrade', tower: 5, to: 'ice_spire' } },
     { tick: 900, command: { type: 'original.sendNow' } },
     { tick: 1500, command: { type: 'original.sell', tower: 3 } },
-    { tick: 1501, command: { type: 'original.build', spot: 0, spec: 'venom_dart' } },
+    { tick: 1501, command: { type: 'original.build', col: 19, row: 4, spec: 'venom_dart' } },
     { tick: 2000, command: { type: 'original.upgrade', tower: 6, to: 'sorcerer_tower' } },
     { tick: 2000, command: { type: 'original.upgrade', tower: 6, to: 'archmage_tower' } },
     { tick: 2000, command: { type: 'original.upgrade', tower: 6, to: 'prism_tower' } },

@@ -67,7 +67,7 @@ export function reach(state: GameState, spec: string, tower?: Tower): number {
  */
 export function createInput({ controller, board, ui, view, feedback }: InputDeps) {
   let ghost: Ghost | null = null;
-  /** A ghost the Game Mode asked for (the Original's chosen family on its Build Spot): it stays up while the pointer is elsewhere. */
+  /** A ghost the Game Mode asked for (the Original's chosen family on its ring's 2 × 2): it stays up while the pointer is elsewhere. */
   let pinned: { readonly p: Point; readonly kind: PointerKind } | null = null;
   let mouse: Point | null = null;
   let routeVersion = -1;

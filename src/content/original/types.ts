@@ -1,4 +1,4 @@
-import type { CreepSpec, MapSpec, TowerSpec } from '../../sim';
+import type { CreepSpec, MapSpec, ScenerySpec, TowerSpec } from '../../sim';
 
 // Shapes of the Original's content (docs/original-design.md). Tower and creep
 // specs are core specs plus an `original` block the Original Game Mode reads.
@@ -140,7 +140,7 @@ export interface OriginalWave {
 
 export type Region = 'ashfield' | 'blightfen' | 'rift';
 
-/** One Stage of the Campaign: its Map (routes, air lines, Build Spots) and its Waves. */
+/** One Stage of the Campaign: its Map (routes, air lines, Scenery) and its Waves. */
 export interface StageSpec {
   /** 1–12, the Campaign order. */
   readonly number: number;
@@ -163,8 +163,13 @@ export interface StageSpec {
 export interface ChallengeModifiers {
   /** The only Tower Families that may be built, of those the Campaign has opened. */
   readonly families?: readonly Family[];
-  /** The Build Spots that stand, by index in the Stage's list; the rest are gone from the Map. */
-  readonly spots?: readonly number[];
+  /**
+   * Burnt ground: Open ground the Challenge takes away, painted over at setup
+   * and added to the Map's Scenery as `burnt`. Road and the Stage's own Scenery stay as they are.
+   */
+  readonly burnt?: Omit<ScenerySpec, 'kind'>;
+  /** The Tower cap: the most towers that may stand at once. Standing towers stay; selling one frees room. */
+  readonly maxTowers?: number;
   /** Lives at the start, instead of 20. */
   readonly lives?: number;
   /** Starting gold, instead of the Stage's. */

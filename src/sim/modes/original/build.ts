@@ -1,18 +1,19 @@
-import { FAMILY_BASE, LEVEL_XP, SELL_SHARE, TARGETINGS, type Family, type Targeting } from '../../../content/original';
+import { FAMILY_BASE, LEVEL_XP, SELL_SHARE, TARGETINGS, TOWER_FOOTPRINT, type Family, type Targeting } from '../../../content/original';
 import { addTower, removeTower, setTowerSpec } from '../../combat/towers';
 import { findTower } from '../../combat/targeting';
 import type { SimEvent } from '../../core/events';
 import type { GameState, Tower } from '../../core/state';
 import { canAfford, earnGold, spendGold } from '../../economy';
-import { buildSpotCells } from '../../path/grid';
+import { cellCol, cellOf, cellRow, footprintCells } from '../../path/grid';
 import { challengeUnlocks, runModifiers } from './challenge';
 import { unlocksFor, type Unlocks } from './progression';
 import { familyTalents } from './talents';
 import { modeEvent, newTowerState, orState, peekTower, towerInfo, towerSpec, type OriginalTowerState } from './state';
 
 // Building, Tier upgrades, Specialisations, selling and targeting
-// (docs/original-design.md §3, §6, §10). Towers stand only on Build Spots, so
-// nothing can Block. Building and upgrading are instant, at any time.
+// (docs/original-design.md §3, §6, §10, §17). A tower stands on any 2 × 2 of
+// Open ground, which never touches the fixed road, so nothing can Block.
+// Building and upgrading are instant, at any time.
 
 /** The Run's unlocks: the Campaign progress it was started with, narrowed by its Challenge. */
 export function runUnlocks(state: GameState): Unlocks {
@@ -41,19 +42,42 @@ function lockError(state: GameState, spec: string): string | null {
   return null;
 }
 
-/** The tower standing on Build Spot `spot`, or undefined. */
-export function towerOnSpot(state: GameState, spot: number): Tower | undefined {
-  const cells = buildSpotCells(state.map, spot);
-  const id = cells.length > 0 ? state.grid[cells[0]!] ?? 0 : 0;
-  return id !== 0 ? findTower(state, id) : undefined;
+/** The cells a tower with its top-left at (col, row) covers, top-left first; empty when it would run off the Map. */
+export function placeCells(state: GameState, col: number, row: number): number[] {
+  const anchor = cellOf(state.map, col, row);
+  return anchor < 0 ? [] : footprintCells(state.map, anchor, TOWER_FOOTPRINT);
 }
 
-/** Why Build Spot `spot` can't take a tower now, whatever the family, or null. */
-export function spotError(state: GameState, spot: number): string | null {
-  const cells = buildSpotCells(state.map, spot);
-  if (cells.length === 0) return 'no such Build Spot';
+/** The Ghost's words for a Scenery cell: the first piece covering it, or plain words on a Map that names none. */
+function sceneryAt(state: GameState, cell: number): string {
+  const col = cellCol(state.map, cell);
+  const row = cellRow(state.map, cell);
+  for (const piece of state.map.scenery ?? []) {
+    for (const [c, r, w, h] of piece.rects) if (col >= c && col < c + w && row >= r && row < r + h) return piece.at;
+  }
+  return 'nothing can stand there';
+}
+
+/**
+ * Why no tower can stand with its top-left at (col, row) now, whatever the
+ * family, or null. In order: off the Map, on the road, the Scenery's own
+ * words ("in the river", "on burnt ground"), then another tower.
+ */
+export function placeError(state: GameState, col: number, row: number): string | null {
+  const cells = placeCells(state, col, row);
+  if (cells.length === 0) return 'off the Map';
+  const ground = (c: number): string | undefined => state.map.terrain[cellRow(state.map, c)]?.[cellCol(state.map, c)];
+  if (cells.some((c) => ground(c) === ',')) return 'on the road';
+  const scenery = cells.find((c) => ground(c) !== '.');
+  if (scenery !== undefined) return sceneryAt(state, scenery);
   if (cells.some((c) => state.grid[c] !== 0)) return 'a tower stands there';
   return null;
+}
+
+/** Why the Run's Challenge lets no more towers stand (its Tower cap), or null. Selling one frees room. */
+export function capError(state: GameState): string | null {
+  const cap = runModifiers(state).maxTowers;
+  return cap !== undefined && state.towers.length >= cap ? `${cap} towers stand: the most in this Challenge` : null;
 }
 
 /** Why `spec` can't be built from nothing now, or null. Only a family's Tier 1 tower is built. */
@@ -78,11 +102,11 @@ function spend(state: GameState, ts: OriginalTowerState, gold: number): void {
   ts.fresh += gold;
 }
 
-export function build(state: GameState, spot: number, spec: string, events: SimEvent[]): Tower {
+export function build(state: GameState, col: number, row: number, spec: string, events: SimEvent[]): Tower {
   const info = towerInfo(spec)!;
   const price = priceOf(state, spec);
   spendGold(state, price, events);
-  const tower = addTower(state, spec, buildSpotCells(state.map, spot)[0]!, events);
+  const tower = addTower(state, spec, cellOf(state.map, col, row), events);
   const ts = newTowerState(info.targeting, orState(state).breaks);
   spend(state, ts, price);
   // Elder Spirits (Totem capstone): Totems start at Tower Level 5, Perk included.
@@ -92,7 +116,7 @@ export function build(state: GameState, spot: number, spec: string, events: SimE
     ts.level = start;
   }
   orState(state).towers[String(tower.id)] = ts;
-  modeEvent(events, 'original.built', { tower: tower.id, spec, spot, cost: price });
+  modeEvent(events, 'original.built', { tower: tower.id, spec, col, row, cost: price });
   return tower;
 }
 

@@ -1,4 +1,4 @@
-import { BUILD_SPOT, CELL } from '../core/constants';
+import { CELL } from '../core/constants';
 import type { MapSpec } from '../core/specs';
 import type { GameState } from '../core/state';
 import { getMode } from '../modes/registry';
@@ -72,42 +72,30 @@ export function validateMap(map: MapSpec): string | null {
     if (region.length < 1) return `waypoint region ${i} is empty`;
     if (!region.every(walkable)) return `waypoint region ${i} has a cell that is off the Map or unwalkable`;
   }
-  return routeProblem(map) ?? buildSpotProblem(map);
+  return routeProblem(map) ?? sceneryProblem(map);
 }
 
-/** A problem with the Map's Build Spots: each covers buildable cells only, on the Map, without overlapping another. */
-function buildSpotProblem(map: MapSpec): string | null {
-  const spots = map.buildSpots;
-  if (spots === undefined) return null;
-  if (!Array.isArray(spots) || spots.length < 1) return 'buildSpots needs at least one Build Spot';
-  const taken = new Set<number>();
-  for (let i = 0; i < spots.length; i++) {
-    const [col, row] = spots[i]!;
-    const cells = footprintCells(map, cellOf(map, col, row), BUILD_SPOT);
-    if (cells.length === 0) return `Build Spot ${i} is off the Map`;
-    for (const c of cells) {
-      if (map.terrain[cellRow(map, c)]![cellCol(map, c)] !== '.') return `Build Spot ${i} covers a cell that isn't buildable`;
-      if (taken.has(c)) return `Build Spot ${i} overlaps another`;
-      taken.add(c);
+/**
+ * A problem with the Map's Scenery: each piece is a list of whole-number
+ * rectangles on the Map, and every cell they cover is `#` or road.
+ */
+function sceneryProblem(map: MapSpec): string | null {
+  const scenery = map.scenery;
+  if (scenery === undefined) return null;
+  if (!Array.isArray(scenery)) return 'scenery must be a list of pieces';
+  for (let i = 0; i < scenery.length; i++) {
+    const rects = scenery[i]?.rects;
+    if (!Array.isArray(rects) || rects.length < 1) return `Scenery ${i} needs at least one rectangle`;
+    for (const rect of rects) {
+      const [col, row, w, h] = Array.isArray(rect) ? rect : [];
+      if (![col, row, w, h].every(Number.isInteger) || w! < 1 || h! < 1) return `Scenery ${i} has a rectangle that isn't four whole numbers`;
+      if (col! < 0 || row! < 0 || col! + w! > map.cols || row! + h! > map.rows) return `Scenery ${i} runs off the Map`;
+      for (let r = row!; r < row! + h!; r++) {
+        for (let c = col!; c < col! + w!; c++) if (map.terrain[r]![c] === '.') return `Scenery ${i} covers a buildable cell`;
+      }
     }
   }
   return null;
-}
-
-/** The cells Build Spot `index` covers, its top-left first; empty when the Map has no such spot. */
-export function buildSpotCells(map: MapSpec, index: number): number[] {
-  const spot = Number.isInteger(index) && index >= 0 ? map.buildSpots?.[index] : undefined;
-  return spot ? footprintCells(map, cellOf(map, spot[0], spot[1]), BUILD_SPOT) : [];
-}
-
-/** The Build Spot covering cell (col, row), or -1 for none. Where a tap on the Map lands. */
-export function buildSpotAt(map: MapSpec, col: number, row: number): number {
-  const spots = map.buildSpots ?? [];
-  for (let i = 0; i < spots.length; i++) {
-    const [c, r] = spots[i]!;
-    if (col >= c && col < c + BUILD_SPOT && row >= r && row < r + BUILD_SPOT) return i;
-  }
-  return -1;
 }
 
 export function mapData(map: MapSpec): MapData {

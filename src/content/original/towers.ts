@@ -2,14 +2,14 @@ import type { AttackSpec, TargetLayer } from '../../sim';
 import type { DamageType, Family, OriginalTowerInfo, OriginalTowerSpec } from './types';
 
 // The Original's 30 towers (docs/original-design.md §6): six Tower Families of
-// Tiers 1–3 and two Specialisations each. Every tower is 2 × 2 and stands on a
-// Build Spot. Each attacking tower carries one `original.attack` effect that
+// Tiers 1–3 and two Specialisations each. Every tower is 2 × 2 and stands on
+// Open ground. Each attacking tower carries one `original.attack` effect that
 // lands its hits by the rules in src/sim/modes/original/attack.ts.
 //
 // assumed: projectile speeds, which the doc leaves open. Slow shots (Cannon,
 // Thunder Mortar) are the ones Hounds punish; beams, novas and lightning are instant.
 
-/** Every tower's footprint: one Build Spot. */
+/** Every tower's footprint: 2 × 2 cells of Open ground. */
 export const TOWER_FOOTPRINT = 2;
 
 /** Seconds between beam ticks: the Arcane Lance deals its damage per second in tenths. */
@@ -138,7 +138,7 @@ const ROWS: readonly [string, OriginalTowerSpec][] = [
 
 export const ORIGINAL_TOWERS: Readonly<Record<string, OriginalTowerSpec>> = Object.fromEntries(ROWS);
 
-/** Each family's Tier 1 tower, which is what a Build Spot builds. */
+/** Each family's Tier 1 tower, which is what the build ring builds. */
 export const FAMILY_BASE: Readonly<Record<Family, string>> = {
   arrow: 'arrow_tower',
   cannon: 'cannon_tower',

@@ -1,6 +1,6 @@
 import {
   CHALLENGE_DIFFICULTY, challengeById, stageByNumber,
-  type ChallengeModifiers, type ChallengeSpec,
+  type ChallengeModifiers, type ChallengeSpec, type StageSpec,
 } from '../../../content/original';
 import type { MapSpec } from '../../core/specs';
 import type { GameState } from '../../core/state';
@@ -10,9 +10,9 @@ import { orState } from './state';
 // Challenges (docs/original-design.md §16): a Stage played again under its
 // own rule. A Challenge is a Run setting: the Run's state names it, and its
 // modifiers come from the content table. What they change at the start
-// (lives, gold, Build Spots, Talents) setup bakes into the state; the rest the
-// rules read here as they go. A Stage's own Run names none, so it plays and
-// hashes exactly as before Challenges.
+// (lives, gold, Burnt ground, Talents) setup bakes into the state; the rest
+// (the Tower cap among them) the rules read here as they go. A Stage's own Run
+// names none, so it plays and hashes exactly as before Challenges.
 
 const NONE: ChallengeModifiers = {};
 
@@ -57,31 +57,31 @@ export function challengeUnlocks(cleared: number, mods: ChallengeModifiers): Unl
 const maps = new Map<string, MapSpec>();
 
 /**
- * The Map a Challenge plays: its Stage's, with only the Build Spots it keeps
- * (in the Stage's order). The others turn back to plain ground.
+ * The Map a Challenge plays: its Stage's, with its Burnt ground painted over
+ * Open ground only (road and the Stage's own Scenery stay as they are) and
+ * added to the Map's Scenery as `burnt`. Built once per Challenge.
  */
 export function challengeMap(challenge: ChallengeSpec): MapSpec {
   const stage = stageByNumber(challenge.stage);
   if (!stage) throw new Error(`The Original has no Stage ${challenge.stage}`);
-  const keep = challenge.modifiers.spots;
-  if (!keep) return stage.map;
+  const burnt = challenge.modifiers.burnt;
+  if (!burnt) return stage.map;
   const known = maps.get(challenge.id);
   if (known) return known;
-  const spots = stage.map.buildSpots ?? [];
   const rows = stage.map.terrain.map((r) => r.split(''));
-  spots.forEach(([col, row], i) => {
-    if (keep.includes(i)) return;
-    for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) rows[row + dr]![col + dc] = '#';
-  });
+  for (const [col, row, w, h] of burnt.rects) {
+    for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) if (rows[r]?.[c] === '.') rows[r]![c] = '#';
+  }
   const map: MapSpec = {
     ...stage.map,
     terrain: rows.map((r) => r.join('')),
-    buildSpots: keep.map((i) => {
-      const spot = spots[i];
-      if (!spot) throw new Error(`Challenge ${challenge.id}: Stage ${stage.number} has no Build Spot ${i}`);
-      return spot;
-    }),
+    scenery: [...stage.map.scenery ?? [], { kind: 'burnt', name: burnt.name, at: burnt.at, rects: burnt.rects }],
   };
   maps.set(challenge.id, map);
   return map;
+}
+
+/** The Map a Run plays: its Challenge's, or its Stage's own. */
+export function runMap(stage: StageSpec, challenge: ChallengeSpec | null): MapSpec {
+  return challenge ? challengeMap(challenge) : stage.map;
 }

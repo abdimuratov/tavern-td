@@ -13,9 +13,9 @@ import { setMap } from '../../path/grid';
 import { runClouds } from './attack';
 import { runAuras, runTimedPerks, towerBonus } from './auras';
 import {
-  build, buildError, isTargeting, sell, setTargeting, spotError, targetingError, towerById, upgrade, upgradeError,
+  build, buildError, capError, isTargeting, placeError, sell, setTargeting, targetingError, towerById, upgrade, upgradeError,
 } from './build';
-import { challengeMap, challengeProblem, runModifiers } from './challenge';
+import { challengeProblem, runMap, runModifiers } from './challenge';
 import { initCreep, pruneCreeps, runCreepBehaviour } from './creeps';
 import { talentsProblem } from './progression';
 import { ORIGINAL_MODE_ID, creepSpec, makeSim, modeEvent, orState, threatOf, ticks, type OriginalState } from './state';
@@ -26,10 +26,10 @@ import { earlyCallGold, waveBonus, waveSpec } from './waves';
 // Commands are `original.*`; each checks its arguments and the moment, and on
 // refusal emits `rejected` with a short reason a player can read.
 
-/** The Original's commands. Towers are named by id; Build Spots by their index in the Map's list. */
+/** The Original's commands. Towers are named by id; a place by its top-left cell. */
 export type OriginalCommand =
-  /** Build a family's Tier 1 tower on an empty Build Spot. */
-  | { readonly type: 'original.build'; readonly spot: number; readonly spec: string }
+  /** Build a family's Tier 1 tower with its top-left at (col, row), on 2 × 2 of free Open ground. */
+  | { readonly type: 'original.build'; readonly col: number; readonly row: number; readonly spec: string }
   /** Climb a Tier, or pick a Specialisation at Tier 3. */
   | { readonly type: 'original.upgrade'; readonly tower: number; readonly to: string }
   | { readonly type: 'original.sell'; readonly tower: number }
@@ -118,12 +118,13 @@ function handle(state: State, command: Command, events: SimEvent[]): void {
   const no = (reason: string): void => reject(events, command, reason);
   switch (command.type as OriginalCommand['type']) {
     case 'original.build': {
-      const spot = intArg(command, 'spot');
+      const col = intArg(command, 'col');
+      const row = intArg(command, 'row');
       const spec = stringArg(command, 'spec');
-      if (spot === null || spec === null) return no('build needs a Build Spot and a tower');
-      const refused = spotError(state, spot) ?? buildError(state, spec);
+      if (col === null || row === null || spec === null) return no('build needs col, row and a tower');
+      const refused = placeError(state, col, row) ?? capError(state) ?? buildError(state, spec);
       if (refused) return no(refused);
-      build(state, spot, spec, events);
+      build(state, col, row, spec, events);
       return;
     }
     case 'original.upgrade': {
@@ -196,7 +197,7 @@ export const ORIGINAL_RULES: GameModeRules<OriginalState> = {
     const stage = stageByNumber(options.stage)!;
     const challenge = options.challenge === null ? null : challengeById(options.challenge)!;
     const mods = challenge?.modifiers ?? {};
-    setMap(state, typeof opts.map === 'object' ? opts.map : challenge ? challengeMap(challenge) : stage.map);
+    setMap(state, typeof opts.map === 'object' ? opts.map : runMap(stage, challenge));
     state.gold = options.gold ?? mods.gold ?? stage.gold;
     state.lives = mods.lives ?? START_LIVES;
     state.mode = newState(options, stage.threat);

@@ -8,8 +8,9 @@ import { group as g, wave } from './waves';
 
 /**
  * Stage 5, Drowned Causeway: the causeway zigzags north and south through the
- * marsh, with Spots in pairs between its legs. Cultists arrive alone at Wave
- * 4. The road is 5,888 long. Poison opens here.
+ * marsh, which drowns the inside of every turn, so towers stand mid-strip
+ * between its legs. Cultists arrive alone at Wave 4. The road is 5,888 long.
+ * Poison opens here.
  */
 export const DROWNED_CAUSEWAY: StageSpec = {
   number: 5,
@@ -27,10 +28,8 @@ export const DROWNED_CAUSEWAY: StageSpec = {
       air: [[0, 192], [2048, 960]],
     }],
     [
-      // A pair between each two legs.
-      [7, 6], [9, 6], [13, 9], [15, 9], [19, 6], [21, 6], [25, 9], [27, 9],
-      // Beside the first leg, and above and below the turns.
-      [3, 8], [13, 0], [19, 16],
+      // Inside each turn, between two legs.
+      { kind: 'water', name: 'the marsh', at: 'in the marsh', rects: [[7, 10, 4, 4], [13, 4, 4, 4], [19, 10, 4, 4], [25, 4, 4, 4]] },
     ],
   ),
   threat: 6,
@@ -56,9 +55,10 @@ export const DROWNED_CAUSEWAY: StageSpec = {
 };
 
 /**
- * Stage 6, Sunken Chapel: the road spirals in to the drowned chapel. The
- * centre Spots stand between the inner legs and reach three stretches of the
- * spiral. Flesh Golems arrive alone at Wave 5. The road is 6,016 long.
+ * Stage 6, Sunken Chapel: the road spirals in to the drowned chapel at its
+ * end. The centre, between the inner legs, reaches three stretches of the
+ * spiral; black water fills everything below the outer ring and beside the
+ * lower east leg. Flesh Golems arrive alone at Wave 5. The road is 6,016 long.
  * Specialisations open here.
  */
 export const SUNKEN_CHAPEL: StageSpec = {
@@ -74,12 +74,10 @@ export const SUNKEN_CHAPEL: StageSpec = {
       air: [[0, 192], [1408, 576], [640, 704]],
     }],
     [
-      // The centre, between the inner legs.
-      [11, 8], [15, 8], [20, 8],
-      // Between the rings.
-      [7, 4], [13, 4], [22, 4], [11, 12], [15, 12], [22, 12], [5, 10],
-      // Outside the spiral.
-      [26, 8],
+      // At the road's end.
+      { kind: 'building', name: 'the chapel', at: 'on the chapel', rects: [[7, 8, 4, 2]] },
+      // Beside the lower east leg, and below the outer ring.
+      { kind: 'water', name: 'the black water', at: 'in the black water', rects: [[26, 10, 6, 8], [0, 16, 26, 2]] },
     ],
   ),
   threat: 7,
@@ -111,10 +109,10 @@ export const SUNKEN_CHAPEL: StageSpec = {
 };
 
 /**
- * Stage 7, Plague Fords: two spawns, north and south, whose routes join at
- * the middle of the Map and leave together to the north-east. Bloaters arrive
- * alone at Wave 5. Each route is 2,816 long, 1,536 of it before the join.
- * Totem opens here.
+ * Stage 7, Plague Fords: two spawns, north and south, whose routes ford the
+ * river (cols 13–14), join at the middle of the Map and leave together to the
+ * north-east. Bloaters arrive alone at Wave 5. Each route is 2,816 long, 1,536
+ * of it before the join. Totem opens here.
  */
 export const PLAGUE_FORDS: StageSpec = {
   number: 7,
@@ -135,12 +133,8 @@ export const PLAGUE_FORDS: StageSpec = {
       },
     ],
     [
-      // Between the two fords.
-      [6, 6], [11, 6], [6, 10], [11, 10], [15, 8],
-      // Outside the fords.
-      [9, 2], [9, 14],
-      // Along the joined road.
-      [20, 6], [23, 4], [21, 10], [25, 10], [27, 5],
+      // Forded by both roads, it splits the ground between the fords.
+      { kind: 'water', name: 'the river', at: 'in the river', rects: [[13, 0, 2, 18]] },
     ],
   ),
   threat: 8,
@@ -167,10 +161,11 @@ export const PLAGUE_FORDS: StageSpec = {
 };
 
 /**
- * Stage 8, The Blight Pit: a figure eight round the plague pit. The road runs
- * down through the centre, round the south-east loop, and back west through
- * the centre again, so the four Spots by the crossing see it twice. The
- * Plague Mother leads the last Wave. The road is 5,120 long.
+ * Stage 8, The Blight Pit: a figure eight round the plague pit, which lies
+ * inside the south-east loop. The road runs down through the centre, round
+ * that loop, and back west through the centre again, so the ground by the
+ * crossing sees it twice. The Plague Mother leads the last Wave. The road is
+ * 5,120 long.
  */
 export const BLIGHT_PIT: StageSpec = {
   number: 8,
@@ -185,14 +180,8 @@ export const BLIGHT_PIT: StageSpec = {
       air: [[0, 192], [1088, 576], [320, 1152]],
     }],
     [
-      // Round the crossing.
-      [14, 6], [18, 6], [14, 10], [18, 10],
-      // The north-west loop.
-      [6, 4], [10, 6], [14, 4],
-      // The south-east loop.
-      [22, 12], [26, 10], [18, 12],
-      // Outside.
-      [6, 12], [24, 6],
+      // Inside the south-east loop.
+      { kind: 'pit', name: 'the plague pit', at: 'in the plague pit', rects: [[20, 10, 2, 4], [22, 10, 4, 2]] },
     ],
   ),
   threat: 9,

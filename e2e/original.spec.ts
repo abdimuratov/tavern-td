@@ -1,19 +1,24 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { buildOnSpot, newOriginalRun, spotPoint, tapAt, touch, towerSpecs } from './app';
+import { buildAt, newOriginalRun, placePoint, tapAt, touch, towerSpecs } from './app';
 
 // The Original as a player plays it: menu → Campaign → Stage 1 → Normal, a
-// tower built through the ring on a Build Spot, Send Wave 1, then a reload and
+// tower built through the ring on Open ground, Send Wave 1, then a reload and
 // Continue; a won Stage that stores its Stars and opens Talents; and its
 // Challenge, opened by that win and won for one more Star. Waves are run to
 // their end through the debug handle; everything else goes through the UI.
 
-/** Wins the Run through the debug handle: Tier 2 Arrows and Cannons on every Build Spot, then each Wave in turn. */
+/**
+ * Wins the Run through the debug handle: Tier 2 Arrows and Cannons on the Mill
+ * Road's eight old Build Spots, then each Wave in turn. The Burnt Mill takes the
+ * first four: the rest are burnt, and its Tower cap is 4.
+ */
 async function winRun(page: Page): Promise<void> {
   await page.evaluate(() => {
     const c = window.tavern!.controller;
     c.state.gold = 5000;
-    for (let spot = 0; spot < c.state.map.buildSpots!.length; spot++) c.send({ type: 'original.build', spot, spec: spot % 2 ? 'cannon_tower' : 'arrow_tower' });
+    const places = [[19, 4], [23, 4], [19, 6], [23, 6], [7, 10], [11, 10], [7, 12], [11, 12]];
+    places.forEach(([col, row], i) => c.send({ type: 'original.build', col, row, spec: i % 2 ? 'cannon_tower' : 'arrow_tower' }));
     c.fastForward(1);
     for (const t of c.state.towers) c.send({ type: 'original.upgrade', tower: t.id, to: t.spec === 'arrow_tower' ? 'longbow_tower' : 'bombard' });
     c.send({ type: 'original.sendNow' });
@@ -34,12 +39,12 @@ test('an Original Run builds through the ring, sends a Wave, autosaves and conti
   await expect(page.getByTestId('threat')).toHaveText('Threat 1');
   await expect(page.getByTestId('wave-preview')).toContainText('Ghoul');
 
-  await buildOnSpot(page, 0, 'arrow');
+  await buildAt(page, 19, 4, 'arrow');
   expect(await towerSpecs(page)).toEqual(['arrow_tower']);
   await expect(page.getByTestId('gold')).toHaveText('180');
 
   // A tap on the tower opens its panel: Upgrade, targeting, Sell and its Tower Level.
-  const p = await spotPoint(page, 0);
+  const p = await placePoint(page, 19, 4);
   await tapAt(page, p.x, p.y);
   await expect(page.getByTestId('original-panel')).toContainText('Longbow Tower');
   await expect(page.getByTestId('tower-level')).toHaveText('Lv 1');
@@ -150,24 +155,26 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
   await page.getByTestId('back').click();
   await page.getByTestId('stage-1').click();
   await expect(page.getByTestId('challenge-status')).toHaveText('1 Star · Normal');
-  await expect(page.getByTestId('challenge-rule')).toContainText('4 Build Spots');
+  await expect(page.getByTestId('challenge-rule')).toContainText('4 towers at most');
   // A won Stage's panel fits a phone on its side too; there the Region intro gives its room to the Challenge.
   await expect(page.getByTestId('challenge-start')).toBeInViewport({ ratio: 1 });
   await expect(page.getByTestId('talents')).toBeInViewport({ ratio: 1 });
   await expect(page.getByTestId('region-intro')).toBeVisible({ visible: page.viewportSize()!.height > 520 });
   await page.getByTestId('challenge-start').click();
 
-  // A Challenge Run: Normal, on the Burnt Mill's 4 Build Spots, with its name, Star and rule on the HUD.
+  // A Challenge Run: Normal, its lower bend burnt and 4 towers at most, with its name, Star and rule on the HUD.
   await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
   await expect(page.getByTestId('run-challenge')).toHaveAttribute('title', 'Challenge: The Burnt Mill, on The Mill Road');
-  await expect(page.getByTestId('challenge-rules')).toContainText('4 Build Spots');
+  await expect(page.getByTestId('challenge-rules')).toContainText('Lower bend burnt');
+  await expect(page.getByTestId('challenge-rules')).toContainText('4 towers at most');
   await expect(page.getByTestId('run-stars')).toHaveAttribute('aria-label', '1 of 1 Stars');
   await page.waitForFunction(() => !!window.tavern);
   const run = () => page.evaluate(() => {
     const s = window.tavern!.controller.state;
-    return { difficulty: s.difficulty, challenge: (s.mode as { challenge?: string }).challenge, spots: s.map.buildSpots!.length, wave: s.wave.number };
+    const burnt = s.map.scenery?.find((p) => p.kind === 'burnt')?.name ?? null;
+    return { difficulty: s.difficulty, challenge: (s.mode as { challenge?: string }).challenge, burnt, wave: s.wave.number };
   });
-  expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', spots: 4, wave: 0 });
+  expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend burnt', wave: 0 });
   await winRun(page);
 
   // The end card: the Challenge's Star, added to the Campaign's 48, and its time as a new best.
@@ -183,7 +190,7 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
   // Play again restarts the Challenge, and Continue keeps it one.
   await page.getByTestId('play-again').click();
   await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
-  await expect.poll(run).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', spots: 4, wave: 0 });
+  await expect.poll(run).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend burnt', wave: 0 });
   await page.getByTestId('menu-button').click();
   await page.getByTestId('quit').click();
   await expect(card.getByTestId('continue')).toContainText('Challenge: The Burnt Mill · The Mill Road · Normal');
@@ -211,7 +218,7 @@ test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }
   test.skip(touch(), 'keyboard only');
   await page.goto('./');
   await newOriginalRun(page, 'normal');
-  const p = await spotPoint(page, 4);
+  const p = await placePoint(page, 7, 10);
   await tapAt(page, p.x, p.y);
   await expect(page.getByTestId('build-ring')).toBeVisible();
   await page.keyboard.press('w');
@@ -228,7 +235,7 @@ test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }
 test('an Original save code exported mid-Wave imports back to the same Run', async ({ page }) => {
   await page.goto('./');
   await newOriginalRun(page, 'hard');
-  await buildOnSpot(page, 5, 'cannon');
+  await buildAt(page, 11, 10, 'cannon');
   await page.getByTestId('send-now').click();
   await page.evaluate(() => window.tavern!.controller.fastForward(300));
 

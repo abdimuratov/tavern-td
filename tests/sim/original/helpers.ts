@@ -1,8 +1,9 @@
 import { ORIGINAL_TOWERS, type OriginalWave } from '../../../src/content/original';
 import {
-  addTower, buildSpotCells, createRun, original, placeOnRoute, spawnCreep, step,
+  addTower, cellOf, createRun, original, placeOnRoute, restore, snapshot, spawnCreep, step,
   type Command, type Creep, type Difficulty, type GameState, type MapSpec, type SimEvent, type Tower,
 } from '../../../src/sim';
+import { formerSpot, type Cell } from './former-spots';
 
 export type OriginalRun = original.OriginalGameState;
 
@@ -62,17 +63,34 @@ export function towerOf(state: GameState, id: number): Tower {
   return t;
 }
 
-/** Builds `spec` on Build Spot `spot` through the command and returns the tower; throws if refused. */
-export function buildOn(state: OriginalRun, spot: number, spec: string): Tower {
-  const events = send(state, { type: 'original.build', spot, spec });
+/**
+ * A place by its top-left cell: a cell, or the index of a Build Spot the Map
+ * had (former-spots.ts), so the tests' geometry stays as their comments say.
+ */
+export type At = number | Cell;
+
+export function cellOfPlace(state: GameState, at: At): Cell {
+  return typeof at === 'number' ? formerSpot(state.map.id, at) : at;
+}
+
+/** The build command for `spec` at a place. */
+export function buildAt(state: GameState, at: At, spec: string): Command {
+  const [col, row] = cellOfPlace(state, at);
+  return { type: 'original.build', col, row, spec };
+}
+
+/** Builds `spec` at a place through the command and returns the tower; throws if refused. */
+export function buildOn(state: OriginalRun, at: At, spec: string): Tower {
+  const events = send(state, buildAt(state, at, spec));
   const refused = reasons(events);
   if (refused.length > 0) throw new Error(`build ${spec} refused: ${refused.join(', ')}`);
   return towerOf(state, ofType(events, 'placed')[0]!.tower);
 }
 
-/** Stands any tower (upgrades included) on Build Spot `spot`, outside the build rules and free. */
-export function placeTower(state: OriginalRun, spot: number, spec: string): Tower {
-  const tower = addTower(state, spec, buildSpotCells(state.map, spot)[0]!, []);
+/** Stands any tower (upgrades included) at a place, outside the build rules and free. */
+export function placeTower(state: OriginalRun, at: At, spec: string): Tower {
+  const [col, row] = cellOfPlace(state, at);
+  const tower = addTower(state, spec, cellOf(state.map, col, row), []);
   state.mode.towers[String(tower.id)] = original.newTowerState(ORIGINAL_TOWERS[spec]!.original.targeting, state.mode.breaks);
   return tower;
 }
@@ -132,13 +150,16 @@ export function runUntil(state: GameState, done: () => boolean, max = 30 * 600):
 
 /**
  * A straight test Map: two routes along rows (each 2 cells wide) from the left
- * edge to the right, with Build Spots between them and air lines that cross.
+ * edge to the right, with six 2 × 2s of Open ground between them (its former
+ * Spots) and air lines that cross. Its `#` is no Scenery it names.
  */
 export const TWO_ROUTES: MapSpec = (() => {
   const terrain = Array.from({ length: 18 }, () => '#'.repeat(32).split(''));
   for (const r of [2, 3, 14, 15]) for (let c = 0; c < 32; c++) terrain[r]![c] = ',';
-  const spots: [number, number][] = [[4, 7], [8, 7], [12, 7], [16, 7], [20, 7], [24, 7]];
-  for (const [c, r] of spots) for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) terrain[r + dr]![c + dc] = '.';
+  for (let i = 0; i < 6; i++) {
+    const [c, r] = formerSpot('two-routes', i);
+    for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) terrain[r + dr]![c + dc] = '.';
+  }
   return {
     id: 'two-routes',
     cols: 32,
@@ -150,6 +171,19 @@ export const TWO_ROUTES: MapSpec = (() => {
       { points: [[0, 192], [2048, 192]], air: [[0, 192], [1024, 576], [2048, 960]] },
       { points: [[0, 960], [2048, 960]], air: [[0, 960], [2048, 192]] },
     ],
-    buildSpots: spots,
   };
 })();
+
+/**
+ * A Run as an older build saved it, before free placement: its Map lists the
+ * Build Spots, and its terrain has them as the only buildable cells, every
+ * other cell but the road `#`, with no Scenery named.
+ */
+export function asSpotSave(state: GameState, spots: readonly Cell[]): GameState {
+  const data = JSON.parse(snapshot(state)) as GameState;
+  const rows = data.map.terrain.map((r): string[] => r.split('').map((ch) => (ch === ',' ? ',' : '#')));
+  for (const [c, r] of spots) for (const [dc, dr] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) rows[r + dr]![c + dc] = '.';
+  const map: Record<string, unknown> = { ...data.map, terrain: rows.map((r) => r.join('')), buildSpots: spots };
+  delete map['scenery'];
+  return restore(JSON.stringify({ ...data, map }));
+}

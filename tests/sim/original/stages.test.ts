@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { CAMPAIGN_LENGTH, ORIGINAL_CREEPS, STAGES, type OriginalWave, type StageSpec } from '../../../src/content/original';
-import { CELL, airLineData, routeCount, routeData, routePoint, validateMap, type MapSpec } from '../../../src/sim';
+import { CAMPAIGN_LENGTH, CHALLENGES, ORIGINAL_CREEPS, STAGES, stageByNumber, type OriginalWave, type StageSpec } from '../../../src/content/original';
+import { CELL, airLineData, original, routeCount, routeData, routePoint, validateMap, type MapSpec } from '../../../src/sim';
+import { FORMER_SPOTS, KEPT_SPOTS } from './former-spots';
 
-// The Campaign's twelve Stages against docs/original-design.md §11 and the
-// Wave recipes of §10, as the balance runner left them.
+// The Campaign's twelve Stages against docs/original-design.md §11, §17 and
+// the Wave recipes of §10, as the balance runner left them.
 
-/** §11: Build Spots, Waves, first Threat and starting gold of each Stage. */
-const TABLE: readonly [spots: number, waves: number, threat: number, gold: number][] = [
-  [8, 12, 1, 250], [9, 12, 2, 270], [10, 14, 3, 300], [10, 15, 4, 330],
-  [11, 15, 6, 400], [11, 16, 7, 430], [12, 16, 8, 460], [12, 18, 9, 500],
-  [12, 18, 11, 580], [13, 18, 12, 620], [14, 20, 13, 660], [14, 20, 14, 700],
+/** §11 and §17: Open cells, Waves, first Threat and starting gold of each Stage. */
+const TABLE: readonly [open: number, waves: number, threat: number, gold: number][] = [
+  [376, 12, 1, 250], [356, 12, 2, 270], [422, 14, 3, 300], [296, 15, 4, 330],
+  [328, 15, 6, 400], [278, 16, 7, 430], [414, 16, 8, 460], [404, 18, 9, 500],
+  [281, 18, 11, 580], [328, 18, 12, 620], [318, 20, 13, 660], [318, 20, 14, 700],
 ];
+
+const KINDS = ['water', 'building', 'cliff', 'pit'];
 
 /** The creep each Stage brings in (§11), or null; bosses lead the last Wave of Stages 4, 8 and 12. */
 const NEW_CREEP: readonly (string | null)[] = [
@@ -31,9 +34,17 @@ function road(map: MapSpec, col: number, row: number): boolean {
   return map.terrain[row]?.[col] === ',';
 }
 
-/** Units of every route within `range` of Build Spot `i`'s centre. */
-function covered(map: MapSpec, i: number, range: number): number {
-  const [col, row] = map.buildSpots![i]!;
+function openCells(map: MapSpec): number {
+  return map.terrain.join('').split('').filter((ch) => ch === '.').length;
+}
+
+/** The cells of a 2 × 2 with its top-left at (col, row). */
+function cellsOf(col: number, row: number): [number, number][] {
+  return [[col, row], [col + 1, row], [col, row + 1], [col + 1, row + 1]];
+}
+
+/** Units of every route within `range` of the centre of the 2 × 2 at (col, row). */
+function covered(map: MapSpec, col: number, row: number, range: number): number {
   const cx = (col + 1) * CELL;
   const cy = (row + 1) * CELL;
   let n = 0;
@@ -61,8 +72,8 @@ describe('the Campaign\'s Stages', () => {
     STAGES.forEach((s, i) => {
       expect(s.number).toBe(i + 1);
       expect(s.region).toBe(['ashfield', 'blightfen', 'rift'][Math.floor(i / 4)]);
-      const [spots, waves, threat, gold] = TABLE[i]!;
-      expect([s.map.buildSpots!.length, s.waves.length, s.threat, s.gold], s.name).toEqual([spots, waves, threat, gold]);
+      const [open, waves, threat, gold] = TABLE[i]!;
+      expect([openCells(s.map), s.waves.length, s.threat, s.gold], s.name).toEqual([open, waves, threat, gold]);
     });
   });
 
@@ -90,13 +101,31 @@ describe('the Campaign\'s Stages', () => {
         }
       });
 
-      it('puts every Build Spot beside the road, where a Tier 1 tower sees plenty of it', () => {
-        map.buildSpots!.forEach(([col, row], i) => {
+      it('names one or two pieces of Scenery, and every cell nothing stands on is road or one of them', () => {
+        const pieces = map.scenery ?? [];
+        expect(pieces.length).toBeGreaterThanOrEqual(1);
+        expect(pieces.length).toBeLessThanOrEqual(2);
+        for (const p of pieces) {
+          expect(KINDS, p.name).toContain(p.kind);
+          expect(p.name, p.name).toMatch(/^the /);
+          expect(p.at, p.name).toMatch(/^(in|on) the /);
+        }
+        const named = (c: number, r: number): boolean => pieces.some((p) => p.rects.some(([x, y, w, h]) => c >= x && c < x + w && r >= y && r < y + h));
+        for (let r = 0; r < map.rows; r++) {
+          for (let c = 0; c < map.cols; c++) if (map.terrain[r]![c] === '#') expect(named(c, r), `(${c}, ${r})`).toBe(true);
+        }
+      });
+
+      it('keeps every Build Spot it had as Open ground beside the road, where a Tier 1 tower sees plenty of it', () => {
+        const spots = FORMER_SPOTS[stage.id]!;
+        expect(spots.length).toBeGreaterThanOrEqual(8);
+        spots.forEach(([col, row], i) => {
+          for (const [c, r] of cellsOf(col, row)) expect(map.terrain[r]![c], `Spot ${i} (${col}, ${row})`).toBe('.');
           let near = false;
           // Within two cells of the road: Gallows Hill's hilltop Spots stand two rows from both legs.
           for (let c = col - 3; c <= col + 4; c++) for (let r = row - 3; r <= row + 4; r++) near ||= road(map, c, r);
           expect(near, `Spot ${i} (${col}, ${row})`).toBe(true);
-          expect(covered(map, i, 320), `Spot ${i} (${col}, ${row})`).toBeGreaterThanOrEqual(448);
+          expect(covered(map, col, row, 320), `Spot ${i} (${col}, ${row})`).toBeGreaterThanOrEqual(448);
         });
       });
 
@@ -143,6 +172,24 @@ describe('the Campaign\'s Stages', () => {
       });
     });
   }
+
+  it('lets no Challenge\'s Burnt ground cover a Build Spot it kept, so its older saves load', () => {
+    const burnt = CHALLENGES.filter((c) => c.modifiers.burnt);
+    expect(burnt.map((c) => c.id).sort()).toEqual(Object.keys(KEPT_SPOTS).sort());
+    for (const c of burnt) {
+      const map = original.challengeMap(c);
+      const stage = stageByNumber(c.stage)!;
+      const spots = FORMER_SPOTS[stage.id]!;
+      for (const i of KEPT_SPOTS[c.id]!) {
+        const [col, row] = spots[i]!;
+        for (const [cc, r] of cellsOf(col, row)) expect(map.terrain[r]![cc], `${c.id}: Spot ${i}`).toBe('.');
+      }
+      // It burns Open ground only: the road and the Stage's own Scenery stay.
+      for (let r = 0; r < map.rows; r++) {
+        for (let cc = 0; cc < map.cols; cc++) if (stage.map.terrain[r]![cc] !== '.') expect(map.terrain[r]![cc]).toBe(stage.map.terrain[r]![cc]);
+      }
+    }
+  });
 
   it('joins Plague Fords\' two routes halfway, and Three Gates\' three in two steps', () => {
     const fords = STAGES[6]!.map.routes!;

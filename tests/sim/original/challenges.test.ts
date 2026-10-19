@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CHALLENGES, FAMILIES, ROW_COST, STAGES, challengeById, challengeOfStage, stageByNumber,
+  CHALLENGES, FAMILIES, MAP_COLS, MAP_ROWS, MILL_ROAD, ROW_COST, STAGES, challengeById, challengeOfStage, stageByNumber,
 } from '../../../src/content/original';
 import {
   advance, createRun, hashState, original, replay, replayHash, restore, snapshot, spawnCreep,
@@ -8,7 +8,8 @@ import {
 } from '../../../src/sim';
 import { challengeSetup, talentsFor } from '../../../tools/balance/jobs';
 import { playStage } from './bot';
-import { buildOn, modeEvents, newRun, placeTower, reasons, runUntil, send } from './helpers';
+import { FORMER_SPOTS, KEPT_SPOTS } from './former-spots';
+import { asSpotSave, buildAt, buildOn, cellOfPlace, modeEvents, newRun, placeTower, reasons, run, runUntil, send } from './helpers';
 
 // Challenges (docs/original-design.md §16): a Stage played again under its
 // own rule. Each modifier is checked on the Challenge that uses it.
@@ -41,8 +42,10 @@ describe('the Challenge table', () => {
       const count = Object.keys(c.modifiers).length;
       expect(count, c.id).toBeGreaterThanOrEqual(1);
       expect(count, c.id).toBeLessThanOrEqual(2);
-      const spots = stageByNumber(c.stage)!.map.buildSpots!.length;
-      for (const i of c.modifiers.spots ?? []) expect(i, c.id).toBeLessThan(spots);
+      for (const [col, row, w, h] of c.modifiers.burnt?.rects ?? []) {
+        expect(col >= 0 && row >= 0 && col + w <= MAP_COLS && row + h <= MAP_ROWS, c.id).toBe(true);
+      }
+      if (c.modifiers.maxTowers !== undefined) expect(Number.isInteger(c.modifiers.maxTowers) && c.modifiers.maxTowers > 0, c.id).toBe(true);
       for (const f of c.modifiers.families ?? []) expect(FAMILIES, c.id).toContain(f);
     }
   });
@@ -78,29 +81,67 @@ describe('a Challenge as a Run setting', () => {
 describe('the modifiers', () => {
   it('families: only the Challenge\'s families build, and the ring offers only them', () => {
     const s = newRun({ challenge: 'cold-water', cleared: 2, gold: 1000 });
-    expect(original.spotInfo(s, 2).options.map((o) => o.family)).toEqual(['cannon', 'frost']);
+    expect(original.placeInfo(s, ...cellOfPlace(s, 2)).options.map((o) => o.family)).toEqual(['cannon', 'frost']);
     expect(status(s).unlocks.families).toEqual(['cannon', 'frost']);
-    expect(reasons(send(s, { type: 'original.build', spot: 2, spec: 'arrow_tower' }))).toEqual(['no arrow towers in this Challenge']);
+    expect(reasons(send(s, buildAt(s, 2, 'arrow_tower')))).toEqual(['no arrow towers in this Challenge']);
     // What the Campaign hasn't opened still says so.
-    expect(reasons(send(s, { type: 'original.build', spot: 2, spec: 'mage_tower' }))).toEqual(['the arcane family isn\'t unlocked yet']);
+    expect(reasons(send(s, buildAt(s, 2, 'mage_tower')))).toEqual(['the arcane family isn\'t unlocked yet']);
     expect(buildOn(s, 2, 'frost_tower').spec).toBe('frost_tower');
     // A family the rule allows but the Campaign hasn't opened stays shut: Stone Wings early on has no Totem.
     const w = newRun({ challenge: 'stone-wings', cleared: 5 });
     expect(status(w).unlocks.families).toEqual(['cannon', 'frost', 'arcane', 'poison']);
   });
 
-  it('spots: the Map keeps only the Challenge\'s Build Spots, and the others turn back to ground', () => {
+  it('burnt: Burnt ground paints over Open ground only and joins the Map\'s Scenery, in the Ghost\'s words', () => {
     const stage = stageByNumber(1)!.map;
-    const s = newRun({ challenge: 'burnt-mill' });
-    expect(s.map.buildSpots).toEqual(stage.buildSpots!.slice(0, 4));
-    const [col, row] = stage.buildSpots![4]!;
-    expect(s.map.terrain[row]![col]).toBe('#');
-    expect(stage.terrain[row]![col]).toBe('.');
-    expect(stage.buildSpots).toHaveLength(8);
-    expect(original.spotInfo(s, 4).error).toBe('no such Build Spot');
+    const s = newRun({ challenge: 'burnt-mill', gold: 5000 });
+    const open = (m: typeof stage): number => m.terrain.join('').split('').filter((ch) => ch === '.').length;
+    expect(open(s.map)).toBe(168);
+    expect(open(newRun({ challenge: 'glass-slope' }).map)).toBe(241);
+    expect(s.map.scenery!.map((p) => [p.kind, p.name, p.at])).toEqual([
+      ['building', 'the mill', 'on the mill'], ['water', 'the millpond', 'in the millpond'], ['burnt', 'Lower bend burnt', 'on burnt ground'],
+    ]);
+    // The lower bend's ground is burnt; its road stays road, and the pond keeps its words.
+    expect(reasons(send(s, buildAt(s, 4, 'arrow_tower')))).toEqual(['on burnt ground']);
+    expect(reasons(send(s, buildAt(s, [0, 5], 'arrow_tower')))).toEqual(['on burnt ground']);
+    expect(s.map.terrain[14]).toBe(stage.terrain[14]!.replace(/\./g, '#'));
+    expect(reasons(send(s, buildAt(s, [18, 11], 'arrow_tower')))).toEqual(['in the millpond']);
     expect(buildOn(s, 3, 'arrow_tower').spec).toBe('arrow_tower');
-    // The Map is built once per Challenge.
+    expect(buildOn(s, [5, 5], 'arrow_tower').spec).toBe('arrow_tower');
+    const glass = newRun({ challenge: 'glass-slope' });
+    expect(reasons(send(glass, buildAt(glass, 4, 'arrow_tower')))).toEqual(['on the glass']);
+    expect(buildOn(glass, 8, 'arrow_tower').spec).toBe('arrow_tower');
+    // The Map is built once per Challenge, and the Stage's own is untouched.
     expect(newRun({ challenge: 'burnt-mill' }).map).toBe(s.map);
+    expect(newRun({ stage: 1 }).map).toBe(MILL_ROAD.map);
+    expect(stage.scenery).toHaveLength(2);
+  });
+
+  it('maxTowers: the Tower cap refuses a build after the ground, before the gold, and selling frees room', () => {
+    const s = newRun({ challenge: 'burnt-mill', gold: 5000 });
+    const towers = [0, 1, 2, 3].map((spot) => buildOn(s, spot, 'arrow_tower'));
+    const cap = '4 towers stand: the most in this Challenge';
+    expect(reasons(send(s, buildAt(s, [5, 5], 'arrow_tower')))).toEqual([cap]);
+    expect(original.placeInfo(s, 5, 5)).toMatchObject({ error: cap });
+    expect(original.placeInfo(s, 5, 5).options.every((o) => o.blocked === cap)).toBe(true);
+    // The ground's reasons first, then the cap, then the family and the gold.
+    expect(reasons(send(s, buildAt(s, [0, 2], 'arrow_tower')))).toEqual(['on the road']);
+    expect(reasons(send(s, buildAt(s, [0, 12], 'arrow_tower')))).toEqual(['on burnt ground']);
+    expect(reasons(send(s, buildAt(s, 0, 'arrow_tower')))).toEqual(['a tower stands there']);
+    s.gold = 0;
+    expect(reasons(send(s, buildAt(s, [5, 5], 'longbow_tower')))).toEqual([cap]);
+    s.gold = 5000;
+    send(s, { type: 'original.sell', tower: towers[1]!.id });
+    expect(buildOn(s, [5, 5], 'cannon_tower').spec).toBe('cannon_tower');
+    expect(reasons(send(s, buildAt(s, 1, 'arrow_tower')))).toEqual([cap]);
+    // Towers past the cap (an older save's) stay standing; only new builds wait.
+    placeTower(s, [7, 4], 'arrow_tower');
+    run(s, 30);
+    expect(s.towers).toHaveLength(5);
+    expect(original.capError(newRun({ stage: 1 }))).toBeNull();
+    const glass = newRun({ challenge: 'glass-slope', gold: 5000 });
+    for (const spot of KEPT_SPOTS['glass-slope']!) buildOn(glass, spot, 'arrow_tower');
+    expect(reasons(send(glass, buildAt(glass, [27, 13], 'arrow_tower')))).toEqual(['8 towers stand: the most in this Challenge']);
   });
 
   it('lives and gold: the Run starts with the Challenge\'s, and test gold still wins', () => {
@@ -231,7 +272,7 @@ describe('a Challenge Run is fully determined by its settings', () => {
     for (const cut of [Math.floor(until / 3), Math.floor((until * 2) / 3)]) {
       const restored = restore(snapshot(replay(fixture, cut)));
       expect((restored.mode as original.OriginalState).challenge).toBe('burnt-mill');
-      expect(restored.map.buildSpots).toHaveLength(4);
+      expect(restored.map).toEqual(original.challengeMap(challengeById('burnt-mill')!));
       while (restored.tick < until) advance(restored, 1, fixture.log.filter((e) => e.tick === restored.tick).map((e) => e.command as Command));
       expect(hashState(restored)).toBe(hashState(final));
     }
@@ -244,8 +285,72 @@ describe('a Challenge Run is fully determined by its settings', () => {
     const loaded = restore(snapshot(old)) as original.OriginalGameState;
     expect(original.runChallenge(loaded)).toBeNull();
     expect(status(loaded)).toMatchObject({ challenge: null, lives: 20 });
-    expect(loaded.map.buildSpots).toHaveLength(8);
+    expect(loaded.map).toEqual(MILL_ROAD.map);
     toBreak(loaded);
     expect(status(loaded).break!.totalTicks).toBe(30 * 30);
+  });
+});
+
+/** Plays both on for `ticks` and says whether they stay the same Run. */
+function sameRun(a: GameState, b: GameState, ticks: number): boolean {
+  for (let i = 0; i < ticks; i++) {
+    advance(a, 1, []);
+    advance(b, 1, []);
+  }
+  return hashState(a) === hashState(b);
+}
+
+const NO_FIT = 'This saved Run\'s towers don\'t fit the Stage\'s Map any more, so it can\'t be loaded.';
+
+describe('older saves made on Build Spots', () => {
+  it('loads a Stage\'s save onto its current Map, every tower on its cells, and plays on as a Run there would', () => {
+    const s = newRun({ stage: 1, cleared: 0, gold: 1000 });
+    for (const spot of [0, 4, 7]) buildOn(s, spot, spot === 4 ? 'cannon_tower' : 'arrow_tower');
+    send(s, { type: 'original.sendNow' });
+    run(s, 400);
+    const old = asSpotSave(s, FORMER_SPOTS['mill-road']!);
+    expect(original.upgradeSave(old)).toBeNull();
+    expect(old.map).toBe(MILL_ROAD.map);
+    expect(old.towers.map((t) => [t.spec, t.cells])).toEqual(s.towers.map((t) => [t.spec, t.cells]));
+    expect(old.mode).toEqual(s.mode);
+    // A save made since keeps the Map it carries.
+    const fresh = restore(snapshot(s));
+    expect(original.upgradeSave(fresh)).toBeNull();
+    expect(fresh.map).toEqual(MILL_ROAD.map);
+    s.pathVersion++;
+    expect(sameRun(old, s, 900)).toBe(true);
+    expect(old.creeps.length + (old.mode as original.OriginalState).completed).toBeGreaterThan(0);
+  });
+
+  it('loads an old Burnt Mill save onto the Challenge\'s Map, under its Tower cap', () => {
+    const s = newRun({ challenge: 'burnt-mill', gold: 1000 });
+    for (const spot of KEPT_SPOTS['burnt-mill']!) buildOn(s, spot, 'arrow_tower');
+    send(s, { type: 'original.sendNow' });
+    run(s, 300);
+    const kept = KEPT_SPOTS['burnt-mill']!.map((i) => FORMER_SPOTS['mill-road']![i]!);
+    const old = asSpotSave(s, kept);
+    expect(original.upgradeSave(old)).toBeNull();
+    expect(old.map).toBe(original.challengeMap(challengeById('burnt-mill')!));
+    expect(old.towers).toHaveLength(4);
+    expect(reasons(send(old, buildAt(old, [5, 5], 'arrow_tower')))).toEqual(['4 towers stand: the most in this Challenge']);
+    send(s, buildAt(s, [5, 5], 'arrow_tower'));
+    s.pathVersion++;
+    expect(sameRun(old, s, 600)).toBe(true);
+  });
+
+  it('refuses a save with a tower where Scenery now stands, on a Map of its own, or whose grid disagrees', () => {
+    const s = newRun({ stage: 1, gold: 1000 });
+    placeTower(s, [13, 4], 'arrow_tower');
+    expect(original.upgradeSave(asSpotSave(s, [...FORMER_SPOTS['mill-road']!, [13, 4]]))).toBe(NO_FIT);
+    const custom = newRun({ map: { ...MILL_ROAD.map, id: 'my-map' } });
+    expect(original.upgradeSave(asSpotSave(custom, FORMER_SPOTS['mill-road']!))).toBe(NO_FIT);
+    const grid = newRun({ stage: 1 });
+    buildOn(grid, 0, 'arrow_tower');
+    const broken = asSpotSave(grid, FORMER_SPOTS['mill-road']!);
+    broken.grid[broken.towers[0]!.cells[3]!] = 0;
+    expect(original.upgradeSave(broken)).toBe(NO_FIT);
+    const lost = asSpotSave(newRun({ stage: 1 }), FORMER_SPOTS['mill-road']!);
+    (lost.mode as { stage: number }).stage = 99;
+    expect(original.upgradeSave(lost)).toBe(NO_FIT);
   });
 });

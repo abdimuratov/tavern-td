@@ -26,6 +26,7 @@ declare global {
 
 const RULES: SaveRules = {
   playable: (modeId) => catalogEntry(modeId)?.ui !== undefined,
+  upgrade: (state) => catalogEntry(state.modeId)?.ui?.upgradeSave?.(state) ?? null,
   validState: (state) => catalogEntry(state.modeId)?.ui?.validSave?.(state) ?? true,
 };
 

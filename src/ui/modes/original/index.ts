@@ -1,5 +1,5 @@
 import { challengeById, challengeOfStage, PERKS, stageByNumber, TARGETINGS, type ChallengeSpec } from '../../../content/original';
-import { buildSpotCells, original, routeCount, type GameState, type SimEvent } from '../../../sim';
+import { original, routeCount, type GameState, type SimEvent } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
 import type { ModeUi, Placement, RunChoices, RunView } from '../../mode-ui';
 import { BuildRing } from './BuildRing';
@@ -10,12 +10,12 @@ import { creepColor, ORIGINAL_LOOK } from './look';
 import { OriginalPanel } from './OriginalPanel';
 import { OriginalStatus } from './OriginalStatus';
 import { OriginalRecords } from './Records';
-import { buildPicked, closeRing, openRing, ring, spotAtPoint } from './ring';
+import { buildPicked, cellAtPoint, closeRing, inPlace, openRing, placeAt, ring } from './ring';
 import { SendNow } from './SendNow';
 import { StageSelect } from './StageSelect';
 import { BOSS_LINE, creepAbout, creepSpecOf, creepTags, towerSpecOf } from './text';
 
-// The Original's play screen and Campaign: the build ring on Build Spots, the
+// The Original's play screen and Campaign: the build ring on Open ground, the
 // selected tower's Tiers, Specialisations, targeting and Perks, the Break with
 // the early call, and the Stage select, Talents and Stage Records around it.
 
@@ -27,18 +27,20 @@ function orState(state: GameState): OrState {
 
 const over = (state: GameState): boolean => state.phase === 'won' || state.phase === 'lost';
 
-/** The picked family's Ghost on the ring's Build Spot, with its price and range; nothing elsewhere. */
+/** The picked family's Ghost on the ring's 2 × 2, with its price and range; nothing elsewhere. */
 function placement(view: RunView, p: { x: number; y: number }): Placement | null {
   const r = ring.value;
   const s = view.state;
-  if (!r?.family || spotAtPoint(s, p) !== r.spot) return null;
-  const option = original.spotInfo(s, r.spot).options.find((o) => o.family === r.family);
+  const cell = cellAtPoint(s, p);
+  if (!r?.family || !cell || !inPlace(r.place, cell.col, cell.row)) return null;
+  const info = original.placeInfo(s, r.place.col, r.place.row);
+  const option = info.options.find((o) => o.family === r.family);
   const spec = option ? towerSpecOf(option.spec) : undefined;
-  if (!option || !spec) return null;
+  if (!option || !spec || info.cells.length === 0) return null;
   return {
-    cells: buildSpotCells(s.map, r.spot),
+    cells: info.cells,
     spec: option.spec,
-    command: { type: 'original.build', spot: r.spot, spec: option.spec },
+    command: { type: 'original.build', col: r.place.col, row: r.place.row, spec: option.spec },
     error: option.blocked,
     checked: true,
     route: false,
@@ -47,25 +49,31 @@ function placement(view: RunView, p: { x: number; y: number }): Placement | null
   };
 }
 
-/** An empty Build Spot opens the ring; the ring's own Spot builds its pick; anywhere else closes it. */
+/**
+ * Open ground opens the ring on the 2 × 2 a tap snaps to, or moves it there;
+ * the ring's own 2 × 2 builds its pick; the road and Scenery close it.
+ */
 function tapGround(view: RunView, p: { x: number; y: number }, kind: Parameters<NonNullable<ModeUi['tapGround']>>[2]): boolean {
   const s = view.state;
   if (over(s)) return false;
-  const spot = spotAtPoint(s, p);
+  const cell = cellAtPoint(s, p);
   const r = ring.value;
-  if (spot >= 0 && r?.spot === spot && r.family) {
+  if (cell && r?.family && inPlace(r.place, cell.col, cell.row)) {
     buildPicked(view);
     return true;
   }
-  if (spot >= 0 && original.spotInfo(s, spot).tower === 0) {
-    openRing(view, spot, kind);
+  const at = cell && s.map.terrain[cell.row]?.[cell.col] === '.' ? placeAt(s, p) : null;
+  if (at && at.error === null) {
+    openRing(view, at.place, kind);
     return true;
   }
+  // Open ground with no free 2 × 2 under the tap says why.
+  if (at?.error) view.say(at.error, 'error');
   if (r) {
     closeRing(view);
     return true;
   }
-  return false;
+  return at !== null;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -197,9 +205,9 @@ export const ORIGINAL_UI: ModeUi = {
     const st = original.originalStatus(s);
     if (st.step === 'over') return null;
     const r = ring.value;
-    if (r && !r.family) return { text: 'Pick a tower family for this Build Spot', tone: 'info' };
+    if (r && !r.family) return { text: 'Pick a tower family for this place', tone: 'info' };
     if (r) return null;
-    if (s.towers.length === 0) return { text: 'Tap a Build Spot beside the road to build', tone: 'info' };
+    if (s.towers.length === 0) return { text: 'Tap the ground beside the road to build', tone: 'info' };
     if (st.step === 'ready') return { text: 'Send Wave 1 when you are ready', tone: 'info' };
     return null;
   },
@@ -250,6 +258,7 @@ export const ORIGINAL_UI: ModeUi = {
   },
 
   onEvents,
+  upgradeSave: original.upgradeSave,
   validSave: validOriginalSave,
 
   endText(state) {

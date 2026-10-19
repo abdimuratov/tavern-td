@@ -15,9 +15,15 @@ export class SaveProblem extends Error {
 
 const DAMAGED = "This save is damaged and can't be loaded.";
 
-/** Which Game Modes can be played, and a deeper check of a mode's own state. */
+/** Which Game Modes can be played, how an older save moves onto this build, and a deeper check of a mode's own state. */
 export interface SaveRules {
   playable(modeId: string): boolean;
+  /**
+   * Brings an older save of its mode up to this build in place (the
+   * Original's Build Spot saves onto their Stage's current Map), before the Map
+   * is checked; a string refuses the save with that message.
+   */
+  upgrade?(state: GameState): string | null;
   /** False refuses the save: its mode state isn't what this build's Game Mode keeps. */
   validState?(state: GameState): boolean;
 }
@@ -28,8 +34,9 @@ function known(table: Readonly<Record<string, unknown>>, id: unknown): boolean {
 
 /**
  * A saved Run as a playable GameState, or a SaveProblem. Beyond restore()'s
- * shape check it refuses Game Modes and spec ids this build doesn't have, a
- * broken Map, and a Run that is already over.
+ * shape check it refuses Game Modes and spec ids this build doesn't have, an
+ * older save its mode can't bring up to this build, a broken Map, and a Run
+ * that is already over.
  */
 export function checkRun(data: unknown, rules: SaveRules): GameState {
   let state: GameState;
@@ -48,6 +55,14 @@ export function checkRun(data: unknown, rules: SaveRules): GameState {
     && state.projectiles.every((p) => known(mode.towers, p.spec))
     && state.creeps.every((c) => known(mode.creeps, c.spec));
   if (!specsKnown) throw new SaveProblem("This save has towers or creeps this version doesn't know.");
+  // Before the Map check: a Map this build no longer makes would be refused as damaged.
+  let refused: string | null;
+  try {
+    refused = rules.upgrade?.(state) ?? null;
+  } catch {
+    refused = DAMAGED;
+  }
+  if (refused !== null) throw new SaveProblem(refused);
   let mapOk: boolean;
   try {
     mapOk = validateMap(state.map) === null && state.grid.length === state.map.cols * state.map.rows;

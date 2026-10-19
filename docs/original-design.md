@@ -593,3 +593,11 @@ The Ghost's words: "on the mill", "in the millpond", "in the river", "on the gal
 - The ring closes after each build, as before, rather than staying up for a row of one tower.
 - No interest.
 - The old Spot lists leave the Stage files for the tests, where they guard older saves.
+
+**As built (step 2a)**, where the code settled what this section left open:
+- The refusal order holds for the whole 2 × 2: one road cell says "on the road" before any Scenery is named. A cell under two pieces takes the Stage's own first, so the millpond stays "in the millpond" under The Burnt Mill's burnt ground. A `#` no piece names (only the tests' own Maps) says "nothing can stand there".
+- The cap's words name the cap ("4 towers stand: the most in this Challenge"). The ring's place reports the ground's reason first, then the cap's.
+- Loading runs the upgrade inside the save check, after the mode, spec and phase checks and before the Map check. With the same message it also refuses a save whose Stage or Challenge this build lacks, whose Map isn't its Stage's (the tests' own Maps), or whose grid disagrees with its towers. An upgrade that fails outright reads as a damaged save.
+- Bots: the seed's ±20% moves each place's road score and air score alike; seed 0 and the rotation bot lay out without noise. An air place already held counts toward the 4; one that overlaps a held place is skipped.
+- The planner works out each tower's share of a set once a turn and values every build on top of it, with the same numbers as before. A Run costs the bots about 2.2 times what it did on Build Spots.
+- The perf test stands 40 Level 10 Specialisations on Three Gates, about 0.25 ms a tick on the Mac, against Element's budget of 1 ms mean and 4 ms worst.

@@ -8,9 +8,10 @@ import { group as g, wave } from './waves';
 // the Region is about Specialisations and Talents.
 
 /**
- * Stage 9, The Scar: four switchbacks up a burnt slope. Each row of Spots
- * stands between two legs and faces both. Shieldbearers arrive alone at Wave
- * 5. The road is 6,272 long.
+ * Stage 9, The Scar: four switchbacks up a burnt slope. Each strip between
+ * two legs faces both. The crags shut out the ground west of the exit leg,
+ * and the cliff edge leaves a two-cell strip outside the east legs.
+ * Shieldbearers arrive alone at Wave 5. The road is 6,272 long.
  */
 export const THE_SCAR: StageSpec = {
   number: 9,
@@ -25,9 +26,8 @@ export const THE_SCAR: StageSpec = {
       air: [[0, 1024], [1664, 640], [640, 0]],
     }],
     [
-      [8, 13], [12, 13], [16, 13], [20, 13],
-      [8, 9], [12, 9], [16, 9], [20, 9],
-      [10, 5], [14, 5], [18, 5], [22, 5],
+      { kind: 'cliff', name: 'the crags', at: 'on the crags', rects: [[0, 0, 9, 5]] },
+      { kind: 'cliff', name: 'the cliff edge', at: 'on the cliff edge', rects: [[29, 0, 3, 18]] },
     ],
   ),
   threat: 11,
@@ -63,8 +63,9 @@ export const THE_SCAR: StageSpec = {
 /**
  * Stage 10, Black Cliffs: the road keeps to the cliff the long way round a
  * chasm (cols 13–18), down the west side and up the east, while the air line
- * crosses the gap straight. Gargoyles arrive alone at Wave 5. The road is
- * 5,760 long and the air line 2,048.
+ * crosses the gap straight. A ledge (cols 13–14, rows 4–5) stands over the
+ * chasm, which splits the loop's inside down to its foot. Gargoyles arrive
+ * alone at Wave 5. The road is 5,760 long and the air line 2,048.
  */
 export const BLACK_CLIFFS: StageSpec = {
   number: 10,
@@ -82,12 +83,8 @@ export const BLACK_CLIFFS: StageSpec = {
       air: [[0, 192], [2048, 192]],
     }],
     [
-      // The west side.
-      [5, 4], [8, 4], [6, 0], [4, 8], [4, 12], [9, 12],
-      // The cliff edge over the chasm, and its foot.
-      [13, 4], [14, 12], [16, 12],
-      // The east side.
-      [20, 8], [24, 12], [25, 8], [22, 4],
+      // Down to row 11, less the ledge.
+      { kind: 'pit', name: 'the chasm', at: 'in the chasm', rects: [[15, 0, 4, 12], [13, 0, 2, 4], [13, 6, 2, 6]] },
     ],
   ),
   threat: 12,
@@ -128,7 +125,8 @@ const SHARED_TAIL: readonly (readonly [number, number])[] = [
 /**
  * Stage 11, Three Gates: three spawns on the west side. The north and west
  * roads join first; the south road joins them next, and all three wind
- * together through the east half to the exit. Every creep comes back. Routes
+ * together through the east half to the exit. The broken wall leaves nothing
+ * beside the gates, so towers go to the joins. Every creep comes back. Routes
  * are 4,224, 4,032 and 4,224 long, the last 2,944 of each shared.
  */
 export const THREE_GATES: StageSpec = {
@@ -154,12 +152,8 @@ export const THREE_GATES: StageSpec = {
       },
     ],
     [
-      // Where the north and west roads join.
-      [3, 6], [7, 6], [7, 2], [12, 6], [16, 6],
-      // Between the west and south roads, where the south road joins.
-      [8, 10], [12, 10], [14, 10], [10, 14],
-      // The shared road's bends.
-      [21, 3], [27, 3], [24, 6], [22, 11], [26, 12],
+      // Beside the gates, north and south of the west road.
+      { kind: 'building', name: 'the broken wall', at: 'on the broken wall', rects: [[0, 0, 5, 6], [0, 10, 5, 8]] },
     ],
   ),
   threat: 13,
@@ -205,8 +199,9 @@ export const THREE_GATES: StageSpec = {
 
 /**
  * Stage 12, Riftmaw: the longest road. It rings the Rift twice, closing in,
- * then turns north across its own outer ring and up to the pass. The Riftlord
- * leads the last Wave. The road is 7,744 long.
+ * then turns north across its own outer ring and up to the pass. The Rift
+ * fills the inner ring; only its rim and the ring's west end stay open. The
+ * Riftlord leads the last Wave. The road is 7,744 long.
  */
 export const RIFTMAW: StageSpec = {
   number: 12,
@@ -221,14 +216,8 @@ export const RIFTMAW: StageSpec = {
       air: [[0, 1024], [1344, 640], [704, 0]],
     }],
     [
-      // Between the outer ring's south side and the inner ring.
-      [6, 13], [11, 13], [16, 13], [21, 13],
-      // Between the outer ring's north side and the inner ring.
-      [6, 4], [13, 4], [17, 4], [21, 4],
-      // At the Rift's edge, inside the inner ring.
-      [9, 9], [14, 8], [19, 9], [21, 8],
-      // Beside the east and west sides.
-      [25, 8], [1, 6],
+      // Inside the inner ring.
+      { kind: 'pit', name: 'the Rift', at: 'in the Rift', rects: [[11, 8, 3, 3], [14, 10, 2, 1], [16, 8, 3, 3]] },
     ],
   ),
   threat: 14,

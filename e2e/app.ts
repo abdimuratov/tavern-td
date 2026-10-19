@@ -105,17 +105,16 @@ export async function newOriginalRun(page: Page, difficulty: 'easy' | 'normal' |
   await page.waitForFunction(() => !!window.tavern);
 }
 
-/** The middle of Build Spot `spot`, from the Map's own list. */
-export async function spotPoint(page: Page, spot: number): Promise<{ x: number; y: number }> {
-  await page.waitForFunction(() => !!window.tavern);
-  const [col, row] = await page.evaluate((i) => window.tavern!.controller.state.map.buildSpots![i]!, spot);
-  return worldPoint(page, (col + 1) * 64, (row + 1) * 64);
+/** The middle of the Original's 2 × 2 place with its top-left at (col, row): the grid corner it centres on. */
+export async function placePoint(page: Page, col: number, row: number): Promise<{ x: number; y: number }> {
+  const [wx, wy] = spotCorner(col, row);
+  return worldPoint(page, wx, wy);
 }
 
-/** Taps an empty Build Spot for its ring, picks a family for its Ghost, then taps the Spot again to build. */
-export async function buildOnSpot(page: Page, spot: number, family: string): Promise<void> {
+/** Taps Open ground for the Original's build ring there, picks a family for its Ghost, then taps the place again to build. */
+export async function buildAt(page: Page, col: number, row: number, family: string): Promise<void> {
   const before = (await towerSpecs(page)).length;
-  const p = await spotPoint(page, spot);
+  const p = await placePoint(page, col, row);
   await tapAt(page, p.x, p.y);
   const pick = page.locator(`[data-action="ring-${family}"]`);
   await expect(page.getByTestId('build-ring')).toBeVisible();
@@ -126,6 +125,8 @@ export async function buildOnSpot(page: Page, spot: number, family: string): Pro
   await tapAt(page, p.x, p.y);
   await expect.poll(async () => (await towerSpecs(page)).length).toBe(before + 1);
   await expect(page.getByTestId('build-ring')).toBeHidden();
+  const cell = await page.evaluate(() => window.tavern!.controller.state.towers.at(-1)!.cell);
+  expect(cell).toBe(row * 32 + col);
 }
 
 /** From the main menu into a fresh Maul Run with this Race. */

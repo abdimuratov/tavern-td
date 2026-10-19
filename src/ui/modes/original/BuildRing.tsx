@@ -4,10 +4,10 @@ import { keyLabel, press, useHotkey } from '../../Hud';
 import type { ModeHudProps } from '../../mode-ui';
 import { revision, type PlaySession } from '../../state';
 import { FamilyIcon } from './parts';
-import { pickFamily, ring, RING_KEYS, spotCentre } from './ring';
+import { pickFamily, placeCentre, ring, RING_KEYS } from './ring';
 import { FAMILY_NAME } from './text';
 
-/** How far the buttons sit from the Spot's middle, at least: past the Spot itself at any zoom. */
+/** How far the buttons sit from the place's middle, at least: past the 2 × 2 itself at any zoom. */
 const MIN_RADIUS = 64;
 /** Room kept between the ring and the board's edge. */
 const EDGE = 30;
@@ -38,27 +38,27 @@ function RingButton({ s, o, i, n, picked }: { s: PlaySession; o: original.BuildO
 }
 
 /**
- * Around an empty Build Spot: the families it can take, with their prices.
- * It follows the Spot as the board pans and zooms, kept inside the board.
+ * Around a free 2 × 2 of Open ground: the families it can take, with their
+ * prices. It follows the place as the board pans and zooms, kept inside the board.
  */
 export function BuildRing({ s }: ModeHudProps) {
   void revision.value;
   const r = ring.value;
   const root = useRef<HTMLDivElement>(null);
   const state = s.view.state;
-  const info = r ? original.spotInfo(state, r.spot) : null;
-  const open = r !== null && info !== null && info.tower === 0;
+  const info = r ? original.placeInfo(state, r.place.col, r.place.row) : null;
+  const open = r !== null && info !== null && info.cells.length > 0 && info.cells.every((c) => state.grid[c] === 0);
 
   useEffect(() => {
     if (!open || !r) return;
     let frame = 0;
     const place = (): void => {
       const el = root.current;
-      const centre = spotCentre(s.view.state, r.spot);
+      const centre = placeCentre(r.place);
       const host = el?.parentElement?.getBoundingClientRect();
-      if (el && centre && host && s.view.toScreen) {
+      if (el && host && s.view.toScreen) {
         const c = s.view.toScreen(centre);
-        // A Build Spot is two cells across, so it reaches one cell from its middle.
+        // A place is two cells across, so it reaches one cell from its middle.
         const half = Math.abs(s.view.toScreen({ x: centre.x + CELL, y: centre.y }).x - c.x);
         const radius = Math.max(MIN_RADIUS, half + 30);
         const reach = radius + EDGE;
@@ -67,7 +67,7 @@ export function BuildRing({ s }: ModeHudProps) {
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         el.style.setProperty('--r', `${radius.toFixed(1)}px`);
         el.style.setProperty('--spot', `${(half * 2).toFixed(1)}px`);
-        // Near the board's edge the ring moves inward; the outline stays on the Spot.
+        // Near the board's edge the ring moves inward; the outline stays on the place.
         el.style.setProperty('--ox', `${(c.x - host.left - x).toFixed(1)}px`);
         el.style.setProperty('--oy', `${(c.y - host.top - y).toFixed(1)}px`);
       }
@@ -75,7 +75,7 @@ export function BuildRing({ s }: ModeHudProps) {
     };
     place();
     return () => cancelAnimationFrame(frame);
-  }, [open, r?.spot, s]);
+  }, [open, r?.place.col, r?.place.row, s]);
 
   if (!open || !r || !info) return null;
   return (

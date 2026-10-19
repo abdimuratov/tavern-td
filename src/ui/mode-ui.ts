@@ -278,7 +278,7 @@ export interface ModeUi {
   /**
    * A tap or click on the board where no structure stands, before any ghost is
    * evaluated. True when the mode used it, such as the Original opening its
-   * build ring on a Build Spot.
+   * build ring on Open ground.
    */
   tapGround?(view: RunView, p: Point, kind: PointerKind): boolean;
   /** The circle a selected structure shows, when it isn't the spec's attack range (Levels, Talents, Totem auras). */
@@ -301,6 +301,12 @@ export interface ModeUi {
   result?(state: GameState, side?: ViewerSide): RunResult;
   /** The gold the HUD shows, when it isn't the core's `gold`: Line Wars' is Side 0's copy, so it gives the Viewer Side's own purse. */
   gold?(state: GameState, side?: ViewerSide): number;
+  /**
+   * Brings an older save up to this build in place, before its Map is checked,
+   * such as an Original save made on Build Spots; null when it is playable, or
+   * the message that refuses it.
+   */
+  upgradeSave?(state: GameState): string | null;
   /** A deeper check of the mode's own state in a loaded save; false refuses the save as damaged. */
   validSave?(state: GameState): boolean;
   /** The mode's own readouts in the top row beside gold, such as Line Wars' income and its countdown. */

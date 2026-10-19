@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { readCode, writeCode, type SaveRules } from '../src/app/saves';
-import { challengeOfStage, ORIGINAL_TOWERS } from '../src/content/original';
+import { readCode, SAVE_VERSION, writeCode, type SaveRules } from '../src/app/saves';
+import { encodeSave } from '../src/platform/savecode';
+import { challengeOfStage, MILL_ROAD, ORIGINAL_TOWERS } from '../src/content/original';
 import type { CampaignProgress } from '../src/platform/storage';
 import { hashState, original, snapshot, step, type Command, type GameState, type Point } from '../src/sim';
 import type { RunView } from '../src/ui/mode-ui';
@@ -11,30 +12,34 @@ import {
 } from '../src/ui/modes/original/campaign';
 import { challengeStatus } from '../src/ui/modes/original/StageSelect';
 import { ORIGINAL_LOOK, REGION_TERRAIN } from '../src/ui/modes/original/look';
-import { ring, spotCentre } from '../src/ui/modes/original/ring';
-import { buildOn, newRun, placeTower, setLevel } from './sim/original/helpers';
+import { placeAt, ring } from '../src/ui/modes/original/ring';
+import { asSpotSave, buildOn, newRun, placeTower, setLevel } from './sim/original/helpers';
+import { formerSpot, FORMER_SPOTS } from './sim/original/former-spots';
 
 interface FakeView extends RunView {
   readonly sent: Command[];
   readonly ghosts: (Point | null)[];
+  readonly said: string[];
 }
 
 function viewOf(state: GameState): FakeView {
   const sent: Command[] = [];
   const ghosts: (Point | null)[] = [];
+  const said: string[] = [];
   return {
-    state, side: 0, sent, ghosts,
+    state, side: 0, sent, ghosts, said,
     send: (c) => void sent.push(c),
     refresh: () => {},
     select: () => {},
-    say: () => {},
+    say: (text) => void said.push(text),
     showGhost: (p) => void ghosts.push(p),
   };
 }
 
-/** The middle of Build Spot `spot` on the Mill Road. */
+/** The middle of the 2 × 2 the Mill Road's Build Spot `spot` was: the grid corner it centres on. */
 function spotPoint(spot: number): Point {
-  return spotCentre(newRun({ cleared: 0 }), spot)!;
+  const [col, row] = formerSpot('mill-road', spot);
+  return { x: (col + 1) * 64, y: (row + 1) * 64 };
 }
 
 const won = (stars: number, seconds = 400) => ({ won: true, stars, difficulty: 'normal' as const, seconds });
@@ -46,42 +51,70 @@ afterEach(() => {
 });
 
 describe('the build ring', () => {
-  it('opens on an empty Build Spot, shows the picked Ghost there, and builds on a second tap', () => {
+  it('opens on Open ground, shows the picked Ghost there, and builds on a second tap', () => {
     const state = newRun({ cleared: 0 });
     const view = viewOf(state);
     const p = spotPoint(2);
     expect(ORIGINAL_UI.placement!(view, p)).toBeNull();
     expect(ORIGINAL_UI.tapGround!(view, p, 'touch')).toBe(true);
-    expect(ring.value).toEqual({ spot: 2, family: null, kind: 'touch' });
+    expect(ring.value).toEqual({ place: { col: 19, row: 6 }, family: null, kind: 'touch' });
     // No family yet: no Ghost.
     expect(ORIGINAL_UI.placement!(view, p)).toBeNull();
 
     ring.value = { ...ring.value!, family: 'cannon' };
     const ghost = ORIGINAL_UI.placement!(view, p)!;
-    expect(ghost.command).toEqual({ type: 'original.build', spot: 2, spec: 'cannon_tower' });
+    expect(ghost.command).toEqual({ type: 'original.build', col: 19, row: 6, spec: 'cannon_tower' });
     expect(ghost).toMatchObject({ error: null, label: 'Cannon Tower · 90 gold', range: 288, route: false, checked: true });
-    expect(ghost.cells).toHaveLength(4);
-    // The Ghost stands only on the ring's own Spot.
+    expect(ghost.cells).toEqual([6 * 32 + 19, 6 * 32 + 20, 7 * 32 + 19, 7 * 32 + 20]);
+    // The Ghost stands only on the ring's own 2 × 2.
     expect(ORIGINAL_UI.placement!(view, spotPoint(3))).toBeNull();
 
     expect(ORIGINAL_UI.tapGround!(view, p, 'touch')).toBe(true);
-    expect(view.sent).toEqual([{ type: 'original.build', spot: 2, spec: 'cannon_tower' }]);
+    expect(view.sent).toEqual([{ type: 'original.build', col: 19, row: 6, spec: 'cannon_tower' }]);
     expect(ring.value).toBeNull();
     expect(view.ghosts.at(-1)).toBeNull();
   });
 
-  it('closes on a tap away from it, and leaves other taps alone when it is shut', () => {
+  it('snaps a tap to the free 2 × 2 nearest it, as Element\'s Ghost does, at any alignment', () => {
+    const state = newRun({ cleared: 0 });
+    // A tap in a cell's lower-right quarter takes the 2 × 2 with that cell top-left, and so on round the cell.
+    expect(placeAt(state, { x: 5 * 64 + 50, y: 5 * 64 + 50 })).toEqual({ place: { col: 5, row: 5 }, error: null });
+    expect(placeAt(state, { x: 5 * 64 + 10, y: 5 * 64 + 10 })).toEqual({ place: { col: 4, row: 4 }, error: null });
+    // Beside the road the open one wins, though another is nearer: row 3 is road, so the tap under it takes rows 4–5.
+    expect(placeAt(state, { x: 5 * 64 + 10, y: 4 * 64 + 10 })).toEqual({ place: { col: 4, row: 4 }, error: null });
+    // Beside a tower too; and with none of the four free, the nearest says why.
+    placeTower(state, [6, 0], 'arrow_tower');
+    expect(placeAt(state, { x: 5 * 64 + 50, y: 50 })).toEqual({ place: { col: 4, row: 0 }, error: null });
+    expect(placeAt(state, { x: 6 * 64 + 50, y: 1 * 64 + 10 })).toEqual({ place: { col: 6, row: 0 }, error: 'a tower stands there' });
+    expect(placeAt(state, { x: -5, y: 10 })).toBeNull();
+  });
+
+  it('moves to other Open ground keeping its family, says why where nothing fits, and closes on the road', () => {
     const state = newRun({ cleared: 0 });
     const view = viewOf(state);
     ORIGINAL_UI.tapGround!(view, spotPoint(0), 'mouse');
     expect(ORIGINAL_UI.pending!(view)).toBe(true);
-    // The road at the top of the Map is no Build Spot.
+    ring.value = { ...ring.value!, family: 'arrow' };
+    // Another 2 × 2 moves the ring and its Ghost there.
+    expect(ORIGINAL_UI.tapGround!(view, spotPoint(5), 'mouse')).toBe(true);
+    expect(ring.value).toEqual({ place: { col: 11, row: 10 }, family: 'arrow', kind: 'mouse' });
+    expect(view.ghosts.at(-1)).toEqual({ x: 12 * 64, y: 11 * 64 });
+    expect(view.sent).toEqual([]);
+    // A free cell hemmed in by towers and the road says why and closes the ring.
+    for (const at of [[3, 0], [6, 0]] as const) placeTower(state, at, 'arrow_tower');
+    expect(ORIGINAL_UI.tapGround!(view, { x: 5 * 64 + 32, y: 1 * 64 + 10 }, 'mouse')).toBe(true);
+    expect(view.said).toEqual(['a tower stands there']);
+    expect(ring.value).toBeNull();
+    // The road at the top of the Map takes no tower: it closes the ring, and with none open the tap is left alone.
+    ORIGINAL_UI.tapGround!(view, spotPoint(0), 'mouse');
     expect(ORIGINAL_UI.tapGround!(view, { x: 600, y: 192 }, 'mouse')).toBe(true);
     expect(ring.value).toBeNull();
     expect(ORIGINAL_UI.tapGround!(view, { x: 600, y: 192 }, 'mouse')).toBe(false);
+    // So does Scenery.
+    expect(ORIGINAL_UI.tapGround!(view, { x: 14 * 64, y: 5 * 64 }, 'mouse')).toBe(false);
   });
 
-  it('keeps a Spot whose family is short of gold open, and shows why on the Ghost', () => {
+  it('keeps a place whose family is short of gold open, and shows why on the Ghost', () => {
     const state = newRun({ cleared: 0 });
     state.gold = 50;
     const view = viewOf(state);
@@ -278,7 +311,7 @@ describe('Challenges in the Campaign', () => {
     // A rule that allows most families names the ones it leaves out.
     expect(challengeLines(challengeOfStage(10)!)).toEqual(['No Arrow towers', '+10% creep HP']);
     expect(challengeLines(challengeOfStage(5)!)).toEqual(['No Frost or Arcane towers', '15 lives']);
-    expect(challengeLines(challengeOfStage(1)!)).toEqual(['4 Build Spots']);
+    expect(challengeLines(challengeOfStage(1)!)).toEqual(['Lower bend burnt', '4 towers at most']);
     expect(challengeLines(challengeOfStage(3)!)).toEqual(['Tiers 1–2']);
     expect(challengeLines(challengeOfStage(6)!)).toEqual(['No Specialisations', '350 gold to start']);
     expect(challengeLines(challengeOfStage(7)!)).toEqual(['8 s Breaks']);
@@ -286,7 +319,7 @@ describe('Challenges in the Campaign', () => {
     expect(challengeLines(challengeOfStage(8)!)).toEqual(['450 gold to start', 'Send now pays no gold']);
     expect(challengeLines(challengeOfStage(12)!)).toEqual(['13 lives']);
     expect(challengeLines(challengeOfStage(4)!)).toEqual(['+15% creep HP']);
-    expect(challengeLines(challengeOfStage(9)!)).toEqual(['8 Build Spots']);
+    expect(challengeLines(challengeOfStage(9)!)).toEqual(['Middle row burnt', '8 towers at most']);
   });
 
   it('marks a Challenge locked, then open once its Stage is won, then won with its fastest win', () => {
@@ -344,7 +377,7 @@ describe('starting and ending a Challenge', () => {
 });
 
 describe('save codes with Challenges', () => {
-  const RULES: SaveRules = { playable: (id) => id === 'original', validState: validOriginalSave };
+  const RULES: SaveRules = { playable: (id) => id === 'original', upgrade: ORIGINAL_UI.upgradeSave!, validState: validOriginalSave };
 
   it('carry a Challenge Run, which plays on as it would have', async () => {
     const s = newRun({ challenge: 'no-rest' });
@@ -367,5 +400,34 @@ describe('save codes with Challenges', () => {
     const loaded = await readCode(await writeCode(s), RULES);
     expect(Object.hasOwn(loaded.mode as object, 'challenge')).toBe(false);
     expect(original.originalStatus(loaded)).toMatchObject({ challenge: null, lives: 20 });
+  });
+});
+
+describe('save codes from before free placement', () => {
+  const RULES: SaveRules = { playable: (id) => id === 'original', upgrade: ORIGINAL_UI.upgradeSave!, validState: validOriginalSave };
+  /** A code as an older build wrote it: the same SAVE_VERSION, a Map that lists Build Spots. */
+  const oldCode = (state: GameState) => encodeSave({ v: SAVE_VERSION, state: asSpotSave(state, FORMER_SPOTS['mill-road']!) });
+
+  it('load onto the Stage\'s current Map, every tower where it stood, and play on', async () => {
+    const s = newRun({ stage: 1, cleared: 0 });
+    buildOn(s, 1, 'arrow_tower');
+    buildOn(s, 6, 'cannon_tower');
+    step(s, [{ type: 'original.sendNow' }]);
+    for (let i = 0; i < 300; i++) step(s, []);
+    const loaded = await readCode(await oldCode(s), RULES);
+    expect(loaded.map).toBe(MILL_ROAD.map);
+    expect(loaded.towers.map((t) => [t.spec, t.cells])).toEqual(s.towers.map((t) => [t.spec, t.cells]));
+    s.pathVersion++;
+    for (let i = 0; i < 400; i++) {
+      step(s, []);
+      step(loaded, []);
+    }
+    expect(hashState(loaded)).toBe(hashState(s));
+  });
+
+  it('refuse one whose towers no longer fit, in the player\'s words', async () => {
+    const s = newRun({ stage: 1 });
+    placeTower(s, [17, 10], 'arrow_tower');
+    await expect(readCode(await oldCode(s), RULES)).rejects.toThrow('This saved Run\'s towers don\'t fit the Stage\'s Map any more, so it can\'t be loaded.');
   });
 });

@@ -122,8 +122,6 @@ export interface TerrainLook {
   readonly gridLine?: number;
   /** A lighter edge where buildable ground meets anything else, so plots read as raised. */
   readonly plotRim?: number;
-  /** An edge of this colour round each of the Map's Build Spots, so two side by side read as two. */
-  readonly spotRim?: number;
   /** False hides the dashed air line, for Maps no creep flies over. */
   readonly airLine?: boolean;
   /** How strongly the air lines show, 0–1 (0.28 by default): lower for a Map with many spawns, whose lines fan out. */

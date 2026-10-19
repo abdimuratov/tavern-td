@@ -3,14 +3,14 @@ import {
   createRun, original, routeCount, step,
   type Command, type Difficulty, type ReplayEntry, type SimEvent,
 } from '../../src/sim';
-import { baseline, gain, ghoulStreams, makePlanner, placedTowers, streamsAhead, type Planner } from './value';
-import { mapView, rankedSpots, type MapView } from './view';
+import { baseline, gain, gainAdding, ghoulStreams, makePlanner, placedTowers, prepare, streamsAhead, type Planner } from './value';
+import { layPlaces, mapView, type MapView, type Place } from './view';
 
-export { rankedSpots } from './view';
+export { rankedPlaces } from './view';
 
 // A headless Original player for the balance runner and the tests
 // (docs/PLAN.md §4). It plays one of these strategies:
-// - rotation: fills the Spots that see the most route, rotating through the
+// - rotation: fills the places that see the most route, rotating through the
 //   families it's given, then buys the cheapest upgrade. The first, simple bot.
 // - greedy: buys whatever adds the most raw damage per gold, as if every creep
 //   were a Ghoul. It ignores armor, wards, Shields and flyers.
@@ -20,9 +20,11 @@ export { rankedSpots } from './view';
 //   builds around a core family, Arrow by default, and adds another family's
 //   tower only where it's clearly worth more.
 // - single: balanced, but with only one family (`families: [f]`).
-// `style` seeds a player's quirks: a little noise in how it ranks Spots and
-// purchases, and whether it calls Waves early. Seeds then play like different
-// competent players, so a win rate over seeds means something.
+// Before Wave 1 each player lays out the places it builds on (view.ts, by
+// docs/original-design.md §17's rule), which stand in for the Build Spots it
+// once had. `style` seeds a player's quirks: a little noise in how it scores
+// places and ranks purchases, and whether it calls Waves early. Seeds then
+// play like different competent players, so a win rate over seeds means something.
 
 export type Strategy = 'rotation' | 'greedy' | 'balanced' | 'single';
 
@@ -137,28 +139,25 @@ function styleRng(seed: number): () => number {
 interface Style {
   /** How much each purchase's value is jittered, ±. */
   readonly noise: number;
-  readonly rand: () => number;
+  /** Null for a player without quirks. */
+  readonly rand: (() => number) | null;
   /** Calls Waves early once the field is clear. */
   readonly callsEarly: boolean;
-  /** Spots in the order this player fills them. */
-  readonly spots: readonly number[];
 }
 
-function makeStyle(seed: number, view: MapView, greedy: boolean | undefined): Style {
-  if (seed === 0) return { noise: 0, rand: () => 0.5, callsEarly: greedy ?? false, spots: view.ranked };
+function makeStyle(seed: number, greedy: boolean | undefined): Style {
+  if (seed === 0) return { noise: 0, rand: null, callsEarly: greedy ?? false };
   const rand = styleRng(seed * 2654435761);
   const callsEarly = greedy ?? rand() < 0.5;
-  // Spots: by route seen, give or take 20%.
-  const jittered = view.ranked.map((spot, i) => ({ spot, key: i + (rand() - 0.5) * 0.4 * view.ranked.length * 0.5 }));
-  jittered.sort((a, b) => a.key - b.key);
-  return { noise: 0.15, rand, callsEarly, spots: jittered.map((j) => j.spot) };
+  // The places it lays out take their ±20% from the same seed (view.ts).
+  return { noise: 0.15, rand, callsEarly };
 }
 
 // --- Choosing a purchase --------------------------------------------------------
 
 interface Purchase {
   readonly command: Command;
-  /** A second command for the next tick: the build after a sale that clears its Spot. */
+  /** A second command for the next tick: the build after a sale that clears its place. */
   readonly then?: Command;
   /** Gold it needs on top of what a sale returns. */
   readonly price: number;
@@ -171,39 +170,45 @@ const OFF_CORE = 0.9;
 
 function purchases(p: Planner, families: readonly Family[], style: Style, core: Family | null): Purchase[] {
   const out: Purchase[] = [];
-  const jitter = (): number => 1 + style.noise * (style.rand() - 0.5) * 2;
+  const rand = style.rand ?? ((): number => 0.5);
+  const jitter = (): number => 1 + style.noise * (rand() - 0.5) * 2;
   const bias = (family: Family): number => (core === null || family === core ? 1 : OFF_CORE);
   const towers = placedTowers(p.state);
   const now = baseline(p, towers);
+  const set = prepare(p, towers);
   let free = 0;
-  for (const spot of style.spots) {
-    const info = original.spotInfo(p.state, spot);
-    if (info.tower !== 0) continue;
+  // Every free place offers the same families at the same prices, so the ring is read once.
+  let ring: readonly original.BuildOption[] | null = null;
+  for (const { col, row } of p.view.places) {
+    if (original.placeError(p.state, col, row) !== null) continue;
     free++;
-    for (const option of info.options) {
+    ring ??= original.placeInfo(p.state, col, row).options;
+    for (const option of ring) {
       if (!families.includes(option.family) || (option.blocked !== null && !option.blocked.endsWith(' gold'))) continue;
-      const value = gain(p, now, [...towers, { id: -1, spot, spec: option.spec }]) * bias(option.family);
-      if (value > 0) out.push({ command: { type: 'original.build', spot, spec: option.spec }, price: option.price, ratio: (value / option.price) * jitter() });
+      const value = gainAdding(p, now, set, { id: -1, col, row, spec: option.spec }) * bias(option.family);
+      if (value > 0) out.push({ command: { type: 'original.build', col, row, spec: option.spec }, price: option.price, ratio: (value / option.price) * jitter() });
     }
   }
+  // At a Challenge's Tower cap no place takes another tower.
+  const capped = original.capError(p.state) !== null;
   for (const t of towers) {
     const actions = original.towerActions(p.state, t.id);
-    if (!actions || t.spot < 0) continue;
+    if (!actions) continue;
     for (const u of actions.upgrades) {
       if (u.blocked !== null && !u.blocked.endsWith(' gold')) continue;
       const value = gain(p, now, towers.map((o) => (o.id === t.id ? { ...o, spec: u.to } : o))) * bias(actions.family);
       if (value > 0) out.push({ command: { type: 'original.upgrade', tower: t.id, to: u.to }, price: u.price, ratio: (value / u.price) * jitter() });
     }
-    // With every Spot taken, a Tier 1 tower can make way for another family's.
-    if (free > 0 || actions.tier !== 1) continue;
+    // With every place taken, or the Tower cap reached, a Tier 1 tower can make way for another family's.
+    if ((free > 0 && !capped) || actions.tier !== 1) continue;
     const rest = towers.filter((o) => o.id !== t.id);
-    for (const option of original.spotInfo(p.state, t.spot).options) {
+    for (const option of original.placeInfo(p.state, t.col, t.row).options) {
       if (option.family === actions.family || !families.includes(option.family)) continue;
       const net = Math.max(20, option.price - actions.sellValue);
-      const value = gain(p, now, [...rest, { id: -1, spot: t.spot, spec: option.spec }]) * bias(option.family);
+      const value = gain(p, now, [...rest, { id: -1, col: t.col, row: t.row, spec: option.spec }]) * bias(option.family);
       if (value > 0) {
         out.push({
-          command: { type: 'original.sell', tower: t.id }, then: { type: 'original.build', spot: t.spot, spec: option.spec },
+          command: { type: 'original.sell', tower: t.id }, then: { type: 'original.build', col: t.col, row: t.row, spec: option.spec },
           price: option.price - actions.sellValue, ratio: (value / net) * jitter(),
         });
       }
@@ -223,20 +228,19 @@ function choose(state: original.OriginalGameState, options: readonly Purchase[])
   return fallback;
 }
 
-/** The rotation bot's pick: the next Spot with the next family, then the cheapest upgrade. */
-function rotationPick(state: original.OriginalGameState, spots: readonly number[], o: BotOptions, built: { n: number }): Command | null {
+/** The rotation bot's pick: the next free place with the next family, then the cheapest upgrade. */
+function rotationPick(state: original.OriginalGameState, places: readonly Place[], o: BotOptions, built: { n: number }): Command | null {
   const families = o.families ?? ['arrow', 'cannon'];
-  for (const spot of spots) {
-    const info = original.spotInfo(state, spot);
-    if (info.tower !== 0) continue;
+  for (const { col, row } of places) {
+    if (original.placeError(state, col, row) !== null) continue;
     const family = families[built.n % families.length]!;
-    const option = info.options.find((x) => x.family === family);
+    const option = original.placeInfo(state, col, row).options.find((x) => x.family === family);
     if (!option) continue;
     if (option.blocked === null) {
       built.n++;
-      return { type: 'original.build', spot, spec: option.spec };
+      return { type: 'original.build', col, row, spec: option.spec };
     }
-    // Save up for it while Spots are scarce in towers.
+    // Save up for it while the places are scarce in towers.
     if (state.towers.length < 3) return null;
     break;
   }
@@ -263,11 +267,9 @@ export function playStage(seed: number, difficulty: Difficulty, o: BotOptions = 
   if (o.waves !== undefined) options['waves'] = JSON.parse(JSON.stringify(o.waves));
   if (o.gold !== undefined) options['gold'] = o.gold;
   const state = createRun({ mode: 'original', seed, difficulty, options: options as never }) as original.OriginalGameState;
-  // The Run's own Map: a Challenge may keep only some of the Stage's Build Spots.
-  const view = mapView(state.map);
-  const style = strategy === 'rotation'
-    ? { noise: 0, rand: () => 0.5, callsEarly: o.greedy ?? false, spots: rankedSpots(state.map) }
-    : makeStyle(o.style ?? 0, view, o.greedy);
+  // The places come from the Run's own Map: a Challenge's Burnt ground takes some away.
+  const style = strategy === 'rotation' ? { noise: 0, rand: null, callsEarly: o.greedy ?? false } : makeStyle(o.style ?? 0, o.greedy);
+  const view: MapView = mapView(state.map, layPlaces(state.map, style.rand));
   const unlocked = original.runUnlocks(state).families;
   const families = strategy === 'rotation' ? [] : unlocked.filter((f) => (strategy === 'single' ? (o.families ?? []).includes(f) : !o.families || o.families.includes(f)));
   const routes = routeCount(state.map);
@@ -306,7 +308,7 @@ export function playStage(seed: number, difficulty: Difficulty, o: BotOptions = 
         if (status.sendNowBlocked === null && (status.step === 'ready' || (callsEarly && clear && status.step === 'break'))) {
           commands.push({ type: 'original.sendNow' });
         }
-        const c = rotationPick(state, style.spots, o, built);
+        const c = rotationPick(state, view.places, o, built);
         if (c) commands.push(c);
       }
     } else if (pending) {

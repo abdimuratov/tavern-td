@@ -15,8 +15,9 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   // Ashfield: each Challenge withholds what its Stage leaned on or brought.
   {
     stage: 1, id: 'burnt-mill', name: 'The Burnt Mill', stars: 1,
-    rule: 'Fire took the lower bend: only the upper bend\'s 4 Build Spots stand.',
-    modifiers: { spots: [0, 1, 2, 3] },
+    rule: 'Fire took the lower bend: build above the middle road only, 4 towers at most.',
+    // Every cell south of the middle road, and west of the second bend.
+    modifiers: { burnt: { name: 'Lower bend burnt', at: 'on burnt ground', rects: [[0, 10, 32, 8], [0, 4, 5, 6]] }, maxTowers: 4 },
   },
   {
     stage: 2, id: 'cold-water', name: 'Cold Water', stars: 1,
@@ -57,8 +58,9 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   // Rift.
   {
     stage: 9, id: 'glass-slope', name: 'Glass Slope', stars: 1,
-    rule: 'The middle row burned to glass: 8 Build Spots stand.',
-    modifiers: { spots: [0, 1, 2, 3, 8, 9, 10, 11] },
+    rule: 'The middle row burned to glass: nothing stands on it, and 8 towers at most.',
+    // The strip between the two middle legs.
+    modifiers: { burnt: { name: 'Middle row burnt', at: 'on the glass', rects: [[7, 9, 20, 2]] }, maxTowers: 8 },
   },
   {
     stage: 10, id: 'stone-wings', name: 'Stone Wings', stars: 1,

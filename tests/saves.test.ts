@@ -56,6 +56,27 @@ describe('saved Runs', () => {
   });
 });
 
+describe('older saves a Game Mode brings up to this build', () => {
+  it('upgrade before the Map is checked, so a Map this build no longer makes can be replaced', () => {
+    const good = savedRun();
+    const old = { ...savedRun(), map: { ...good.map, terrain: ['an older build\'s'] } };
+    expect(problem(() => checkRun(old, RULES))).toMatch(/damaged/);
+    const seen: string[] = [];
+    const upgrade = (s: GameState): string | null => {
+      seen.push(s.modeId);
+      s.map = good.map;
+      return null;
+    };
+    expect(hashState(checkRun(old, { ...RULES, upgrade }))).toBe(hashState(good));
+    expect(seen).toEqual(['gem']);
+  });
+
+  it('refuse a save the mode can\'t bring up, with its message, and one whose upgrade breaks as damaged', () => {
+    expect(problem(() => checkRun(savedRun(), { ...RULES, upgrade: () => 'Too old.' }))).toBe('Too old.');
+    expect(problem(() => checkRun(savedRun(), { ...RULES, upgrade: () => { throw new Error('boom'); } }))).toMatch(/damaged/);
+  });
+});
+
 describe('save codes for Runs', () => {
   it('round-trip a Run exactly', async () => {
     const state = savedRun();

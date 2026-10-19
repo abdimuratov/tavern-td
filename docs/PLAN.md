@@ -64,7 +64,9 @@ Phase 3 progress (2026-10-18):
 
 Free placement (2026-10-19), at your request: a 2 × 2 tower goes on any Open ground beside the road, not only on a Build Spot ([original-design.md §17](original-design.md#17-free-placement-2026-10-19)).
 - Done: the design. Every cell is road, Scenery or Open ground. Each Stage gets one or two pieces of Scenery (the mill and its pond, the Greyriver, the Rift and so on), none over an old Build Spot, so older saves keep their towers. `original.build` takes a cell instead of a Spot. The Burnt Mill and Glass Slope trade their kept Spots for Burnt ground and a Tower cap of 4 and 8. No interest still holds.
-- Next: the rules, saves, bots and the retune of all 12 Stages and Challenges; then the UI.
+- Done: the rules, saves, bots and tests. `original.build` takes a top-left cell, and a refusal names the Map's edge, the road, the Scenery, another tower or the Tower cap. An older save or save code made on Build Spots loads onto its Stage's or Challenge's current Map with every tower where it stood; one that doesn't fit is refused. The other Game Modes' replays hash as before. The bots lay out their own places by the road each 2 × 2 sees, and a test guards the old Spots under Scenery and Burnt ground. Until the UI step, the board draws Open ground and Scenery plainly, and a tap opens the ring on the 2 × 2 it snaps to.
+- Free placement, untuned: over seeds 1–5 the competent bot wins Easy 100%, Normal 73% (20% on Stages 6 and 8, 100% on six Stages), Hard 10% and Insane 0%. One family alone wins some Stages from 5 on, and the Challenges run 0–100%.
+- Next: the retune of all 12 Stages and Challenges; then the UI.
 - Left: a play-test of the whole Campaign on the Mac, the iPhone and the S24.
 
 Phase 4 started on 2026-10-18, alongside Phase 3's last steps and without waiting for any play-test.

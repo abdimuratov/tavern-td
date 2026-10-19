@@ -1,13 +1,13 @@
 // The game logic's public surface. Outer layers (render, ui, app) import from here only.
 
-export { TICK_RATE, CELL, BUILD_SPOT, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP, SNAPSHOT_VERSION } from './core/constants';
+export { TICK_RATE, CELL, DEFAULT_ARMOR_FACTOR, DEFAULT_DIFFICULTY_HP, SNAPSHOT_VERSION } from './core/constants';
 export type { Json, Cell } from './core/types';
 export type {
   GameState, Creep, Tower, Projectile, Status, Difficulty, Phase, WaveState, ActiveWave, SpawnGroup,
 } from './core/state';
 export { DIFFICULTIES } from './core/state';
 export type {
-  MapSpec, RouteSpec, TowerSpec, AttackSpec, CreepSpec, AuraSpec, EffectSpec, WaveSpec, WaveGroup, DamageTable, TargetLayer,
+  MapSpec, RouteSpec, ScenerySpec, SceneryKind, TowerSpec, AttackSpec, CreepSpec, AuraSpec, EffectSpec, WaveSpec, WaveGroup, DamageTable, TargetLayer,
   SplashEffect, SlowEffect, PoisonEffect, ArmorEffect, StunEffect, CritEffect, MultishotEffect, CustomEffect,
 } from './core/specs';
 export type { SimEvent, HitKind } from './core/events';
@@ -26,7 +26,7 @@ export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rn
 export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 
 export {
-  setMap, validateMap, spawnCount, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, buildSpotCells, buildSpotAt,
+  setMap, validateMap, spawnCount, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds,
   type Point,
 } from './path/grid';
 export { routeCells, allRouteCells, previewRoute, previewAllRoutes, airRoute, pathDistance, nextCell } from './path/flow';

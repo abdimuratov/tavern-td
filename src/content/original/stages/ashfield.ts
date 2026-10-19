@@ -7,9 +7,10 @@ import { group as g, wave } from './waves';
 // Revenants, and the Gravelord at Fort Harrow's gate.
 
 /**
- * Stage 1, The Mill Road: one S-bend road past a burning mill, with Build
- * Spots on the inside of both bends. Ghouls, then Hounds from Wave 5. The road
- * is 5,376 units: about 34 s for a Ghoul, 21 s for a Hound.
+ * Stage 1, The Mill Road: one S-bend road past a burning mill. The mill and
+ * its pond take the middle of each bend's inside, so towers crowd its corners
+ * and ends. Ghouls, then Hounds from Wave 5. The road is 5,376 units: about
+ * 34 s for a Ghoul, 21 s for a Hound.
  */
 const MILL_ROAD_WAVES: readonly OriginalWave[] = [
   wave(g('ghoul', 7, { gap: 1.45 })),
@@ -40,8 +41,11 @@ export const MILL_ROAD: StageSpec = {
       points: [[0, 192], [1664, 192], [1664, 576], [384, 576], [384, 960], [2048, 960]],
       air: [[0, 192], [1024, 576], [2048, 960]],
     }],
-    // Four Spots inside the first bend, four inside the second.
-    [[19, 4], [23, 4], [19, 6], [23, 6], [7, 10], [11, 10], [7, 12], [11, 12]],
+    [
+      // The mill inside the first bend, its pond inside the second.
+      { kind: 'building', name: 'the mill', at: 'on the mill', rects: [[13, 4, 4, 4]] },
+      { kind: 'water', name: 'the millpond', at: 'in the millpond', rects: [[17, 10, 4, 4]] },
+    ],
   ),
   threat: 1,
   gold: 250,
@@ -50,9 +54,10 @@ export const MILL_ROAD: StageSpec = {
 
 /**
  * Stage 2, Greyriver Crossing: a horseshoe road. It crosses the Greyriver
- * (cols 10–11) eastward on the top leg, switches back twice on the east bank,
- * and crosses again westward on the bottom leg. Two island Spots stand in the
- * river by the bridges. Crawlers arrive alone at Wave 4. The road is 5,504 long.
+ * (cols 9–12) eastward on the top leg, switches back twice on the east bank,
+ * and crosses again westward on the bottom leg. The river splits the west bank
+ * from the east, and an island by each bridge holds one tower. Crawlers arrive
+ * alone at Wave 4. The road is 5,504 long.
  */
 export const GREYRIVER_CROSSING: StageSpec = {
   number: 2,
@@ -67,12 +72,12 @@ export const GREYRIVER_CROSSING: StageSpec = {
       air: [[0, 128], [768, 576], [0, 1024]],
     }],
     [
-      // The island Spots at the two bridges.
-      [10, 3], [10, 13],
-      // Inside the switchbacks on the east bank.
-      [24, 3], [25, 5], [21, 9], [24, 9], [24, 13],
-      // The west bank.
-      [17, 9], [4, 13],
+      // The whole height of cols 9–12, less the two bridges (the road wins) and
+      // the islands at cols 10–11, rows 3–4 and 13–14.
+      {
+        kind: 'water', name: 'the Greyriver', at: 'in the river',
+        rects: [[9, 0, 4, 3], [9, 3, 1, 2], [12, 3, 1, 2], [9, 5, 4, 8], [9, 13, 1, 2], [12, 13, 1, 2], [9, 15, 4, 3]],
+      },
     ],
   ),
   threat: 2,
@@ -96,9 +101,9 @@ export const GREYRIVER_CROSSING: StageSpec = {
 
 /**
  * Stage 3, Gallows Hill: the road loops three sides round the hill. The
- * hilltop Spots stand 256 from both legs, so they see both sides, while
- * Bloodbats (new at Wave 5) cut straight over it. The road is 4,544 long and
- * the air line 2,096. Tier 3 opens here.
+ * gallows take the hilltop's west shoulder; the crest stands 256 from both
+ * legs, so it sees both sides, while Bloodbats (new at Wave 5) cut straight
+ * over it. The road is 4,544 long and the air line 2,096. Tier 3 opens here.
  */
 export const GALLOWS_HILL: StageSpec = {
   number: 3,
@@ -113,12 +118,8 @@ export const GALLOWS_HILL: StageSpec = {
       air: [[0, 640], [2048, 1088]],
     }],
     [
-      // The hilltop, between the top and bottom legs.
-      [15, 7], [18, 7], [21, 7],
-      // The hill's slopes.
-      [11, 5], [19, 9],
-      // Outside the loop.
-      [12, 1], [20, 1], [26, 6], [12, 13], [20, 14],
+      // On the hilltop's west shoulder, between the top and bottom legs.
+      { kind: 'building', name: 'the gallows', at: 'on the gallows', rects: [[12, 7, 3, 4]] },
     ],
   ),
   threat: 3,
@@ -144,8 +145,9 @@ export const GALLOWS_HILL: StageSpec = {
 
 /**
  * Stage 4, Fort Harrow: two hairpins down to the gate of the last border
- * fort. Revenants arrive alone at Wave 5, and the Gravelord leads the last
- * Wave with an escort. The road is 5,120 long. Arcane opens here.
+ * fort. The road runs in at the gate between the fort's walls, and its keep
+ * holds the south-east. Revenants arrive alone at Wave 5, and the Gravelord
+ * leads the last Wave with an escort. The road is 5,120 long. Arcane opens here.
  */
 export const FORT_HARROW: StageSpec = {
   number: 4,
@@ -160,12 +162,8 @@ export const FORT_HARROW: StageSpec = {
       air: [[0, 128], [1024, 1152]],
     }],
     [
-      // Between the first two legs.
-      [8, 3], [16, 3], [25, 3],
-      // Between the second leg and the last.
-      [6, 8], [14, 8], [21, 8], [6, 10], [12, 10],
-      // At the gate.
-      [13, 14], [17, 14],
+      // The wall either side of the gate, and the keep.
+      { kind: 'building', name: 'the fort', at: 'on the fort', rects: [[0, 16, 15, 2], [17, 16, 15, 2], [22, 10, 10, 6]] },
     ],
   ),
   threat: 4,
