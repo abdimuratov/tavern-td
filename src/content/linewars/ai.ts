@@ -115,9 +115,10 @@ export const AI_PROFILES: Readonly<Record<SkillId, AiProfile>> = {
     airFrom: null, salvoFrom: null, sight: 'raw', harpies: false, leakDanger: false,
     leakLambda: 0, leakLambdaMax: 0, leakLambdaFade: 0,
   },
+  // Normal, like Easy, saves for salvos only in Sudden Death.
   normal: {
     think: 1, actions: 2, rows: 9, skip: 0, mazeShare: 0.35, pick: 'mostly', bestChance: 0.75, lambda: 0.4, reserve: 0.5,
-    airFrom: 270, salvoFrom: 600, sight: 'raw', harpies: false, leakDanger: true,
+    airFrom: 270, salvoFrom: null, sight: 'raw', harpies: false, leakDanger: true,
     leakLambda: 0, leakLambdaMax: 0, leakLambdaFade: 0,
   },
   hard: HARD,

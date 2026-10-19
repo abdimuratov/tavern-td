@@ -1,5 +1,5 @@
 import {
-  FIELD_COLS, FIELD_ROWS, LW_SENDS, SEND_LIST, SUDDEN_DEATH_AT, type SendId, type SkillId,
+  FIELD_COLS, FIELD_ROWS, LW_SENDS, SEND_LIST, type SendId, type SkillId,
 } from '../../../src/content/linewars';
 import { MAUL_TOWERS, RACE_SPECS, RACES, type RaceId } from '../../../src/content/maul';
 import {
@@ -17,7 +17,7 @@ import {
 // - rusher: Snowlings and Brawlers only, with no towers after the opening;
 // - flyer: defends, and sends Harpies whenever they are in Stock;
 // - greedy: always the best-ratio Send, defending only after a Leak.
-// `idle` builds nothing and sends nothing: two of them show a Run ends by 19:50.
+// `idle` builds nothing and sends nothing: two of them show a Run ends by its last tick, 15:50.
 
 export type LwBot = 'competent' | 'turtle' | 'rusher' | 'flyer' | 'greedy' | 'idle';
 export const SANITY_BOTS: readonly LwBot[] = ['turtle', 'rusher', 'flyer', 'greedy'];
@@ -273,5 +273,5 @@ export function sideBot(bot: Exclude<LwBot, 'competent'>, side: SideId): SideBot
   };
 }
 
-/** The last tick a Run can reach: the 30th drain, at 19:50. */
-export const LAST_TICK = (SUDDEN_DEATH_AT + 29 * 10) * TICK_RATE;
+/** The last tick a Run can reach: the 30th drain, at 15:50. */
+export const LAST_TICK = linewars.lastTick();

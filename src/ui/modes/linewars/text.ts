@@ -1,4 +1,4 @@
-import { LW_CREEPS, LW_SENDS, RIVAL_INCOME, type LwCreepSpec, type SendId } from '../../../content/linewars';
+import { DRAIN_LIVES, LW_CREEPS, LW_SENDS, RIVAL_INCOME, SUDDEN_STEAL, type LwCreepSpec, type SendId } from '../../../content/linewars';
 import { RACES, type RaceId } from '../../../content/maul';
 import { linewars, TICK_RATE, type Difficulty, type GameState } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
@@ -31,7 +31,7 @@ export function rivalLine(rival: linewars.LwSideStatus, versus: boolean): string
 /** How the Rival plays on each Difficulty, in a line (design §12). */
 const RIVAL_PLAY: Readonly<Record<Difficulty, string>> = {
   easy: 'A short maze full of gaps, and Sends for Income only',
-  normal: 'A full maze, and big Sends saved up from 10:00',
+  normal: 'A full maze, and big Sends saved up once Sudden Death starts',
   hard: 'Quick, and from 6:00 its Sends go for your weakest armor',
   insane: 'Quicker still, and flyers whenever your air is thin',
 };
@@ -67,14 +67,14 @@ export function sendTags(send: SendId): string[] {
   return tag ? [tag] : [];
 }
 
-/** Its armor and what hits it hardest, its HP and what a Leak of it steals. */
-export function sendAbout(send: SendId, hp: number): string {
+/** Its armor and what hits it hardest, its HP and what a Leak of it steals now (double in Sudden Death). */
+export function sendAbout(send: SendId, hp: number, steals: number): string {
   const spec = LW_SENDS[send];
   const c = sendCreep(send);
   return [
     `${spec.count > 1 ? `${spec.count} creeps, ${num(hp)} HP each` : `${num(hp)} HP`}`,
     `${ARMOR_NAME[c.armorType]} armor ${c.armor}: ${BEST_AGAINST[c.armorType]} hits hardest`,
-    `a Leak steals ${spec.steals} ${spec.steals === 1 ? 'life' : 'lives'}`,
+    `a Leak steals ${steals} ${steals === 1 ? 'life' : 'lives'}`,
   ].join(' · ');
 }
 
@@ -103,9 +103,16 @@ export function incomeSeconds(ticksLeft: number): number {
   return Math.max(1, Math.ceil(ticksLeft / TICK_RATE));
 }
 
-/** The Sudden Death clock: its countdown before 15:00, then what it does. */
+/** The Sudden Death clock: its countdown until it starts, then what it does. */
 export function suddenText(st: linewars.LwStatus): string {
-  return st.sudden ? 'Sudden Death · −1 ♥ each tick' : `Sudden Death in ${countdown(st.suddenIn / TICK_RATE)}`;
+  return st.sudden ? `Sudden Death · −${DRAIN_LIVES} ♥ a tick · Leaks ×${SUDDEN_STEAL}` : `Sudden Death in ${countdown(st.suddenIn / TICK_RATE)}`;
+}
+
+/** Sudden Death's whole rule in a sentence, for the clock's tooltip and How to play: when it starts, what it does, and the latest a Run ends. */
+export function suddenRule(): string {
+  const at = clock(Math.floor(linewars.suddenTick() / TICK_RATE));
+  const end = clock(Math.floor(linewars.lastTick() / TICK_RATE));
+  return `At ${at} Income stops growing, every Income tick takes a life from both Sides, Leaks steal double, and new Sends get tougher. Every Run ends by ${end}.`;
 }
 
 /** "+2 ♥ stolen": your creeps' Leaks this tick. */

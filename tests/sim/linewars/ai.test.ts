@@ -17,10 +17,12 @@ describe('the Rival\'s AI', () => {
         const s = r.state.mode.sides[side];
         const towers = r.state.towers.filter((t) => linewars.towerSide(r.state, t) === side);
         expect(towers.length, `${d} side ${side}`).toBeGreaterThan(20);
-        expect(towers.some((t) => MAUL_TOWERS[t.spec]!.maul.tier >= 2), `${d} side ${side}`).toBe(true);
+        expect(towers.filter((t) => MAUL_TOWERS[t.spec]!.maul.tier >= 1).length, `${d} side ${side}`).toBeGreaterThan(10);
         expect(s.sent, `${d} side ${side}`).toBeGreaterThan(5);
         expect(r.aiCommands[side], `${d} side ${side}`).toBeGreaterThan(50);
       }
+      // Some Side climbs past Tier 1; a competent bot that never needs to against Easy may stop there.
+      expect(r.state.towers.some((t) => MAUL_TOWERS[t.spec]!.maul.tier >= 2), d).toBe(true);
     }
   });
 

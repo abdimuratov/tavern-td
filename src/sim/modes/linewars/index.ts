@@ -17,7 +17,7 @@ export {
 export {
   fieldError, lwSpotError, lwBuildable, lwNextOf, lwBuildError, lwUpgradeError, lwSellError, lwSellValue, fullSaleOpen,
 } from './build';
-export { sendError, sendHp, sendIncome, sendLocked, unlockTick, suddenTick, clock } from './sends';
+export { sendError, sendHp, sendIncome, leakSteal, sendLocked, unlockTick, suddenTick, lastTick, clock } from './sends';
 export {
   lwStatus, sendOptions, buildOptions, buildSpot, towerActions, inField, nextUnlock, lwRecord, lwScore,
   type LwStatus, type LwSideStatus, type SendOption, type LwBuildOption, type LwUpgradeOption, type LwTowerActions,

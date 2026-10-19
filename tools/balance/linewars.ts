@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { DIFFICULTIES, type Difficulty } from '../../src/sim';
+import { DIFFICULTIES, TICK_RATE, type Difficulty } from '../../src/sim';
 import { LAST_TICK, SANITY_BOTS, pairingFor, playLw, type LwBot, type LwRunResult } from '../../tests/sim/linewars/bots';
 
 // Line Wars' balance runner (docs/line-wars-design.md §13). The player-side
@@ -9,18 +9,22 @@ import { LAST_TICK, SANITY_BOTS, pairingFor, playLw, type LwBot, type LwRunResul
 //
 //   pnpm balance linewars                      5 seeds, every Difficulty, the sanity bots and the seat check
 //   pnpm balance linewars --seeds 3 --difficulties normal,hard
+//   pnpm balance linewars --seed-offset 5      seeds 6–10 instead of 1–5, to check a result on another set
 //   pnpm balance linewars --bots competent     the competent bot only
 //   pnpm balance linewars --bots seat          the competent bot against itself, from either Side
 //   pnpm balance linewars --json out.json      every Run's outcome as well
 //
-// It reports win rate, median Run length, the share reaching 19:50, lives
-// stolen, income at 5, 10 and 15 min, leaks by Send, refused AI commands (must
-// be 0) and the mean and worst tick, then checks the targets.
+// It reports win rate, median Run length, the share reaching the last tick a
+// Run can reach (15:50), lives stolen, income at 5, 10 and 15 min, leaks by
+// Send, refused AI commands (must be 0) and the mean and worst tick, then
+// checks the targets.
 
 type Job = 'competent' | 'seat' | LwBot;
 
 interface Args {
   readonly seeds: number;
+  /** Seeds run from this + 1. */
+  readonly seedOffset: number;
   readonly difficulties: readonly Difficulty[];
   readonly jobs: readonly Job[];
   readonly json: string | null;
@@ -33,6 +37,7 @@ function parseArgs(argv: readonly string[]): Args {
   };
   return {
     seeds: Number(value('--seeds') ?? 5),
+    seedOffset: Number(value('--seed-offset') ?? 0),
     difficulties: (value('--difficulties')?.split(',') ?? DIFFICULTIES) as Difficulty[],
     jobs: (value('--bots')?.split(',') ?? ['competent', ...SANITY_BOTS, 'seat']) as Job[],
     json: value('--json') ?? null,
@@ -52,6 +57,8 @@ const median = (xs: readonly number[]): number => {
 const mean = (xs: readonly number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 const clock = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+/** The last tick a Run can reach, as m:ss. */
+const LAST = clock(LAST_TICK / TICK_RATE);
 
 function winRate(runs: readonly LwRunResult[]): number {
   return runs.filter((r) => r.won).length / Math.max(1, runs.length);
@@ -68,7 +75,7 @@ function describe(row: Row): string[] {
   for (const r of runs) why[`${r.result}/${r.why}`] = (why[`${r.result}/${r.why}`] ?? 0) + 1;
   return [
     `${row.label}: wins ${pct(winRate(runs))} (${runs.filter((r) => r.won).length}/${runs.length}), draws ${runs.filter((r) => r.result === 'draw').length}, `
-      + `median ${clock(median(runs.map((r) => r.seconds)))}, reaching 19:50 ${pct(runs.filter((r) => r.ticks >= LAST_TICK).length / Math.max(1, runs.length))}`,
+      + `median ${clock(median(runs.map((r) => r.seconds)))}, reaching ${LAST} ${pct(runs.filter((r) => r.ticks >= LAST_TICK).length / Math.max(1, runs.length))}`,
     `    ends ${Object.entries(why).map(([k, n]) => `${k} ${n}`).join(', ')}`,
     `    lives stolen (mean) you ${mean(runs.map((r) => r.stolen[0])).toFixed(1)}, Rival ${mean(runs.map((r) => r.stolen[1])).toFixed(1)}; `
       + `income at 5/10/15 min you ${inc(0, 0)}/${inc(1, 0)}/${inc(2, 0)}, Rival ${inc(0, 1)}/${inc(1, 1)}/${inc(2, 1)}`,
@@ -89,7 +96,7 @@ export function lineWars(argv: readonly string[]): boolean {
     process.stderr.write(`  ${job} ${difficulty} seed ${seed}: ${run.result} ${run.why} at ${clock(run.seconds)}        \r`);
     return run;
   };
-  const seeds = Array.from({ length: args.seeds }, (_, i) => i + 1);
+  const seeds = Array.from({ length: args.seeds }, (_, i) => args.seedOffset + i + 1);
   if (args.jobs.includes('competent')) {
     for (const d of args.difficulties) {
       rows.push({ label: `competent v ${d}`, runs: seeds.map((s) => play('competent', d, s, () => playLw(s, d))) });
@@ -112,7 +119,7 @@ export function lineWars(argv: readonly string[]): boolean {
     rows.push({ label: 'competent v competent (seat check, Side 0)', runs });
   }
   process.stderr.write(' '.repeat(60) + '\r');
-  const lines: string[] = [`Line Wars' balance: ${args.seeds} seeds a row, Race pairings rotated across seeds.`];
+  const lines: string[] = [`Line Wars' balance: ${args.seeds} seeds a row (${seeds[0]}–${seeds[seeds.length - 1]}), Race pairings rotated across seeds.`];
   for (const row of rows) lines.push(...describe(row));
   // The targets.
   let ok = true;
@@ -133,9 +140,16 @@ export function lineWars(argv: readonly string[]): boolean {
   if (competent.length) {
     const m = median(competent.map((r) => r.seconds));
     check(m >= 12 * 60 && m <= 18 * 60, `median Run ${clock(m)} (aim 12:00–18:00)`);
+    // Design §9 and §13: Runs against Easy are the shortest, and Normal's settle around a quarter of an hour.
+    const length: Partial<Record<Difficulty, [number, number]>> = { easy: [10 * 60, 14 * 60], normal: [14 * 60, 16 * 60] };
     for (const row of rows.filter((r) => r.label.startsWith('competent v ') && !r.label.includes('seat'))) {
+      const aim = length[row.label.slice('competent v '.length) as Difficulty];
+      if (aim) {
+        const rm = median(row.runs.map((r) => r.seconds));
+        check(rm >= aim[0] && rm <= aim[1], `${row.label}: median ${clock(rm)} (aim ${clock(aim[0])}–${clock(aim[1])})`);
+      }
       const share = row.runs.filter((r) => r.ticks >= LAST_TICK).length / Math.max(1, row.runs.length);
-      check(share < 0.1, `${row.label}: ${pct(share)} reach 19:50 (aim under 10%)`);
+      check(share < 0.1, `${row.label}: ${pct(share)} reach ${LAST} (aim under 10%)`);
     }
     const refused = all.reduce((n, r) => n + r.run.aiRefused.length, 0);
     check(refused === 0, `refused AI commands: ${refused} (must be 0)`);

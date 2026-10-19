@@ -2,7 +2,7 @@ import { linewars } from '../../../sim';
 import { num } from '../../format';
 import type { ModeHudProps } from '../../mode-ui';
 import { revision, runClock } from '../../state';
-import { incomeSeconds, rivalLine, sidesFrom, suddenText } from './text';
+import { incomeSeconds, rivalLine, sidesFrom, suddenRule, suddenText } from './text';
 
 /** Beside gold: your Income and a ring that fills toward the next Income tick, "+42 in 6 s". */
 export function IncomeTick({ s }: ModeHudProps) {
@@ -48,7 +48,7 @@ export function LwStatus({ s }: ModeHudProps) {
         <span class="lw-rival" title={s.versus ? "The Rival's Race and Income" : "The Rival's Race, and its Income with its Difficulty factor"} data-testid="rival">
           {rivalLine(rival, s.versus)}
         </span>
-        <span class={`lw-clock${st.sudden ? ' sudden' : ''}`} data-testid="clock">{suddenText(st)}</span>
+        <span class={`lw-clock${st.sudden ? ' sudden' : ''}`} title={`Sudden Death: ${suddenRule()}`} data-testid="clock">{suddenText(st)}</span>
       </div>
     </section>
   );

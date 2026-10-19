@@ -12,7 +12,7 @@ export const START_LIVES = 30;
 export const INCOME_SECONDS = 10;
 
 /** The Rival's pay is ⌊income × this⌋ each income tick; yours is never scaled. Bounty never is [tune]. */
-export const RIVAL_INCOME: Readonly<Record<Difficulty, number>> = { easy: 0.85, normal: 1, hard: 1.1, insane: 1.5 };
+export const RIVAL_INCOME: Readonly<Record<Difficulty, number>> = { easy: 0.85, normal: 1, hard: 1.2, insane: 1.5 };
 
 /** At most this many of a Side's creeps alive in the other Field. A Snowling pack counts 3. */
 export const LIVE_CAP = 40;
@@ -20,10 +20,17 @@ export const LIVE_CAP = 40;
 /** Until this Run second a sale returns everything; after it, Maul's 75%. */
 export const FULL_SALE_UNTIL = 20;
 
-/** Sudden Death starts at this Run second [tune]: income freezes and each income tick drains lives. */
-export const SUDDEN_DEATH_AT = 15 * 60;
+/**
+ * Sudden Death starts at this Run second, on an income tick [tune]: income
+ * freezes, each income tick drains lives, Leaks steal more and new Sends get
+ * tougher. With START_LIVES and DRAIN_LIVES it fixes the latest a Run can end
+ * (`lastTick` in the rules): 15:50.
+ */
+export const SUDDEN_DEATH_AT = 11 * 60;
 /** Lives each Side loses on every income tick in Sudden Death. */
 export const DRAIN_LIVES = 1;
+/** In Sudden Death a Leak steals this many times its creep's steal [tune]. */
+export const SUDDEN_STEAL = 2;
 /** A Send bought in Sudden Death has its HP times 1 + this for each minute since it began [tune]. */
 export const SUDDEN_HP_PER_MINUTE = 0.1;
 

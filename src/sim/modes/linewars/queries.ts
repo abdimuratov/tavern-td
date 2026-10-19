@@ -10,7 +10,7 @@ import { footprintAt } from '../maul/tree';
 import {
   fullSaleOpen, lwBuildError, lwNextOf, lwSellValue, lwSpotError, lwUpgradeError, towerById,
 } from './build';
-import { sendError, sendHp, sendIncome, sendLocked, suddenTick, unlockTick } from './sends';
+import { leakSteal, sendError, sendHp, sendIncome, sendLocked, suddenTick, unlockTick } from './sends';
 import { creepField, lwState, other, payOf, sideOf, ticks, towerSide, type Driver, type LwState, type SideId } from './state';
 
 // Pure questions the UI, the AI and the bots ask about a Line Wars Run. None
@@ -88,6 +88,8 @@ export interface SendOption {
   readonly income: number;
   /** HP of each creep if bought now. */
   readonly hp: number;
+  /** Lives each of its creeps steals if it leaks now: doubled in Sudden Death. */
+  readonly steals: number;
   readonly flying: boolean;
   readonly stock: number;
   readonly cap: number;
@@ -107,7 +109,7 @@ export function sendOptions(state: GameState, side: SideId): SendOption[] {
     const due = s.restock[spec.id] ?? -1;
     return {
       send: spec.id, name: spec.name, key: spec.key, creep: spec.creep, count: spec.count, price: spec.price,
-      income: sendIncome(state, spec), hp: sendHp(state, spec), flying: LW_CREEPS[spec.creep]!.flying,
+      income: sendIncome(state, spec), hp: sendHp(state, spec), steals: leakSteal(state, spec), flying: LW_CREEPS[spec.creep]!.flying,
       stock: s.stock[spec.id] ?? 0, cap: spec.cap,
       restockIn: due >= 0 ? Math.max(0, due - state.tick) : 0, restockTicks: ticks(spec.restock),
       unlockIn: sendLocked(s, spec.id) ? Math.max(0, unlockTick(spec) - state.tick) : 0,

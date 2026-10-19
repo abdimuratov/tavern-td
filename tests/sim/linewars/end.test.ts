@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LW_SENDS, SCORE, START_LIVES, SUDDEN_DEATH_AT } from '../../../src/content/linewars';
+import { INCOME_SECONDS, LW_SENDS, SCORE, START_LIVES, SUDDEN_DEATH_AT, SUDDEN_STEAL } from '../../../src/content/linewars';
 import { TICK_RATE, linewars } from '../../../src/sim';
 import { LAST_TICK } from './bots';
 import { at, col, creepIn, modeEvents, newRun, ofType, purse, reasons, run, runTo, send, type LwRun, type Side } from './helpers';
@@ -71,7 +71,10 @@ describe('Leaks', () => {
 });
 
 describe('Sudden Death', () => {
-  it('starts at 15:00: each income tick pays, then drains a life from each Side', () => {
+  it('starts at 11:00: each income tick pays, then drains a life from each Side', () => {
+    expect(SUDDEN_DEATH_AT).toBe(11 * 60);
+    // It starts on an income tick.
+    expect(SUDDEN_DEATH_AT % INCOME_SECONDS).toBe(0);
     const s = newRun();
     runTo(s, SD);
     let events = run(s, 1);
@@ -82,6 +85,28 @@ describe('Sudden Death', () => {
     events = run(s, 10 * TICK_RATE);
     expect(modeEvents(events, 'lw.drain')).toHaveLength(1);
     expect(purse(s).lives).toEqual([START_LIVES - 2, START_LIVES - 2]);
+  });
+
+  it('doubles every Leak\'s steal, still never taking more than the defender has', () => {
+    const s = newRun();
+    runTo(s, SD);
+    run(s, 1);
+    expect(purse(s).lives).toEqual([START_LIVES - 1, START_LIVES - 1]);
+    s.mode.sides[1].live = 1;
+    aboutToLeak(s, 0, 'raider');
+    aboutToLeak(s, 1, 'warlord');
+    let events = run(s, 10);
+    expect(SUDDEN_STEAL).toBe(2);
+    expect(modeEvents(events, 'lw.leak').map((e) => (e.data as { send: string; lives: number })))
+      .toEqual([expect.objectContaining({ send: 'brawler', lives: 2 }), expect.objectContaining({ send: 'warlord', lives: 4 })]);
+    expect(purse(s).lives).toEqual([START_LIVES - 1 - 2 + 4, START_LIVES - 1 + 2 - 4]);
+    expect(s.mode.score).toBe(4 * SCORE.perSteal);
+    // A Mammoth would steal 6, but only 2 are left to take, and that ends the Run.
+    s.mode.sides[1].lives = 2;
+    aboutToLeak(s, 1, 'mammoth');
+    events = run(s, 10);
+    expect(modeEvents(events, 'lw.leak').map((e) => (e.data as { lives: number }).lives)).toEqual([2]);
+    expect([s.phase, s.mode.result, s.mode.why]).toEqual(['won', 'side0', 'lives']);
   });
 
   it('ends a drain that empties one Side with the other\'s win', () => {
@@ -112,7 +137,7 @@ describe('Sudden Death', () => {
     expect(linewars.lwRecord(even)).toMatchObject({ won: false, draw: true });
   });
 
-  it('ends every Run by 19:50: two Sides that never build or send are both out on the 30th drain', () => {
+  it('ends every Run by 15:50: two Sides that never build or send are both out on the 30th drain', () => {
     const s = newRun();
     let checkpoints = 0;
     let last = -1;
@@ -122,7 +147,8 @@ describe('Sudden Death', () => {
       if (s.phase === 'build') last = s.tick;
     }
     expect(s.mode.endTick).toBe(LAST_TICK);
-    expect(LAST_TICK).toBe((19 * 60 + 50) * TICK_RATE);
+    expect(LAST_TICK).toBe((15 * 60 + 50) * TICK_RATE);
+    expect(linewars.lastTick(START_LIVES)).toBe(LAST_TICK);
     expect(last).toBe(LAST_TICK);
     expect([s.mode.result, s.mode.why, ...purse(s).lives]).toEqual(['draw', 'draw', 0, 0]);
     // An autosave checkpoint every minute.

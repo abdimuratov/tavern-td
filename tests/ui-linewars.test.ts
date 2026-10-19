@@ -10,7 +10,7 @@ import { LW_LOOK, lwLook } from '../src/ui/modes/linewars/look';
 import { building, lastSend } from '../src/ui/modes/linewars/picks';
 import { trySend } from '../src/ui/modes/linewars/SendMenu';
 import {
-  leakedText, lwEndText, matchup, progressText, rivalLine, sendTags, sendWhy, sidesFrom, stolenText, suddenText,
+  leakedText, lwEndText, matchup, progressText, rivalLine, sendAbout, sendTags, sendWhy, sidesFrom, stolenText, suddenRule, suddenText,
 } from '../src/ui/modes/linewars/text';
 import type { PlaySession } from '../src/ui/state';
 import { buildAt, col, newRun, run, runTo } from './sim/linewars/helpers';
@@ -45,8 +45,8 @@ afterEach(() => {
 describe('Line Wars on the main menu', () => {
   it('names each Difficulty by the Rival\'s income factor and how it plays', () => {
     expect(difficultyAbout('linewars', 'easy')).toMatch(/^Rival's income ×0\.85 · /);
-    expect(difficultyAbout('linewars', 'normal')).toMatch(/^Rival's income ×1 · .*10:00/);
-    expect(difficultyAbout('linewars', 'hard')).toMatch(/^Rival's income ×1\.1 · /);
+    expect(difficultyAbout('linewars', 'normal')).toMatch(/^Rival's income ×1 · .*Sudden Death/);
+    expect(difficultyAbout('linewars', 'hard')).toMatch(/^Rival's income ×1\.2 · /);
     expect(difficultyAbout('linewars', 'insane')).toMatch(/^Rival's income ×1\.5 · /);
     for (const d of ['easy', 'normal', 'hard', 'insane'] as const) expect(difficultyAbout('linewars', d)).not.toMatch(/\bAI\b/);
   });
@@ -176,7 +176,7 @@ describe('Line Wars feedback', () => {
       'The Rival sent Harpies: they fly over your maze',
       'The Rival sent a War Mammoth',
       'Juggled: 3 creeps turned back',
-      'Sudden Death: Income is frozen, and every Income tick takes a life from both Sides',
+      'Sudden Death: Income is frozen, every Income tick takes a life from both Sides, and Leaks steal double',
     ]);
     expect(stolenText(1)).toBe('+1 ♥ stolen');
     expect(leakedText(3, ['Snowling', 'Snowling', 'Snowling'])).toBe('−3 ♥ 3 creeps got through');
@@ -237,9 +237,22 @@ describe('the end of a Line Wars Run', () => {
 
   it('reads the Sudden Death clock, then turns it red', () => {
     const state = newRun();
-    expect(suddenText(linewars.lwStatus(state))).toBe('Sudden Death in 15:00');
+    expect(suddenText(linewars.lwStatus(state))).toBe('Sudden Death in 11:00');
     state.tick = SUDDEN_DEATH_AT * TICK_RATE;
-    expect(suddenText(linewars.lwStatus(state))).toBe('Sudden Death · −1 ♥ each tick');
+    expect(suddenText(linewars.lwStatus(state))).toBe('Sudden Death · −1 ♥ a tick · Leaks ×2');
+  });
+
+  it('states Sudden Death\'s rule with its start and the latest a Run ends, and a Send\'s steal doubles in it', () => {
+    expect(suddenRule()).toBe('At 11:00 Income stops growing, every Income tick takes a life from both Sides, Leaks steal double, '
+      + 'and new Sends get tougher. Every Run ends by 15:50.');
+    const state = newRun();
+    const about = (): string => {
+      const o = linewars.sendOptions(state, 0).find((x) => x.send === 'warlord')!;
+      return sendAbout(o.send, o.hp, o.steals);
+    };
+    expect(about()).toMatch(/a Leak steals 2 lives$/);
+    state.tick = SUDDEN_DEATH_AT * TICK_RATE;
+    expect(about()).toMatch(/a Leak steals 4 lives$/);
   });
 });
 
@@ -306,7 +319,7 @@ describe('Line Wars as Side 1 sees it (a Versus Guest)', () => {
     expect(sidesFrom(st, 0).map((x) => x.side)).toEqual([0, 1]);
     // Side 0 seeing Hard's Rival: its factor shows, and Versus has none to show.
     const [, theirs] = sidesFrom(st, 0);
-    expect(rivalLine(theirs, false)).toBe('Rimeborn · +10 ×1.1');
+    expect(rivalLine(theirs, false)).toBe('Rimeborn · +10 ×1.2');
     expect(rivalLine(theirs, true)).toBe('Rimeborn · +10');
     expect(rivalLine(rival, true)).toBe('Ironclad · +10');
   });

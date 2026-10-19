@@ -1,5 +1,5 @@
 import {
-  CHECKPOINT_EVERY, INBOUND_SECONDS, INCOME_SECONDS, LW_CREEPS, LW_MAP, SCORE, SEND_IDS, SKILLS,
+  CHECKPOINT_EVERY, DRAIN_LIVES, INBOUND_SECONDS, INCOME_SECONDS, LW_CREEPS, LW_MAP, SCORE, SEND_IDS, SKILLS,
   START_GOLD, START_INCOME, START_LIVES, sendOfCreep, type SkillId,
 } from '../../../content/linewars';
 import { MAUL_DAMAGE_TABLE, MAUL_TOWERS, RACES, TROLL_REGEN, type RaceId } from '../../../content/maul';
@@ -12,7 +12,7 @@ import { setMap } from '../../path/grid';
 import { newAi } from './ai/memory';
 import { runAi } from './ai';
 import { applyLwCommand, isLwCommand } from './commands';
-import { runStock, suddenTick } from './sends';
+import { leakSteal, runStock, suddenTick } from './sends';
 import {
   LW_MODE_ID, creepField, earn, lwState, modeEvent, other, payOf, ticks,
   type Driver, type LwSide, type LwState, type SideId,
@@ -107,7 +107,7 @@ export function endRun(state: GameState, winner: SideId | null, why: LwState['wh
   events.push({ type: state.phase === 'won' ? 'won' : 'lost' });
 }
 
-/** Both Sides are paid; in Sudden Death each then loses a life, and the Run ends if a Side is out. */
+/** Both Sides are paid; in Sudden Death each then loses DRAIN_LIVES, and the Run ends if a Side is out. */
 function incomeTick(state: State, events: SimEvent[]): void {
   const ms = state.mode;
   const pays = [payOf(state, 0), payOf(state, 1)];
@@ -123,7 +123,7 @@ function incomeTick(state: State, events: SimEvent[]): void {
   modeEvent(events, 'lw.income', { pay: pays, income: [ms.sides[0].income, ms.sides[1].income] });
   if (state.tick < suddenTick()) return;
   if (state.tick === suddenTick()) modeEvent(events, 'lw.sudden', { tick: state.tick });
-  for (const s of ms.sides) s.lives = Math.max(0, s.lives - 1);
+  for (const s of ms.sides) s.lives = Math.max(0, s.lives - DRAIN_LIVES);
   modeEvent(events, 'lw.drain', { lives: [ms.sides[0].lives, ms.sides[1].lives] });
   const out0 = ms.sides[0].lives <= 0;
   const out1 = ms.sides[1].lives <= 0;
@@ -216,7 +216,8 @@ export const LW_RULES: GameModeRules<LwState> = {
     sender.live = Math.max(0, sender.live - 1);
     if (ms.result !== 'playing') return { lives: 0, then: 'remove' };
     const d = ms.sides[field];
-    const moved = Math.min(send.steals, d.lives);
+    // Doubled in Sudden Death, and never more than the defender has, so the two Sides' lives stay conserved.
+    const moved = Math.min(leakSteal(state, send), d.lives);
     d.lives -= moved;
     sender.lives += moved;
     sender.stolen += moved;

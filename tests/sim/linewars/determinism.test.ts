@@ -123,7 +123,9 @@ describe('Line Wars determinism', () => {
     const leaks = modeEvents(events, 'lw.leak').map((e) => (e.data as { from: number }).from);
     expect(leaks.length).toBeGreaterThanOrEqual(5);
     const ms = (s as linewars.LwGameState).mode;
-    expect(ms.sides[0].lives).toBe(30 - ms.sides[1].stolen);
+    // Leaks only move lives before Sudden Death: what each Side stole, the other lost.
+    expect(ms.sides[0].lives).toBe(30 - ms.sides[1].stolen + ms.sides[0].stolen);
+    expect(ms.sides[0].lives + ms.sides[1].lives).toBe(60);
     expect(modeEvents(events, 'lw.unlock').length).toBeGreaterThanOrEqual(6);
     expect(modeEvents(events, 'lw.checkpoint')).toHaveLength(4);
     expect(ofType(events, 'kill').length).toBeGreaterThanOrEqual(10);

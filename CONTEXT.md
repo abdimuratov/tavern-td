@@ -77,7 +77,7 @@ In Maul and Line Wars, a Race's cheap 2 × 2 block with a weak attack, built to 
 _Avoid_: rock (Gem's word), blocker, barricade
 
 **Leak**:
-A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again. In Line Wars it moves lives from the defending Side to the sender, and the creep is removed.
+A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again. In Line Wars it moves lives from the defending Side to the sender (twice as many in Sudden Death), and the creep is removed.
 _Avoid_: escape, breach, pass
 
 **Break**:
@@ -295,7 +295,7 @@ How many of one Send a Side can buy right now. It starts at 1 when the Send unlo
 _Avoid_: charges, supply, food
 
 **Sudden Death**:
-Line Wars from 15:00: Income stops growing, every Income tick takes a life from each Side, and new Sends get tougher. It ends every Run by 19:50.
+Line Wars from 11:00: Income stops growing, every Income tick takes a life from each Side, Leaks steal double, and new Sends get tougher. It ends every Run by 15:50.
 _Avoid_: overtime, endgame, drain mode
 
 ### Versus (Line Wars on two devices)

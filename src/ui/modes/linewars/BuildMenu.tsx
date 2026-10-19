@@ -77,7 +77,7 @@ function InField({ s }: ModeHudProps) {
   const groups = linewars.inField(state, me);
   const next = linewars.nextUnlock(state);
   const air = next !== null && sendCreep(next.send).flying && next.ticksLeft <= AIR_WARNING_SECONDS * TICK_RATE;
-  const hp = new Map(linewars.sendOptions(state, linewars.other(me)).map((o) => [o.send, o.hp]));
+  const sent = new Map(linewars.sendOptions(state, linewars.other(me)).map((o) => [o.send, o]));
   return (
     <section class="waves lw-field" data-testid="in-field">
       <h2>In your Field</h2>
@@ -86,7 +86,7 @@ function InField({ s }: ModeHudProps) {
       ) : (
         <ul>
           {groups.map((g) => (
-            <li key={g.send} class="group rich" title={sendAbout(g.send, hp.get(g.send) ?? 0)} data-testid={`in-field-${g.send}`}>
+            <li key={g.send} class="group rich" title={sendAbout(g.send, sent.get(g.send)?.hp ?? 0, sent.get(g.send)?.steals ?? 0)} data-testid={`in-field-${g.send}`}>
               <CreepIcon creep={LW_SENDS[g.send].creep} />
               <span class="name">{g.name}</span>
               <span class="muted">×{g.count}</span>

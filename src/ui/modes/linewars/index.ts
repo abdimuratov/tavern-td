@@ -170,7 +170,7 @@ function onEvents(view: RunView, events: readonly SimEvent[]): void {
         if (isSendId(d.send)) view.say(`${LW_SENDS[d.send].name} unlocked`, 'ok', 2000);
         break;
       case 'lw.sudden':
-        view.say('Sudden Death: Income is frozen, and every Income tick takes a life from both Sides', 'error', 5000);
+        view.say('Sudden Death: Income is frozen, every Income tick takes a life from both Sides, and Leaks steal double', 'error', 5000);
         break;
       default:
         break;

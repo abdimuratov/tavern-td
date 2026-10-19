@@ -8,7 +8,7 @@ There are no Waves, so PLAN §4's Wave baseline doesn't apply. The Send table (�
 
 | Topic | Design |
 |---|---|
-| Shape | One duel against the Rival on one Map. A Run lasts 10–20 min and always ends by 19:50 |
+| Shape | One duel against the Rival on one Map. A Run lasts 10–16 min and always ends by 15:50 |
 | Map | The Twin Fields: two 16 × 28 Fields side by side, 12 columns of rock apart. Sends enter along the top and leak at the bottom. No Checkpoints (§3) |
 | Sides | You (the east Field, beside the HUD) and the Rival (west). Each has its own Race, gold, income, lives and Stock |
 | Towers | Maul's four Races and 36 towers, unchanged. One Race per Side for the whole Run (§6) |
@@ -16,9 +16,9 @@ There are no Waves, so PLAN §4's Wave baseline doesn't apply. The Send table (�
 | Sends | 10, from 24 to 800 gold, unlocking from 0:20 to 10:00. Each raises your income at once and for good. Stock refills; 40 of yours alive at most (§8) |
 | Income | 10 plus what your Sends added, paid every 10 s. 150 gold to start. No interest (§9) |
 | Lives | 30 each. A Leak moves lives from the defender to the sender, and the creep is removed (§10) |
-| Sudden Death | From 15:00 income freezes, every income tick drains a life from both Sides, and new Sends get tougher |
+| Sudden Death | From 11:00 income freezes, every income tick drains a life from both Sides, Leaks steal double, and new Sends get tougher |
 | Waves | None. The Rival is the pressure |
-| Difficulty | The Rival's income ×0.85 / 1 / 1.1 / 1.5 and how well its AI plays. Creeps are the same on every Difficulty (§12) |
+| Difficulty | The Rival's income ×0.85 / 1 / 1.2 / 1.5 and how well its AI plays. Creeps are the same on every Difficulty (§12) |
 | Left out | Rings of up to 12, tower-attacking Sends, tech and Research Points, negative-income finishers, leaver rules, catch-up gold. Legion TD entirely |
 
 ## 2. What is Line Tower Wars', and what is ours
@@ -44,7 +44,7 @@ There are no Waves, so PLAN §4's Wave baseline doesn't apply. The Send table (�
 - Flyers return half the income ratio of their neighbours. Wintermaul Reforged applied the same brake harder, with no income at all.
 - Juggling is allowed, as in Maul.
 - Difficulty is the Rival's income bonus plus its skill.
-- 30 lives, and Sudden Death from 15:00, so every Run ends by 19:50.
+- 30 lives, and Sudden Death from 11:00, in which Leaks also steal double, so every Run ends by 15:50.
 - Our numbers, names, text and shapes. No name from research §7 is used. Three of Maul's creeps were renamed for that reason, in Maul too (§8).
 
 ## 3. The Map: the Twin Fields
@@ -192,7 +192,7 @@ Maul's attack-type table ([maul-design.md §6](maul-design.md#6-damage-and-armor
 
 A Send is one creep, or a pack of them, made from Maul's creeps. Its HP is set here rather than by a Wave curve. Three of Maul's names were on research §7's lists, so Maul renamed those creeps: the Raider became the **Brawler**, the Frost Wolf the **Sleet Hound**, and the Wraith the **Hollow** (§18). A Send and its creeps take their names from Maul's creep table, and only a pack (Snowlings, Harpies) names its Send itself. The shapes are Maul's.
 
-| Key | Send | Creep (Maul) | Creeps | Price | Income | Ratio | HP each | Armor | Speed | Bounty each | Steals each | Unlock | Stock cap | Restock |
+| Key | Send | Creep (Maul) | Creeps | Price | Income | Ratio | HP each | Armor | Speed | Bounty each | Steals each (×2 in Sudden Death) | Unlock | Stock cap | Restock |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Z | Snowlings | Snowling | 3 | 24 | +2 | 8.3% | 16 | Light 0 | 250 | 2 | 1 | 0:20 | 6 | 5 s |
 | X | Brawler | Brawler | 1 | 40 | +3 | 7.5% | 100 | Medium 0 | 230 | 6 | 1 | 0:40 | 6 | 6 s |
@@ -209,11 +209,11 @@ Prices, HP and bounty are the tuned values (§16): every price and bounty double
 
 - **Greed against pressure.** The income ratio falls from 8.3% to 3.5% as Sends get dearer, so payback stretches from 120 s to 286 s. HP per gold of price rises from 2.0 to 9.0 (the fast Sleet Hound trades a little for speed), so a dear Send packs more HP into one creep, which single-target towers struggle with. Cheap Sends grow your income; dear ones break mazes.
 - **Unlock and Stock.** A Send unlocks at the same Run time for both Sides, with 1 in Stock. It then gains 1 every restock interval up to its cap. Restocking pauses while Stock is full and starts again from the moment one is bought.
-- **The brakes.** Stock and restock cap how fast income can grow. With every Send unlocked and unlimited gold, a Side could add at most about 50 income a tick, and that would cost about 960 gold a tick. Until then, gold binds first. The first guess aimed at 25 income by 3:00, 90 by 8:00 and 200–300 by 15:00; the tuned competent bot reaches about 20 by 3:00, 40 by 5:00, 110 by 10:00 and 200–330 by 15:00 (§16).
+- **The brakes.** Stock and restock cap how fast income can grow. With every Send unlocked and unlimited gold, a Side could add at most about 50 income a tick, and that would cost about 960 gold a tick. Until then, gold binds first. The first guess aimed at 25 income by 3:00, 90 by 8:00 and 200–300 by 15:00; the tuned competent bot reaches about 20 by 3:00, 40 by 5:00 and 110–145 by 10:00, and its income freezes at about 120–165 when Sudden Death starts at 11:00 (§16).
 - **Flyers.** Harpies fly straight over the maze, in about 7.6 s from spawn to exit. Their brake: half the income ratio of their neighbours, a Stock of 3, a 20 s restock, and an unlock at 5:00, announced 30 s ahead (§15).
 - **The cap.** At most 40 of a Side's creeps can be alive in the other Field. A Snowling pack counts 3. A Send that would pass the cap is refused before it is paid for. The cap stops a Side that has stopped defending from being buried under an endless pile. It also keeps the tick within budget: at most 80 creeps and about 140 towers. That is more towers than PLAN §2's budget of 80 but far fewer creeps than its 300, so the tower-by-creep targeting work is under half the budget's.
 - **Bounty** goes to the defender for each creep it kills: 25% of the price for Snowlings, falling to 5% for the Mammoth, as Reforged's falls with price. The AI's income bonus never touches bounty.
-- **In Sudden Death** a Send's HP is multiplied by 1 + 0.1 for each minute since 15:00, measured by tick when it is bought. Creeps already in a Field keep their HP.
+- **In Sudden Death** a Send's HP is multiplied by 1 + 0.1 for each minute since 11:00, measured by tick when it is bought. Creeps already in a Field keep their HP. Every Leak in Sudden Death steals double (§10).
 
 ## 9. Income, gold and pace
 
@@ -221,29 +221,30 @@ Prices, HP and bounty are the tuned values (§16): every price and bounty double
 |---|---|
 | Start | 150 gold, 10 income, 30 lives each **[tune]** |
 | Income tick | Every 10 s, the first at 0:10. Each Side is paid its income: 10 plus the income of every Send it has bought |
-| The Rival's pay | ⌊income × the Difficulty's factor⌋: ×0.85, ×1, ×1.1 or ×1.5 (§12). Your pay is never scaled |
+| The Rival's pay | ⌊income × the Difficulty's factor⌋: ×0.85, ×1, ×1.2 or ×1.5 (§12). Your pay is never scaled |
 | Bounty | Per creep killed, to the defender (§8) |
 | Interest | None. Sends are the greed lever, as in Line Tower Wars |
 | Sells | 75%; 100% until 0:20 |
 | Live cap | 40 creeps per Side |
-| Sudden Death | From 15:00 (§10) |
+| Sudden Death | From 11:00 (§10) |
 
-**Pace.** 0:00–0:20 is the opening: build, with nothing to send yet. From 0:20 a Send unlocks every 20–120 s until the Mammoth at 10:00. From about 6:00 the Rival starts saving for salvos (§11), so leaks start to decide the Run. Sudden Death at 15:00 ends every Run by 19:50. Expect 10–14 min against Easy and 15–20 against the rest. The bots check this (§13).
+**Pace.** 0:00–0:20 is the opening: build, with nothing to send yet. From 0:20 a Send unlocks every 20–120 s until the Mammoth at 10:00. From about 6:00 a Hard or Insane Rival starts saving for salvos (§11), so leaks start to decide the Run; Easy and Normal save only in Sudden Death. Sudden Death at 11:00 ends every Run by 15:50, and a lead in lives ends it sooner. Expect 10–14 min against Easy (the bots' median is 12–13), 14–16 against Normal, and 12–15 against Hard and Insane. The bots check this (§13).
 
 ## 10. Leaks, lives, and how a Run ends
 
 - **30 lives each [tune].** Reforged gives 50 in 1v1, but a phone Run needs to end sooner.
 - **A Leak moves lives.** The defender loses the creep's steal value (1, 2 for the Warlord, 3 for the Mammoth), and the sender gains as many, never more than the defender had. Then the creep is removed. It does not loop. Under 2.7c's 1v1 loop, one creep the defender can't kill steals on every pass, so a single gap snowballs into a lost Run. The Dota port's single steal keeps a Leak a setback.
-- **Lives only move until Sudden Death,** so before 15:00 the two Sides always hold 60 between them. The HUD draws them as one tug-of-war bar.
-- **Sudden Death, from 15:00 [tune]:**
+- **Lives only move until Sudden Death,** so before 11:00 the two Sides always hold 60 between them. The HUD draws them as one tug-of-war bar.
+- **Sudden Death, from 11:00 [tune]:**
   - Income freezes. Sends bought from now on add no income.
   - Each income tick, after paying, takes 1 life from each Side.
+  - Every Leak steals double: 2 lives for most creeps, 4 for the Warlord, 6 for the Mammoth, still never more than the defender has. Only Leaks change who is ahead, since the drain takes the same from both, so doubling them is what lets Sudden Death settle a close Run before its last tick.
   - New Sends get tougher (§8).
 - **The end.** A Side is out when its lives reach 0, and the Run ends that same tick.
   - A Leak that empties a Side ends the Run at once, and later Leaks that tick change nothing.
   - If a drain empties both Sides at once, the higher frozen income wins (`why: 'income'`). Equal incomes are a draw.
   - Line Wars sets the phase to `won` when Side 0 wins and `lost` otherwise, a draw included, and records `result` and `why`.
-- **Every Run ends by 19:50.** Until 15:00 the two piles sum to 60, so the smaller holds at most 30. Each drain takes 2 from the sum. After n drains the smaller pile holds at most 30 − n, so it is empty after the 30th drain at 19:50. No stall can outlast that, whether from turtling, juggling or both Sides refusing to send.
+- **Every Run ends by 15:50.** Until 11:00 the two piles sum to 60, so the smaller holds at most 30. Each drain takes 2 from the sum, and a Leak, doubled or not, only moves lives between the piles. After n drains the smaller pile holds at most 30 − n, so it is empty after the 30th drain at 15:50 (`lastTick` in `sends.ts`). No stall can outlast that, whether from turtling, juggling or both Sides refusing to send. Only Sides tied on lives reach that last drain; any lead ends the Run sooner.
 
 ## 11. The Rival's AI
 
@@ -340,7 +341,7 @@ Every mode has Easy, Normal, Hard and Insane (PLAN §1). In Line Wars, Difficult
 
 | | Easy | Normal | Hard | Insane |
 |---|---|---|---|---|
-| Rival's income | ×0.85 | ×1 | ×1.1 | ×1.5 |
+| Rival's income | ×0.85 | ×1 | ×1.2 | ×1.5 |
 | Thinks every | 2 s | 1 s | 0.5 s | 0.5 s |
 | Actions a think | 1 | 2 | 3 | 4 |
 | Maze | the first 6 of the 9 rows in build order; each Wall skipped with a 25% chance, leaving shortcuts | the full blueprint | full | full |
@@ -348,10 +349,10 @@ Every mode has Easy, Normal, Hard and Insane (PLAN §1). In Line Wars, Difficult
 | λ (defense) | 0.3 | 0.4 | 0.5 | 0.55 |
 | Reserve | none | ½ its income | its income | its income |
 | Air guard | only after a flyer leaks | from 4:30 | from 4:30 | from 4:30 |
-| Sends | greed only | salvos from 10:00, judging your maze by raw damage | salvos from 6:00, judging it by damage against each armor, so they hit your weak spot | as Hard, plus Harpies when your air is thin |
+| Sends | greed only, then salvos in Sudden Death | greed, then salvos only in Sudden Death, judging your maze by raw damage | salvos from 6:00, judging it by damage against each armor, so they hit your weak spot | as Hard, plus Harpies when your air is thin |
 | After it leaks | nothing | Danger for 20 s | Danger for 20 s; λ +0.1 (at most +0.3, fading 0.1 a minute) | as Hard |
 
-These are the tuned values (§16). Reforged's Normal bot gets +20% income. Ours gets none, so that Normal is a fair fight, and its skill is tuned to lose about 40% of the time to a competent player (§13).
+These are the tuned values (§16). Reforged's Normal bot gets +20% income. Ours gets none, so that Normal is a fair fight, and its skill is tuned to win about 40% of the time against a competent player (§13).
 
 **CONTEXT's Difficulty entry** should read: "The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty."
 
@@ -363,13 +364,13 @@ These are the tuned values (§16). Reforged's Normal bot gets +20% income. Ours 
   - *Rusher:* Snowlings and Brawlers only, with no towers after the opening.
   - *Flyer:* Harpies whenever they are in Stock.
   - *Greedy:* always the best-ratio Send, defending only after a Leak.
-- **The matrix:** `pnpm balance linewars` (`tools/balance/linewars.ts`) plays the competent bot against each Difficulty, the sanity bots against Normal, and the seat check, over seeds with the Race pairings rotated (each run of four seeds puts every Race once on each Side). It plays in one process, one Run at a time, 5 seeds a row by default; `--seeds`, `--difficulties`, `--bots` and `--json` narrow or widen it, and the full 4 × 4 × 10 × 4 = 640 Runs is a rare wide sweep. It reports win rate, median Run length, the share reaching 19:50, how Runs ended, lives stolen, income at 5, 10 and 15 min, leaks by Send, the refused AI commands (which must be 0) and the tick time, then checks the targets. `pnpm test` plays four whole Runs as a sample (`tests/sim/linewars/bot.test.ts`).
+- **The matrix:** `pnpm balance linewars` (`tools/balance/linewars.ts`) plays the competent bot against each Difficulty, the sanity bots against Normal, and the seat check, over seeds with the Race pairings rotated (each run of four seeds puts every Race once on each Side). It plays in one process, one Run at a time, 5 seeds a row by default; `--seeds`, `--seed-offset` (another set of seeds), `--difficulties`, `--bots` and `--json` narrow, widen or move it, and the full 4 × 4 × 10 × 4 = 640 Runs is a rare wide sweep. It reports win rate, median Run length, the share reaching the last tick (15:50), how Runs ended, lives stolen, income at 5, 10 and 15 min, leaks by Send, the refused AI commands (which must be 0) and the tick time, then checks the targets. `pnpm test` plays four whole Runs as a sample (`tests/sim/linewars/bot.test.ts`).
 - **Targets:**
   - Win rates (PLAN §4): the competent bot wins Easy about 95%, Normal about 60%, Hard about 30% and Insane under 10%.
-  - Run length: median 12–18 min, with under 10% of Runs reaching the 19:50 limit on any Difficulty.
+  - Run length: the competent Runs' median 12–18 min, Normal's 14–16 and Easy's 10–14, with under 10% of Runs reaching the last tick (15:50) on any Difficulty.
   - On Normal, no Race pairing under 40% or over 80%.
   - Turtle and Rusher lose Normal at least 90% of the time, and Flyer wins it at most 50%.
-- **Knobs, coarse to fine:** the Rival's income factors; Send HP per gold; Send income ratios, Stock and restock; λ, the maze share, salvo times and pick noise; Sudden Death's start and growth. As in Maul, what the bots change goes into §16 with the results.
+- **Knobs, coarse to fine:** Sudden Death's start and its steal; the Rival's income factors; Send HP per gold; Send income ratios, Stock and restock; λ, the maze share, salvo times and pick noise; Sudden Death's HP growth. As in Maul, what the bots change goes into §16 with the results.
 - **Seat check:** the Fields are mirror images, so the competent bot playing against itself should win about 50% from either Side.
 
 ## 14. Score and Records
@@ -385,7 +386,7 @@ These are the tuned values (§16). Reforged's Normal bot gets +20% income. Ours 
 - **HUD**, top to bottom, in the side column:
   - Gold, and your income with the income-tick countdown as a ring: "+42 in 6 s".
   - Pause and speed.
-  - The life bar: "You 34 ▮▮▮▮▮▯▯▯ 26 Rival", one bar while the two still hold 60. Beside it, the Rival's Race and income ("Rimeborn · +31 ×1.1"), then the clock: "Sudden Death in 7:32", red from 15:00 with "−1 ♥ each tick".
+  - The life bar: "You 34 ▮▮▮▮▮▯▯▯ 26 Rival", one bar while the two still hold 60. Beside it, the Rival's Race and income ("Rimeborn · +31 ×1.2"), then the clock: "Sudden Death in 7:32", red from 11:00 with "Sudden Death · −1 ♥ a tick · Leaks ×2". Its tooltip states the whole rule and the latest end, as How to play does.
   - The build menu: Wall, line A and line B, with prices (Q W E).
   - The send menu: the 10 Sends in a 5 × 2 grid. Each shows its shape, price and +income, a Stock badge, a thin restock bar, and, while locked, its unlock countdown. Below it, "Live 12/40".
   - "In your Field": the Rival's creeps now walking your Field, grouped by Send with counts and tags (Air, Boss, Fast, Armored, Regen, Unslowable), and the next unlock ("Harpies (Air) in 0:28"). This is Line Wars' wave preview.
@@ -405,7 +406,7 @@ These are the tuned values (§16). Reforged's Normal bot gets +20% income. Ours 
   - Sends buy income.
   - Stock and unlocks.
   - Leaks steal lives.
-  - Sudden Death ends every Run by 19:50.
+  - Sudden Death: from 11:00 every Income tick takes a life from both Sides, Leaks steal double and new Sends get tougher; every Run ends by 15:50. Its times come from the rules' numbers (`suddenTick`, `lastTick`), so they can't drift from them.
   - Building (Maul's text, with "your Field only").
   - Races and armor.
   - Controls.
@@ -419,8 +420,9 @@ The rules are in `src/sim/modes/linewars/` (mode id `linewars`) with the AI in i
 - *Assumed:* flyers fly from their spawn cell to the middle of their Field's exit row.
 - *Assumed:* a Send unlocks with 1 in Stock and refills from that moment while below its cap; restock starts again from the moment one is bought from a full Stock. Unlocks are processed after the tick's logged commands, so a person can first buy a Send on the tick after its unlock, while the AI, thinking later in the tick, may buy it on the tick itself.
 - *Assumed:* the Rival's pay is ⌊income × factor⌋ each tick, and the factor never touches bounty. Side 1 always gets the Run's factor, also when a person plays it, so versus should play Normal (×1).
-- *Assumed:* the first income tick is at 0:10. The Sudden Death drain comes after that tick's pay, from 15:00 inclusive, and the 30th drain is at 19:50 (tick 35,700).
-- *Assumed:* in Sudden Death the HP factor applies to Sends bought from 15:00 on, not to creeps already walking. It grows continuously with the tick of purchase (1 + 0.1 × minutes since 15:00), rounded to whole HP.
+- *Assumed:* the first income tick is at 0:10. The Sudden Death drain comes after that tick's pay, from 11:00 inclusive, and the 30th drain is at 15:50 (tick 28,500).
+- *Assumed:* in Sudden Death the HP factor applies to Sends bought from 11:00 on, not to creeps already walking. It grows continuously with the tick of purchase (1 + 0.1 × minutes since 11:00), rounded to whole HP.
+- *Assumed:* the double steal goes by the tick a creep leaks, not when it was bought: a Brawler sent at 10:55 that leaks at 11:20 steals 2. The send menu's and "In your Field"'s details say what a Leak would steal now.
 - *Assumed:* a steal never takes more lives than the defender has, which keeps the 60 conserved.
 - *Assumed:* a draw is phase `lost` with `result: 'draw'`. The end card says "Draw". The income tie-break compares the frozen incomes before the Difficulty factor.
 - *Assumed:* on the same tick, Side 0's commands apply before Side 1's, both in versus and against the AI. The core applies the log in its order, so versus's lockstep layer must order it; an AI Side 0 (tools) thinks before Side 1.
@@ -460,6 +462,57 @@ The rules are in `src/sim/modes/linewars/` (mode id `linewars`) with the AI in i
   - **Not met:** one Normal Run of five reached 19:50 (the aim is under 10%). Close Normal duels run deep into Sudden Death: Normal's median is 19:30, and Easy's 16:07 is longer than §9's 10–14 min. With 5 seeds a row each Run moves a rate by 20 points, and the seat check's 60% is within that noise: swapping which Side thinks first moved it between 80% and 50%. "No Race pairing on Normal under 40% or over 80%" isn't measured, as 5 seeds play each pairing at most once.
   - **Tick time** with the AI thinking, in Node over three whole AI-against-AI Runs: 7 µs a tick on average, 24 µs on a think tick, 0.27 ms at the 99th percentile of think ticks and about 0.6–0.9 ms at worst, when one think builds several Walls (each a Block check and a new flow field). A phone running 5–10 times slower would spike to about 3–9 ms on those rare ticks, past PLAN §2's 4 ms; the steady cost stays far under it, at 29 creeps and 126 towers at most.
   - Watch in play-testing: once mazes stand, Leaks come mostly from bosses and Harpies, since a competent maze kills mid-tier Sends; a player who never defends until a Leak (Greedy) still beats Normal 1 Run in 5, with about four times its income by 10:00; Insane's ×1.5 snowballs to about 1,100 income by 15:00.
+- *Tuned (2026-10-19)* for pace, with the same runner, 5 seeds a row, now on more than one set of seeds (`--seed-offset`). The aims: Normal's median Run 14–16 min instead of 19:30; Sudden Death settling Runs rather than its last tick, which well under 10% of Runs should reach on any Difficulty; shorter Runs against Easy; and the win rates kept. Before → after:
+  - **Sudden Death 15:00 → 11:00**, so every Run ends by 15:50 instead of 19:50 (the 30th drain, tick 28,500).
+  - **New: in Sudden Death every Leak steals double** (`SUDDEN_STEAL`), still never more than the defender has, so the two Sides' 60 lives stay conserved and §10's end still holds.
+  - **Normal's salvos from 10:00 → only in Sudden Death**, as Easy's. With Sudden Death at 11:00, that one minute of salvos before everyone gets them was enough for Normal to beat the competent bot 3 Runs of 5 (attempt 5).
+  - **Hard's income factor ×1.1 → ×1.2**, back to its first guess. A shorter Run gives a ×1.1 Rival less time to compound, and the competent bot beat it in half its Runs (the aim is about 30%).
+  - Unchanged: the drain of 1 life an income tick, Sudden Death's +10% HP a minute, every Send's price, HP, income and Stock, the start, and the AI's other rules.
+  - Attempts, with the competent bot on seeds 1–5 and then 6–10:
+    1. Sudden Death at 12:00 and nothing else: Normal 2/5 with a median of 15:50, and no Run at the last tick on seeds 1–5.
+    2. At 11:00: Normal 2/5 and 2/5, median 14:30 and 15:40. On seeds 6–10 one Normal and one Hard Run of five reached the last tick: tied on lives, settled on Income.
+    3. At 11:00 with +30% HP a minute: 4 of 60 Runs (seat check included) reached the last tick.
+    4. At 11:00 with +100% HP a minute: 2 of 60 reached it, and on seeds 1–5 the competent bot fell to 3/5 on Easy and 1/5 on Normal. Sudden Death became a coin toss over whose maze broke first.
+    5. At 11:00 with Leaks stealing double: none of 60 reached it. Normal 2/5 and 2/5, Hard 2/5 and 3/5.
+    6. As 5 without the HP growth: 1 of 60 reached it, so the growth stays.
+    7. As 5 at 12:00: Normal's median 16:00 and 15:38, and a seat-check Run at the last tick. 11:00 it is.
+    8. As 5 with Normal's salvos only in Sudden Death: Normal 2/5 and 4/5, Hard 2/5 and 3/5.
+    9. As 8 with Hard at ×1.2: Hard 1/5 and 2/5. This is the result.
+    10. Tried and dropped: a drain that grows by a life each minute (from 12:00, so every Run ends by 14:30). All Runs then ended within half a minute of the last tick, and 20–60% of the Normal and Hard Runs reached it, since its last drain takes 3 and any two piles within 3 of each other last to it. Leaks stealing one more instead of double: Hard fell to 1/5 and 0/5.
+  - **Why the double steal.** The drain takes the same from both Sides, so it never changes who is ahead, and two Sides level on lives both run out on the last drain, whenever it falls. A harsher drain only brings that tick closer, with more Runs on it. Only Leaks move the lead, so making each Sudden Death Leak count twice is the lever: a lead opens faster, and since a Sudden Death Leak moves the gap by a multiple of 4 lives, Sides that enter Sudden Death 2 lives apart can't end level at all.
+  - **Results** on two sets of 5 seeds a row: 1–5, the default, and 11–15, which tuning never used. 50 Runs a set in about 5 s, with no refused AI commands. Income freezes at 11:00, so its third column is the frozen income.
+
+    Seeds 1–5:
+
+    | | Wins | Median | Reaching 15:50 | Lives stolen, you / Rival | Income at 5 / 10 min / frozen, you · Rival |
+    |---|---|---|---|---|---|
+    | Competent v Easy | 5 / 5 | 13:10 | 0% | 18.6 / 1.0 | 43 / 111 / 150 · 48 / 172 / 206 |
+    | Competent v Normal | 2 / 5 | 14:10 | 0% | 10.0 / 7.4 | 40 / 115 / 123 · 39 / 161 / 225 |
+    | Competent v Hard | 1 / 5 | 13:21 | 0% | 4.8 / 14.8 | 38 / 112 / 132 · 50 / 136 / 166 |
+    | Competent v Insane | 0 / 5 | 12:20 | 0% | 0.8 / 22.4 | 42 / 146 / 164 · 72 / 222 / 322 |
+    | Turtle v Normal | 0 / 5 | 13:50 | 0% | 0 / 11.4 | 10 / 10 / 10 · 44 / 189 / 244 |
+    | Rusher v Normal | 0 / 5 | 7:54 | 0% | 1.2 / 31.2 | 97 at 5 min · 41 (its Runs end before 10:00) |
+    | Flyer v Normal | 1 / 5 | 14:21 | 0% | 5.2 / 9.6 | 66 / 106 / 116 · 45 / 178 / 229 |
+    | Greedy v Normal | 1 / 5 | 13:40 | 0% | 11.0 / 15.2 | 96 / 619 / 890 · 49 / 221 / 284 |
+    | Seat check: competent v competent, each pairing both ways, Side 0 | 5 / 10 | 14:41 | 0% | 11.8 / 11.7 | 38 / 99 / 109 · 40 / 100 / 107 |
+
+    Seeds 11–15:
+
+    | | Wins | Median | Reaching 15:50 | Lives stolen, you / Rival | Income at 5 / 10 min / frozen, you · Rival |
+    |---|---|---|---|---|---|
+    | Competent v Easy | 5 / 5 | 11:55 | 0% | 23.6 / 1.4 | 38 / 131 / 157 · 48 / 171 / 210 |
+    | Competent v Normal | 3 / 5 | 15:20 | 0% | 9.8 / 8.8 | 40 / 116 / 148 · 42 / 147 / 199 |
+    | Competent v Hard | 0 / 5 | 13:50 | 0% | 3.2 / 15.8 | 38 / 110 / 134 · 51 / 131 / 166 |
+    | Competent v Insane | 0 / 5 | 12:49 | 0% | 0.2 / 21.0 | 42 / 136 / 165 · 73 / 301 / 359 |
+    | Turtle v Normal | 0 / 5 | 14:10 | 0% | 0 / 11.0 | 10 / 10 / 10 · 44 / 189 / 244 |
+    | Rusher v Normal | 0 / 5 | 7:52 | 0% | 1.2 / 31.2 | 99 at 5 min · 46 (its Runs end before 10:00) |
+    | Flyer v Normal | 0 / 5 | 14:45 | 0% | 5.2 / 11.2 | 64 / 104 / 114 · 44 / 160 / 219 |
+    | Greedy v Normal | 2 / 5 | 14:10 | 0% | 12.4 / 15.0 | 94 / 641 / 893 · 46 / 218 / 273 |
+    | Seat check: competent v competent, each pairing both ways, Side 0 | 6 / 10 | 15:05 | 0% | 12.7 / 11.0 | 39 / 102 / 108 · 38 / 98 / 114 |
+
+    The competent Runs' median is 13:11 and 12:59. Normal's median is 14:10 and 15:20, Easy's 13:10 and 11:55. No competent Run on either set reached 15:50. Over the 20 seeds from 1 to 20 (6–10 and 16–20 were used while tuning) the competent bot wins Normal 12 of 20 (60%) and Hard 5 of 20 (25%). Over seeds 1–15 it wins Easy 15 of 15 and Insane 0 of 15.
+  - **Not met on one set each:** Normal 2/5 on seeds 1–5 (aim 45–75%) and Hard 0/5 on seeds 11–15 (aim 15–45%). Each is one Run outside its band, and over 20 seeds both are on their aims. Of the 150 Runs on seeds 1–15, one reached 15:50: a Greedy v Normal Run on seeds 6–10, level on lives and settled on Income.
+  - Watch in play-testing: most Runs are now decided in Sudden Death, where a boss getting through swings 8 or 12 lives (a Warlord steals 4, a Mammoth 6), so a lead of 10 at 11:00 isn't safe; whether a 14–15 min Run against Normal leaves time to enjoy a Tier 3 maze; against Easy the competent bot wins at 12–13 min with Tier 1 towers only; Insane's ×1.5 now freezes at about 320–360 income.
 
 ## 17. New CONTEXT terms
 
@@ -498,7 +551,7 @@ How many of one Send a Side can buy right now. It starts at 1 when the Send unlo
 _Avoid_: charges, supply, food
 
 **Sudden Death**:
-Line Wars from 15:00: Income stops growing, every income tick takes a life from each Side, and new Sends get tougher. It ends every Run by 19:50.
+Line Wars from 11:00: Income stops growing, every income tick takes a life from each Side, Leaks steal double, and new Sends get tougher. It ends every Run by 15:50.
 _Avoid_: overtime, endgame, drain mode
 
 **Changes to existing entries:**
@@ -513,12 +566,12 @@ _Avoid_: overtime, endgame, drain mode
 
 ## 18. My calls, open to change
 
-- **30 lives, Sudden Death at 15:00, every Run over by 19:50:** that keeps a phone Run near 20 min, and §10 proves the end.
+- **30 lives, Sudden Death at 11:00 with Leaks stealing double, every Run over by 15:50:** that keeps a phone Run near a quarter of an hour, and §10 proves the end. The double steal, rather than a drain that grows, is what makes Sudden Death settle close Runs (§16, 2026-10-19).
 - **A Leak steals once and the creep is removed:** under 2.7c's 1v1 loop, one gap in your maze would lose you the Run.
 - **No neutral Waves:** the Rival is the pressure, and Waves hitting both Sides alike would only dilute the Sends.
 - **Difficulty is the Rival's income and skill, with the same creeps:** that is Reforged's lever, it is open, and versus needs identical creeps. It changes CONTEXT's Difficulty entry.
 - **Brawler, Sleet Hound and Hollow replace Maul's Raider, Frost Wolf and Wraith:** all three are on research §7's lists. You agreed, and Maul uses the new names too. The ids stay `raider`, `frost_wolf` and `wraith`, because ids are in every save and replay hash.
-- **Juggling allowed, and the AI never juggles:** this matches Maul, costs gold, and can't stall a Run past 19:50.
+- **Juggling allowed, and the AI never juggles:** this matches Maul, costs gold, and can't stall a Run past 15:50.
 - **One Race per Side, the Rival's random by default:** a second Race would arrive after the Run is decided.
 - **No tower-attacking Sends:** they need new engine work, and flyers already punish long cheap mazes.
 - **Flyers at half the income ratio:** this answers Wintermaul Wars' flyer complaint without making Harpies useless.

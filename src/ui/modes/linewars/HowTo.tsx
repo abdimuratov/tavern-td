@@ -1,3 +1,5 @@
+import { suddenRule } from './text';
+
 /** Line Wars in our own words, on one screen: the rules a first Run needs, then the controls. */
 export function LwHowTo() {
   return (
@@ -20,7 +22,7 @@ export function LwHowTo() {
       </section>
       <section>
         <h3>Sudden Death</h3>
-        <p>At 15:00 Income stops growing, every Income tick takes a life from both Sides, and new Sends get tougher. Every Run ends by 19:50. If both Sides run out together, the higher Income wins; the same Income is a Draw.</p>
+        <p>{suddenRule()} If both Sides run out together, the higher Income wins; the same Income is a Draw.</p>
       </section>
       <section>
         <h3>Building</h3>

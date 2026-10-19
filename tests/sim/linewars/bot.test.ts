@@ -7,7 +7,7 @@ const BOT_TIMEOUT = 60_000;
 // A small sample of whole Runs (docs/line-wars-design.md §13), so balance can't
 // quietly regress; `pnpm balance linewars` plays the full matrix.
 describe('the Line Wars bots', () => {
-  it('play whole Runs: the competent bot beats Easy, Turtle and Rusher lose to Normal, and nothing outlasts 19:50', { timeout: BOT_TIMEOUT }, () => {
+  it('play whole Runs: the competent bot beats Easy, Turtle and Rusher lose to Normal, and nothing outlasts 15:50', { timeout: BOT_TIMEOUT }, () => {
     const easy = playLw(1, 'easy');
     const normal = playLw(1, 'normal');
     const turtle = playLw(1, 'normal', { bot: 'turtle' });

@@ -148,7 +148,7 @@ describe('Sends', () => {
     expect(s.mode.score).toBe(LW_SENDS.brawler.bounty);
   });
 
-  it('bought in Sudden Death add no income and get 10% more HP for each minute since 15:00', () => {
+  it('bought in Sudden Death add no income and get 10% more HP for each minute since it began', () => {
     const s = newRun({ gold: 100000 });
     const sd = SUDDEN_DEATH_AT * TICK_RATE;
     runTo(s, sd - 1);

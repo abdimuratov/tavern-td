@@ -26,7 +26,7 @@ test('a Line Wars Run builds, upgrades and sends through the HUD, meets the Riva
   await expect(page.getByTestId('lives-you')).toHaveText('30');
   await expect(page.getByTestId('lives-rival')).toHaveText('30');
   await expect(page.getByTestId('rival')).toHaveText('Ironclad · +10 ×1');
-  await expect(page.getByTestId('clock')).toHaveText(/^Sudden Death in 1[45]:\d\d$/);
+  await expect(page.getByTestId('clock')).toHaveText(/^Sudden Death in 1[01]:\d\d$/);
   await expect(page.getByTestId('in-field')).toContainText('Nothing yet');
   await expect(page.getByTestId('next-unlock')).toContainText('Snowlings in 0:');
   // The shared HUD's Wave counter, lives and Send Wave button stay out of a mode without Waves.

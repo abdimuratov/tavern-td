@@ -40,7 +40,7 @@ function SendButton({ s, o, why, pending }: { s: PlaySession; o: linewars.SendOp
   const held = useRef(false);
   const locked = o.unlockIn > 0;
   const tags = sendTags(o.send);
-  const details = `${o.name} · ${o.price} gold · +${o.income} Income · ${sendAbout(o.send, o.hp)}`;
+  const details = `${o.name} · ${o.price} gold · +${o.income} Income · ${sendAbout(o.send, o.hp, o.steals)}`;
   const stop = (): void => clearTimeout(timer.current);
   const filling = !locked && o.stock < o.cap && o.restockTicks > 0 && o.restockIn > 0;
   const restock = filling ? Math.min(1, Math.max(0, 1 - o.restockIn / o.restockTicks)) : o.stock >= o.cap ? 1 : 0;

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { AI_PROFILES, LW_SENDS, fieldSpawns } from '../../../src/content/linewars';
+import { AI_PROFILES, LW_SENDS, SUDDEN_DEATH_AT, fieldSpawns } from '../../../src/content/linewars';
 import { TICK_RATE, linewars, snapshot, spawnCreep } from '../../../src/sim';
 import { mean, steadyTicks } from '../helpers';
 import { newRun, runTo } from './helpers';
@@ -9,8 +9,9 @@ import { newRun, runTo } from './helpers';
 // ticks are the AI's thinks (ADR-0003): an Insane Rival thinking twice a
 // second with up to four actions, against the competent AI on your Side. Two
 // minutes of one Run: 4:10–5:10, while both Fields are mazed and a think can
-// build several Walls, and 14:40–15:40, Sudden Death's salvos with both Fields
-// topped up to the cap of 40 slow, unkillable creeps each.
+// build several Walls, and 11:40–12:40, Sudden Death's salvos with both Fields
+// topped up to the cap of 40 slow, unkillable creeps each. Both Sides get
+// 1,000 lives before the run up to Sudden Death, so the Run is still on.
 
 /** In ms: a tick on average; the worst think, the first after loading the state (every cache cold) and the worst other tick. Each the least of three plays. */
 const MEAN_BUDGET = 0.25;
@@ -30,11 +31,11 @@ it('steps both Fields and both AIs\' thinking within the budget, mazing and in S
   const cold: number[] = [];
   const other: number[] = [];
   const lines: string[] = [];
-  for (const [at, topUp] of [[250, false], [880, true]] as const) {
+  for (const [at, topUp] of [[250, false], [SUDDEN_DEATH_AT + 40, true]] as const) {
+    if (topUp) for (const side of [0, 1] as const) s.mode.sides[side].lives = 1000;
     runTo(s, at * TICK_RATE);
     if (topUp) {
       for (const side of [0, 1] as const) {
-        s.mode.sides[side].lives = 1000;
         const [first, count] = fieldSpawns(side);
         for (let i = 0; s.creeps.filter((c) => linewars.creepField(c) === side).length < 40; i++) {
           spawnCreep(s, LW_SENDS[i % 2 === 0 ? 'brawler' : 'harpies'].creep, { wave: 0, spawn: first + (i % count), hp: 1e9, speed: 40 }, []);

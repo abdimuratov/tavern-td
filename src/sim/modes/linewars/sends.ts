@@ -1,6 +1,6 @@
 import {
-  LIVE_CAP, LW_SENDS, SEND_LIST, SUDDEN_DEATH_AT, SUDDEN_HP_PER_MINUTE, fieldSpawns, isSendId,
-  type LwSendSpec, type SendId,
+  DRAIN_LIVES, INCOME_SECONDS, LIVE_CAP, LW_SENDS, SEND_LIST, START_LIVES, SUDDEN_DEATH_AT, SUDDEN_HP_PER_MINUTE, SUDDEN_STEAL,
+  fieldSpawns, isSendId, type LwSendSpec, type SendId,
 } from '../../../content/linewars';
 import { spawnCreep } from '../../combat/creeps';
 import { TICK_RATE } from '../../core/constants';
@@ -23,6 +23,17 @@ export function suddenTick(): number {
   return ticks(SUDDEN_DEATH_AT);
 }
 
+/**
+ * The last tick a Run can reach when both Sides start with `lives` (design
+ * §10): the drain that would empty both if no Leak ever moved a life. Leaks
+ * only move lives, so by then the smaller pile is empty. 15:50 with 30 lives.
+ */
+export function lastTick(lives: number = START_LIVES): number {
+  const every = ticks(INCOME_SECONDS);
+  const first = Math.ceil(suddenTick() / every) * every;
+  return first + (Math.ceil(lives / DRAIN_LIVES) - 1) * every;
+}
+
 /** m:ss of a Run tick, for refusals. */
 export function clock(tick: number): string {
   const seconds = Math.floor(tick / TICK_RATE);
@@ -35,12 +46,17 @@ export function sendLocked(s: LwSide, id: SendId): boolean {
   return (s.stock[id] ?? 0) === 0 && (s.restock[id] ?? -1) < 0;
 }
 
-/** HP of each creep of a Send bought now: its own, times Sudden Death's growth by tick from 15:00. */
+/** HP of each creep of a Send bought now: its own, times Sudden Death's growth by tick from its start. */
 export function sendHp(state: GameState, send: LwSendSpec): number {
   const from = suddenTick();
   if (state.tick < from) return send.hp;
   const minutes = (state.tick - from) / (60 * TICK_RATE);
   return Math.max(1, Math.round(send.hp * (1 + SUDDEN_HP_PER_MINUTE * minutes)));
+}
+
+/** Lives a creep of `send` steals if it leaks now: its steal, doubled in Sudden Death. */
+export function leakSteal(state: GameState, send: LwSendSpec): number {
+  return state.tick < suddenTick() ? send.steals : send.steals * SUDDEN_STEAL;
 }
 
 /** Income a Send bought now adds: none from Sudden Death on. */
