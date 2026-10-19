@@ -865,8 +865,15 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 
 /* The HUD. */
 .or-status .or-stage { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A long name gives way to the Threat rather than pushing it out of the HUD. */
+.or-status > * { min-width: 0; }
+.or-status.challenge .or-stage { color: #f2c14e; }
+.or-status.challenge .or-challenge-mark { width: 9px; height: 9px; margin: 0 6px 0 2px; vertical-align: 0; }
 .or-status .or-threat { flex: none; padding: 0 5px; border-radius: 4px; background: #3a2018; color: #ffb8a0; font-size: 11px; font-weight: 750; }
 .or-run-stars { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+/* A Challenge's Run: its Star, then its rule as chips. */
+.or-rules { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; font-size: 10.5px; }
+.or-rule { padding: 0 5px; border-radius: 3px; background: #3e2c16; color: #f2d9a0; font-weight: 650; white-space: nowrap; }
 .btn.or-send { flex-direction: column; gap: 0; line-height: 1.1; position: relative; }
 .btn.or-send .early { font-weight: 800; }
 .btn.or-send .detail { font-size: 11px; font-weight: 600; }
@@ -1058,6 +1065,22 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .campaign-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line); }
 .campaign-foot .btn { padding: 0 14px; font-weight: 650; }
 
+/* A Stage's Challenge: a small diamond, dark with a gold edge while open, gold once won; on the war map's pins, the Stage panel and the HUD. */
+.or-challenge-mark { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 2px; border: 2px solid #f2c14e; background: #2a1c10; transform: rotate(45deg); }
+.or-challenge-mark.won { background: #f2c14e; border-color: #3b2a12; box-shadow: 0 0 6px rgba(242, 193, 78, 0.6); }
+.or-challenge-mark.locked { border-style: dashed; border-color: var(--muted); background: none; }
+.war-map .pin .or-challenge-mark { position: absolute; top: 1px; right: 1px; width: 11px; height: 11px; }
+.or-challenge { display: grid; gap: 3px; padding: 7px 9px; border-radius: 8px; background: #241a10; border: 1px solid #5c4626; }
+.or-challenge h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; color: #f2c14e; }
+.or-challenge .rule { margin: 0; font-size: 12px; line-height: 1.3; }
+.or-challenge .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.or-challenge .status { min-width: 0; font-size: 12px; color: var(--muted); }
+.or-challenge.won .status { color: #f2c14e; font-weight: 650; }
+.or-challenge .btn { flex: none; padding: 0 14px; }
+.or-challenge:not(.won) .btn { font-weight: 700; }
+.or-challenge.locked { background: none; border-style: dashed; border-color: var(--line); }
+.or-challenge.locked h3, .or-challenge.locked .rule { opacity: 0.5; }
+
 /* The Talent screen. */
 .talent-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 15px; }
 .talent-trees { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
@@ -1081,12 +1104,30 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .stage-card .stage-line, .stage-card .region-intro p { font-size: 11px; }
   .difficulties.compact .btn.difficulty { min-height: 44px; padding: 3px 8px; }
   .difficulties.compact .difficulty .about { display: none; }
+  .or-challenge { padding: 5px 8px; gap: 2px; }
+  .or-challenge .rule, .or-challenge .status { font-size: 11px; }
   .hud.mode-original .waves h2 { display: none; }
   .or-targeting > .muted { display: none; }
   /* The shape and pips already say what it is; the room goes to Sell. */
   .or-kind .what { display: none; }
   .hud.mode-original { gap: 5px; }
   .or-tower dl.or-stats, .or-tower .abilities { display: none; }
+}
+/*
+ * A phone on its side: the Stage panel fits the screen, and the Difficulties take one row.
+ * Until the Stage is won, its Challenge shrinks to its name and how to open it, and the Region
+ * intro stays. Once it is won, the Challenge's rule and Play Challenge need the room, so the
+ * intro goes (the map still names the Region).
+ */
+@media (max-height: 520px) {
+  .stage-card { gap: 3px; }
+  .stage-card.won .region-intro { display: none; }
+  .or-challenge.locked { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; padding: 4px 8px; }
+  .or-challenge.locked h3 { font-size: 12px; }
+  .or-challenge.locked .rule { display: none; }
+  .difficulties.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .difficulties.compact .btn.difficulty { align-items: center; justify-content: center; padding: 0 2px; }
+  .difficulties.compact .difficulty .name { font-size: 13px; }
 }
 @media (hover: none) {
   .btn.or-sell { padding-right: 9px; }

@@ -1,5 +1,5 @@
 import { signal } from '@preact/signals';
-import { CAMPAIGN_LENGTH, challengeOfStage, stageByNumber, type ChallengeSpec, type Family } from '../../../content/original';
+import { CAMPAIGN_LENGTH, challengeOfStage, FAMILIES, stageByNumber, type ChallengeSpec, type Family } from '../../../content/original';
 import { EMPTY_CAMPAIGN, loadCampaign, updateCampaign, type CampaignProgress } from '../../../platform/storage';
 import { original, type GameState } from '../../../sim';
 import { FAMILY_NAME } from './text';
@@ -87,6 +87,17 @@ export function challengeOpen(c: CampaignProgress, stage: number): boolean {
   return challengeOfStage(stage) !== undefined && stageRecord(c, stage) !== null;
 }
 
+/**
+ * Where Stage `stage`'s Challenge stands, as the war map and the Stage panel
+ * mark it: 'locked' until the Stage is won, then 'open', then 'won'; null for
+ * a Stage without one.
+ */
+export function challengeState(c: CampaignProgress, stage: number): 'locked' | 'open' | 'won' | null {
+  if (!challengeOfStage(stage)) return null;
+  if (!challengeOpen(c, stage)) return 'locked';
+  return challengeWon(c, stage) ? 'won' : 'open';
+}
+
 /** Challenges won, of those built. */
 export function challengesWon(c: CampaignProgress): number {
   let n = 0;
@@ -94,15 +105,27 @@ export function challengesWon(c: CampaignProgress): number {
   return n;
 }
 
+/** Names in a list: "Arrow", "Frost and Arcane", "Arrow, Cannon and Frost" ("or" in place of "and" if asked). */
+function listOf(names: readonly string[], and = 'and'): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]!}`;
+}
+
 /**
- * A Challenge's rule as short lines, one per modifier, for a HUD or a tooltip
- * ("Cannon and Frost only", "+30% creep HP"). Its `rule` is the one sentence
- * for the Stage panel.
+ * A Challenge's rule as short lines, one per modifier, for the HUD's chips
+ * ("Cannon and Frost only", "No Arrow towers", "+30% creep HP"). A family rule
+ * names the shorter side: the families left out when it allows most of them.
+ * Its `rule` is the one sentence for the Stage panel.
  */
 export function challengeLines(spec: ChallengeSpec): string[] {
   const m = spec.modifiers;
   const out: string[] = [];
-  if (m.families) out.push(`${m.families.map((f) => FAMILY_NAME[f]).join(', ').replace(/, ([^,]*)$/, ' and $1')} only`);
+  if (m.families) {
+    const allowed = m.families;
+    const barred = FAMILIES.filter((f) => !allowed.includes(f));
+    out.push(barred.length < allowed.length
+      ? `No ${listOf(barred.map((f) => FAMILY_NAME[f]), 'or')} towers`
+      : `${listOf(allowed.map((f) => FAMILY_NAME[f]))} only`);
+  }
   if (m.spots) out.push(`${m.spots.length} Build Spots`);
   if (m.maxTier !== undefined) out.push(`Tiers 1–${m.maxTier}`);
   if (m.noSpecialisations) out.push('No Specialisations');

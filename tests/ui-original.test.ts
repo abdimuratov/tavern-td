@@ -4,11 +4,12 @@ import { challengeOfStage, ORIGINAL_TOWERS } from '../src/content/original';
 import type { CampaignProgress } from '../src/platform/storage';
 import { hashState, original, snapshot, step, type Command, type GameState, type Point } from '../src/sim';
 import type { RunView } from '../src/ui/mode-ui';
-import { ORIGINAL_UI, validOriginalSave } from '../src/ui/modes/original';
+import { ORIGINAL_UI, originalOptionsText, validOriginalSave } from '../src/ui/modes/original';
 import {
-  campaign, challengeLines, challengeOpen, challengeRecord, challengesWon, challengeStarsEarned, challengeWon, describeOutcome,
-  MOST_STARS, opened, runTalents, stageOpen, stagesCleared, starsEarned, starsFree, withChallengeResult, withResult, withRun,
+  campaign, challengeLines, challengeOpen, challengeRecord, challengesWon, challengeStarsEarned, challengeState, challengeWon,
+  describeOutcome, MOST_STARS, opened, runTalents, stageOpen, stagesCleared, starsEarned, starsFree, withChallengeResult, withResult, withRun,
 } from '../src/ui/modes/original/campaign';
+import { challengeStatus } from '../src/ui/modes/original/StageSelect';
 import { ORIGINAL_LOOK, REGION_TERRAIN } from '../src/ui/modes/original/look';
 import { ring, spotCentre } from '../src/ui/modes/original/ring';
 import { buildOn, newRun, placeTower, setLevel } from './sim/original/helpers';
@@ -274,7 +275,9 @@ describe('Challenges in the Campaign', () => {
   it('counts 48 Stars in all, and gives each rule as short lines', () => {
     expect(MOST_STARS).toBe(48);
     expect(challengeLines(challengeOfStage(2)!)).toEqual(['Cannon and Frost only', '+30% creep HP']);
-    expect(challengeLines(challengeOfStage(10)!)).toEqual(['Cannon, Frost, Arcane, Poison and Totem only', '+10% creep HP']);
+    // A rule that allows most families names the ones it leaves out.
+    expect(challengeLines(challengeOfStage(10)!)).toEqual(['No Arrow towers', '+10% creep HP']);
+    expect(challengeLines(challengeOfStage(5)!)).toEqual(['No Frost or Arcane towers', '15 lives']);
     expect(challengeLines(challengeOfStage(1)!)).toEqual(['4 Build Spots']);
     expect(challengeLines(challengeOfStage(3)!)).toEqual(['Tiers 1–2']);
     expect(challengeLines(challengeOfStage(6)!)).toEqual(['No Specialisations', '350 gold to start']);
@@ -282,6 +285,61 @@ describe('Challenges in the Campaign', () => {
     expect(challengeLines(challengeOfStage(11)!)).toEqual(['18 s Breaks']);
     expect(challengeLines(challengeOfStage(8)!)).toEqual(['450 gold to start', 'Send now pays no gold']);
     expect(challengeLines(challengeOfStage(12)!)).toEqual(['13 lives']);
+    expect(challengeLines(challengeOfStage(4)!)).toEqual(['+15% creep HP']);
+    expect(challengeLines(challengeOfStage(9)!)).toEqual(['8 Build Spots']);
+  });
+
+  it('marks a Challenge locked, then open once its Stage is won, then won with its fastest win', () => {
+    expect([challengeState(EMPTY, 1), challengeStatus(EMPTY, 1)]).toEqual(['locked', 'Win this Stage to open it']);
+    expect([challengeState(one, 1), challengeStatus(one, 1)]).toEqual(['open', '1 Star · Normal']);
+    expect(challengeState(one, 2)).toBe('locked');
+    const a = withChallengeResult(one, 1, challengeWin(522));
+    expect([challengeState(a, 1), challengeStatus(a, 1)]).toEqual(['won', 'Won · fastest 8:42']);
+    // A repaired Record keeps the win without a time.
+    expect(challengeStatus({ ...a, challenges: { 1: { fastest: null } } }, 1)).toBe('Won');
+    expect(challengeState(one, 13)).toBeNull();
+  });
+});
+
+describe('starting and ending a Challenge', () => {
+  const fourStages: CampaignProgress = {
+    stages: Object.fromEntries([1, 2, 3, 4].map((n) => [n, { stars: 2, hardest: 'normal' as const, fastest: 600 }])),
+    challenges: {},
+    talents: ['fletching'],
+  };
+
+  it('starts the Stage\'s Challenge with the Campaign\'s Talents and unlocks, and names it', () => {
+    campaign.value = fourStages;
+    expect(ORIGINAL_UI.runSettings!({ stage: '3', challenge: '1' })).toEqual({
+      stage: 3, challenge: 'short-rope', talents: ['fletching'], cleared: 4,
+    });
+    // Without the flag it is the Stage's own Run, as before.
+    expect(ORIGINAL_UI.runSettings!({ stage: '3' })).toEqual({ stage: 3, talents: ['fletching'], cleared: 4 });
+    expect(originalOptionsText({ stage: '3', challenge: '1' })).toBe('Challenge: Short Rope · Gallows Hill');
+    expect(originalOptionsText({ stage: '3' })).toBe('Gallows Hill');
+  });
+
+  it('keeps a Challenge Run a Challenge through Play again, Continue and save codes', () => {
+    campaign.value = fourStages;
+    const run = newRun({ challenge: 'gravelords-host', cleared: 4 });
+    const choices = ORIGINAL_UI.optionsOf!(run);
+    expect(choices).toEqual({ stage: '4', challenge: '1' });
+    expect(ORIGINAL_UI.optionsText!(choices)).toBe('Challenge: The Gravelord\'s Host · Fort Harrow');
+    // Play again and Continue start from these choices: the same Challenge, which the sim accepts on Normal.
+    const again = original.originalOptions({ mode: 'original', seed: 2, difficulty: 'normal', options: ORIGINAL_UI.runSettings!(choices) });
+    expect(again).toMatchObject({ stage: 4, challenge: 'gravelords-host', cleared: 4 });
+    const loaded = JSON.parse(snapshot(run)) as GameState;
+    expect(ORIGINAL_UI.optionsOf!(loaded)).toEqual({ stage: '4', challenge: '1' });
+  });
+
+  it('says how a Challenge ended: won with the lives left, or the Wave it fell on', () => {
+    const state = newRun({ challenge: 'burnt-mill', cleared: 1 });
+    state.phase = 'lost';
+    state.wave.number = 7;
+    expect(ORIGINAL_UI.endText!(state)).toEqual({ won: false, summary: 'The Challenge fell on Wave 7 of 12', wave: '7/12' });
+    state.phase = 'won';
+    state.lives = 1;
+    expect(ORIGINAL_UI.endText!(state)).toEqual({ won: true, summary: 'Challenge won: The Burnt Mill, with 1 life left', wave: '12/12' });
   });
 });
 

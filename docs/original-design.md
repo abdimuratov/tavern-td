@@ -475,3 +475,13 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 - **In a Run:** "Challenge: name" with the rule as short lines (`challengeLines`); the Stars shown are the Challenge's Star rather than Stars by lives, and Send now shows no gold in Short Supply.
 - **End card:** "Challenge won", its Star ("+1 to the Campaign" on the first win, "Already won" after), the Campaign's Stars out of 48, and the time with New best. A Stage's first win lists its Challenge under Opened.
 - **Records:** a Challenge column in the Original's table, with the fastest Challenge win or a dash, and "n of 48 Stars · n of 12 Challenges".
+
+**As built in the UI** (where it settled something the list above leaves open):
+- **War map:** the mark is a small diamond at the top right of the pin: dark with a gold edge while the Challenge is open, solid gold once it is won. The pin's tooltip says which. The Campaign's foot counts "n of 48" from the rules' own total.
+- **Stage panel:** Play Challenge is the gold button until the Challenge is won, then a plain one. It asks before replacing a saved Run, as the Difficulty buttons do.
+- **A phone on its side** (screens 520 px tall or less): the Stage panel puts the four Difficulties in one row. Until the Stage is won, it keeps the Region's two-line intro, the Campaign's only story text, and the locked Challenge shrinks to its name and "Win this Stage to open it". Once the Stage is won, the intro gives its room to the Challenge's rule and Play Challenge (the map still names the Region). Either way the whole panel fits 659 × 393 without a scroll.
+- **HUD:** the Challenge's name in gold after the diamond, beside Threat; the word "Challenge" is in its tooltip, because the phone's 212 px HUD has no room for it. Under it, the Star and the rule as chips. A family rule's chip names the shorter side: "No Arrow towers", "No Frost or Arcane towers", but "Cannon and Frost only". In Short Supply, Send now reads "no gold · Wave 9 in 0:24".
+- **End card:** Victory, then "Challenge won: The Burnt Mill, with 11 lives left", one Star, "+1 to the Campaign" (or "Already won: no more Stars"), "n of 48 Stars" and the time with New best. A loss reads "The Challenge fell on Wave 7 of 12", and Retry plays the Challenge again.
+- **Its name elsewhere:** Play again, Continue and an imported save code call it "Challenge: The Burnt Mill · The Mill Road".
+- **Records:** the heading reads "n of 48 Stars earned · k of 12 Challenges won".
+- **How to play** has a short "Challenges" paragraph.

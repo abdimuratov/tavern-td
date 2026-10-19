@@ -51,7 +51,16 @@ Phase 3 progress (2026-10-18):
 - Done: tuning ([original-design.md §15](original-design.md#15-balance-2026-10-18) lists every number changed). Stages now ramp up to their last Waves. Boss HP fell to 12, 12 and 24 Ghouls. Cannon hits 30% harder, and Plague Cauldron, Ranger Lodge and Deadeye were trimmed.
   - Met, over 20 seeds: the competent bot wins Easy 99%, Normal 65% (50–80% per Stage) and Insane 0%.
   - Not met: Arrow, Poison or Arcane alone still clear some Stages from Stage 5 on. My recommendation is to keep the soft counters and decide after the play-test (§15).
+- Done on 2026-10-19: Challenges ([original-design.md §16](original-design.md#16-challenges-2026-10-19)). Each Stage has one: the Stage again under a named rule of one or two modifiers, themed to what the Stage brings. It opens once its Stage is won and always plays Normal, with your Talents and the Campaign's unlocks. Its first win pays one Star, so the Stages' 36 and the Challenges' 12 fill all six Talent trees. It keeps its own Record (won, fastest win) and never touches the Stage's.
+  - Rules: a Challenge is a Run setting, and only a Challenge's Run names it in its state. The modifiers are the Build Spots kept, the families allowed, lives, starting gold, creep HP, no early-call gold, Break length, a Tier 2 cap and no Specialisations. Every Stage's Run, replay hash and bot result is unchanged, and older saves, save codes and stored Campaigns load as before.
+  - Tuned with `pnpm balance --challenges`, using the least a player holds when each Challenge opens. The competent bot wins every Challenge 20–60% over seeds 1–5 and 25–40% over 20 seeds (33% on average), against 50–80% for the Stages on Normal.
+  - War map: a won Stage's pin carries a diamond, dark while its Challenge is open and gold once it is won, and the Campaign counts "n of 48". The Stage panel has a Challenge block under the Difficulties: its name, its rule, "1 Star · Normal" or its fastest win, and Play Challenge. Before the Stage is won, the block is dimmed with "Win this Stage to open it".
+  - In a Run: the Challenge's name beside Threat, then its Star and its rule as chips. Send now says "no gold" in Short Supply. The end card says "Challenge won", shows the Star and whether it added to the Campaign, the total of 48 and the time. A loss names the Wave it fell on. Play again, Continue and save codes keep it a Challenge, and a Stage's first win lists its Challenge under Opened.
+  - Records gain a Challenge column and "k of 12 Challenges won", and How to play has a paragraph on Challenges.
+  - Tested: 29 tests for the rules, the Campaign and storage (each modifier, the once-only Star, old saves, codes and Campaigns, replays, two whole bot wins), and 4 for the screens' helpers. An e2e opens The Burnt Mill from the war map and wins it. It checks the Star, the 48, the pin's mark, Records, the Talent budget, Play again and Continue, that the Challenge is shut before its Stage is won, and that the Stage panel fits a phone on its side, won or not. It passes in Chrome and on the iPhone project; the other two browsers are left to CI.
+- My calls on Challenges, open to change: 1 Star each, paid once; Normal only; your Talents and current unlocks apply; any lives left wins; the bots judge each Challenge at the least you can hold when it opens; Fort Harrow keeps "+15% HP" because the bot never kills the Gravelord; the HUD marks a Challenge with the map's diamond, not the word; on a phone the Stage panel puts the Difficulties in one row, keeps the Region intro until the Stage is won (its locked Challenge shrinks to two short lines), and gives that room to the Challenge's rule and Play Challenge once it is won.
 - Watch in play-testing: the bots go from ~60% on Normal to ~0% on Hard, so Hard may be too steep a step. Waves reach 30–70 creeps by Region 2.
+- Watch in play-testing, Challenges: whether The Gravelord's Host, a plain +15% HP, feels like a Challenge or should target the boss; whether the tightest, Three Hordes' 18 s Breaks and Short Supply, feel fair to a person; and whether 48 Stars filling every tree takes the choice out of Talents too early.
 - Left: a play-test of the whole Campaign on the Mac, the iPhone and the S24.
 
 Phase 4 started on 2026-10-18, alongside Phase 3's last steps and without waiting for any play-test.
@@ -293,7 +302,7 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
    - **Early call:** calling the next Wave early pays bonus gold.
    - **No hero.** A "hero tower" can be reconsidered later.
 3. **Content:** 12 Stages in 3 regions of 4, each with 10–20 Waves (about 8–15 minutes), plus a Stage-select screen.
-4. **Later:** challenge versions of Stages that award extra Stars.
+4. **Challenges** ([original-design.md §16](original-design.md#16-challenges-2026-10-19), done 2026-10-19): a challenge version of each Stage that awards an extra Star.
 
 ### Phase 4: Maul
 - **Maps:** open-field mazing reusing Gem's pathing, but without Rocks. One Map with 1–2 spawns and checkpoints.
@@ -344,5 +353,5 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 ## 7. Parked for later
 
 - Versus: a TURN relay, a handicap, and keeping a Versus Run on disk.
-- Challenge Stages, music and more Races.
+- Music and more Races.
 - A Remix mode (Gem's Draft plus Element's picks).

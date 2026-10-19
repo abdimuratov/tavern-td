@@ -1,10 +1,26 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { buildOnSpot, newOriginalRun, spotPoint, tapAt, touch, towerSpecs } from './app';
 
 // The Original as a player plays it: menu → Campaign → Stage 1 → Normal, a
 // tower built through the ring on a Build Spot, Send Wave 1, then a reload and
-// Continue; and a won Stage that stores its Stars and opens Talents. Waves are
-// run to their end through the debug handle; everything else goes through the UI.
+// Continue; a won Stage that stores its Stars and opens Talents; and its
+// Challenge, opened by that win and won for one more Star. Waves are run to
+// their end through the debug handle; everything else goes through the UI.
+
+/** Wins the Run through the debug handle: Tier 2 Arrows and Cannons on every Build Spot, then each Wave in turn. */
+async function winRun(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const c = window.tavern!.controller;
+    c.state.gold = 5000;
+    for (let spot = 0; spot < c.state.map.buildSpots!.length; spot++) c.send({ type: 'original.build', spot, spec: spot % 2 ? 'cannon_tower' : 'arrow_tower' });
+    c.fastForward(1);
+    for (const t of c.state.towers) c.send({ type: 'original.upgrade', tower: t.id, to: t.spec === 'arrow_tower' ? 'longbow_tower' : 'bombard' });
+    c.send({ type: 'original.sendNow' });
+    for (let i = 0; i < 30 * 60 * 15 && c.state.phase !== 'won' && c.state.phase !== 'lost'; i++) c.fastForward(1);
+  });
+  await expect(page.getByTestId('run-over')).toBeVisible();
+}
 
 // Each test plays Waves through the debug handle, which takes most of the default 30 s on CI's single slow worker.
 test.describe.configure({ timeout: 90_000 });
@@ -71,17 +87,7 @@ test('a won Stage stores its Stars in the Campaign and opens Talents', async ({ 
   await page.goto('./');
   await expect(page.getByTestId('mode-original').getByTestId('mode-page')).toHaveText('Campaign');
   await newOriginalRun(page, 'easy');
-  // Win through the debug handle: Tier 2 Arrows and Cannons on every Spot, then each Wave in turn.
-  await page.evaluate(async () => {
-    const c = window.tavern!.controller;
-    c.state.gold = 5000;
-    for (let spot = 0; spot < 8; spot++) c.send({ type: 'original.build', spot, spec: spot % 2 ? 'cannon_tower' : 'arrow_tower' });
-    c.fastForward(1);
-    for (const t of c.state.towers) c.send({ type: 'original.upgrade', tower: t.id, to: t.spec === 'arrow_tower' ? 'longbow_tower' : 'bombard' });
-    c.send({ type: 'original.sendNow' });
-    for (let i = 0; i < 30 * 60 * 15 && c.state.phase !== 'won' && c.state.phase !== 'lost'; i++) c.fastForward(1);
-  });
-  await expect(page.getByTestId('run-over')).toBeVisible();
+  await winRun(page);
   await expect(page.getByTestId('end-summary')).toContainText('The Mill Road held on Easy');
   await expect(page.getByTestId('end-stars')).toHaveAttribute('aria-label', '3 of 3 Stars');
   await expect(page.getByTestId('stars-gained')).toContainText('+3 to the Campaign');
@@ -112,6 +118,93 @@ test('a won Stage stores its Stars in the Campaign and opens Talents', async ({ 
   await page.getByTestId('talents-reset').click();
   await expect(page.getByTestId('stars-free')).toHaveText('★3');
   await expect(page.getByTestId('talent-long-draw')).toBeEnabled();
+});
+
+test('a won Stage opens its Challenge, whose first win pays one more Star toward 48', async ({ page }) => {
+  await page.goto('./');
+  const card = page.getByTestId('mode-original');
+  await card.getByTestId('mode-page').click();
+  // Before Stage 1 is won, its Challenge shows dimmed, with no way in and no mark on the pin.
+  await expect(page.getByTestId('stage-name')).toHaveText('1 · The Mill Road');
+  await expect(page.getByTestId('challenge-name')).toHaveText('Challenge: The Burnt Mill');
+  await expect(page.getByTestId('challenge-status')).toHaveText('Win this Stage to open it');
+  await expect(page.getByTestId('challenge-start')).toHaveCount(0);
+  await expect(page.getByTestId('challenge-mark-1')).toHaveCount(0);
+  await expect(page.getByTestId('stage-card').locator('.campaign-foot')).toContainText('of 48');
+  // On a phone on its side too, an unwon Stage keeps its Region intro, with every Difficulty in view.
+  await expect(page.getByTestId('region-intro')).toBeVisible();
+  for (const d of ['easy', 'normal', 'hard', 'insane']) await expect(page.getByTestId(`difficulty-${d}`)).toBeInViewport({ ratio: 1 });
+
+  // Win Stage 1: the end card lists its Challenge under Opened.
+  await page.getByTestId('difficulty-easy').click();
+  await page.waitForFunction(() => !!window.tavern);
+  await winRun(page);
+  await expect(page.getByTestId('opened')).toContainText('Challenge: The Burnt Mill');
+  await page.getByTestId('end-menu').click();
+
+  // The won Stage's pin carries an open Challenge, and its panel offers it on Normal.
+  await card.getByTestId('mode-page').click();
+  await expect(page.getByTestId('challenge-mark-1')).toHaveClass(/open/);
+  await page.getByTestId('talents').click();
+  await expect(page.getByTestId('stars-free')).toHaveText('★3');
+  await page.getByTestId('back').click();
+  await page.getByTestId('stage-1').click();
+  await expect(page.getByTestId('challenge-status')).toHaveText('1 Star · Normal');
+  await expect(page.getByTestId('challenge-rule')).toContainText('4 Build Spots');
+  // A won Stage's panel fits a phone on its side too; there the Region intro gives its room to the Challenge.
+  await expect(page.getByTestId('challenge-start')).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId('talents')).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId('region-intro')).toBeVisible({ visible: page.viewportSize()!.height > 520 });
+  await page.getByTestId('challenge-start').click();
+
+  // A Challenge Run: Normal, on the Burnt Mill's 4 Build Spots, with its name, Star and rule on the HUD.
+  await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
+  await expect(page.getByTestId('run-challenge')).toHaveAttribute('title', 'Challenge: The Burnt Mill, on The Mill Road');
+  await expect(page.getByTestId('challenge-rules')).toContainText('4 Build Spots');
+  await expect(page.getByTestId('run-stars')).toHaveAttribute('aria-label', '1 of 1 Stars');
+  await page.waitForFunction(() => !!window.tavern);
+  const run = () => page.evaluate(() => {
+    const s = window.tavern!.controller.state;
+    return { difficulty: s.difficulty, challenge: (s.mode as { challenge?: string }).challenge, spots: s.map.buildSpots!.length, wave: s.wave.number };
+  });
+  expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', spots: 4, wave: 0 });
+  await winRun(page);
+
+  // The end card: the Challenge's Star, added to the Campaign's 48, and its time as a new best.
+  await expect(page.getByTestId('end-summary')).toContainText('Challenge won: The Burnt Mill');
+  await expect(page.getByTestId('end-stars')).toHaveAttribute('aria-label', '1 of 1 Stars');
+  await expect(page.getByTestId('stars-gained')).toHaveText('+1 to the Campaign');
+  await expect(page.getByTestId('original-end')).toContainText('4 of 48 Stars');
+  await expect(page.getByTestId('end-time')).toContainText('New best');
+  await expect(page.getByTestId('opened')).toHaveCount(0);
+  await expect(page.getByTestId('play-again')).toHaveText('Play again · Challenge: The Burnt Mill · The Mill Road · Normal');
+  await expect(page.getByTestId('end-menu')).toBeInViewport({ ratio: 1 });
+
+  // Play again restarts the Challenge, and Continue keeps it one.
+  await page.getByTestId('play-again').click();
+  await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
+  await expect.poll(run).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', spots: 4, wave: 0 });
+  await page.getByTestId('menu-button').click();
+  await page.getByTestId('quit').click();
+  await expect(card.getByTestId('continue')).toContainText('Challenge: The Burnt Mill · The Mill Road · Normal');
+
+  // The pin's mark turns gold, the panel shows the fastest win, and the Talent budget grew by its Star.
+  await card.getByTestId('mode-page').click();
+  await expect(page.getByTestId('challenge-mark-1')).toHaveClass(/won/);
+  await page.getByTestId('stage-1').click();
+  await expect(page.getByTestId('challenge-status')).toHaveText(/^Won · fastest \d+:\d\d$/);
+  await expect(page.getByTestId('campaign-stars')).toHaveText('★4');
+  await page.getByTestId('talents').click();
+  await expect(page.getByTestId('stars-free')).toHaveText('★4');
+  await page.getByTestId('back').click();
+  await page.getByTestId('back').click();
+
+  // Records: a Challenge column, and the Challenges won beside the Stars.
+  await page.getByTestId('records').click();
+  await expect(page.getByTestId('records-original-total')).toHaveText('4 of 48 Stars earned · 1 of 12 Challenges won');
+  await expect(page.getByTestId('records-original').locator('thead')).toContainText('Challenge');
+  await expect(page.getByTestId('records-challenge-1')).toHaveText(/^\d+:\d\d$/);
+  await expect(page.getByTestId('records-challenge-2')).toHaveText('–');
 });
 
 test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }) => {

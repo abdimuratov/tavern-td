@@ -1,4 +1,4 @@
-import { PERKS, stageByNumber, TARGETINGS } from '../../../content/original';
+import { challengeById, challengeOfStage, PERKS, stageByNumber, TARGETINGS, type ChallengeSpec } from '../../../content/original';
 import { buildSpotCells, original, routeCount, type GameState, type SimEvent } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
 import type { ModeUi, Placement, RunChoices, RunView } from '../../mode-ui';
@@ -125,13 +125,27 @@ function onEvents(view: RunView, events: readonly SimEvent[]): void {
   }
 }
 
+/** A Run's choices: its Stage, and `challenge: '1'` when it plays the Stage's Challenge, so Play again and Continue keep it one. */
 function choicesOf(state: GameState): RunChoices {
-  return { stage: String(orState(state).stage) };
+  const m = orState(state);
+  return m.challenge === undefined ? { stage: String(m.stage) } : { stage: String(m.stage), challenge: '1' };
 }
 
 function stageOf(choices: RunChoices): number {
   const n = Number(choices['stage'] ?? 1);
   return Number.isInteger(n) && n >= 1 ? n : 1;
+}
+
+/** The Challenge these choices play, if they ask for the Stage's. */
+function challengeOf(choices: RunChoices): ChallengeSpec | undefined {
+  return choices['challenge'] === '1' ? challengeOfStage(stageOf(choices)) : undefined;
+}
+
+/** The choices in a few words: "The Mill Road", or "Challenge: The Burnt Mill · The Mill Road". */
+export function originalOptionsText(choices: RunChoices): string {
+  const stage = stageByNumber(stageOf(choices))?.name ?? `Stage ${stageOf(choices)}`;
+  const challenge = challengeOf(choices);
+  return challenge ? `Challenge: ${challenge.name} · ${stage}` : stage;
 }
 
 export const ORIGINAL_UI: ModeUi = {
@@ -147,11 +161,19 @@ export const ORIGINAL_UI: ModeUi = {
   Records: OriginalRecords,
   MenuPage: { label: 'Campaign', Page: StageSelect },
 
-  // A Run takes the Stage chosen, with the Campaign's Talents and Stages finished as they stand when it starts.
-  runSettings: (choices) => ({ stage: stageOf(choices), talents: runTalents(campaign.value), cleared: stagesCleared(campaign.value) }),
+  // A Run takes the Stage chosen, or its Challenge, with the Campaign's Talents and Stages finished as they stand when it starts.
+  runSettings: (choices) => {
+    const challenge = challengeOf(choices);
+    return {
+      stage: stageOf(choices),
+      ...(challenge ? { challenge: challenge.id } : {}),
+      talents: runTalents(campaign.value),
+      cleared: stagesCleared(campaign.value),
+    };
+  },
   loadProgress: loadCampaignProgress,
   optionsOf: choicesOf,
-  optionsText: (c) => stageByNumber(stageOf(c))?.name ?? `Stage ${stageOf(c)}`,
+  optionsText: originalOptionsText,
   difficultyAbout: (d) => ({
     easy: 'Creeps have 25% less HP',
     normal: 'The Stage as designed',
@@ -233,10 +255,17 @@ export const ORIGINAL_UI: ModeUi = {
   endText(state) {
     const r = original.originalResult(state);
     const name = stageByNumber(r.stage)?.name ?? `Stage ${r.stage}`;
+    const challenge = r.challenge === null ? undefined : challengeById(r.challenge);
+    const lives = `${r.lives} ${r.lives === 1 ? 'life' : 'lives'} left`;
+    if (challenge) {
+      return r.won
+        ? { won: true, summary: `Challenge won: ${challenge.name}, with ${lives}`, wave: `${state.wave.total}/${state.wave.total}` }
+        : { won: false, summary: `The Challenge fell on Wave ${state.wave.number} of ${state.wave.total}`, wave: `${state.wave.number}/${state.wave.total}` };
+    }
     if (r.won) {
       return {
         won: true,
-        summary: `${name} held on ${DIFFICULTY_NAME[state.difficulty]} with ${r.lives} ${r.lives === 1 ? 'life' : 'lives'} left`,
+        summary: `${name} held on ${DIFFICULTY_NAME[state.difficulty]} with ${lives}`,
         wave: `${state.wave.total}/${state.wave.total}`,
       };
     }

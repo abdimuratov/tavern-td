@@ -1,3 +1,5 @@
+import { MOST_STARS } from './campaign';
+
 /** The Original on one screen: the rules a first Stage needs, then the controls. */
 export function OriginalHowTo() {
   return (
@@ -37,6 +39,10 @@ export function OriginalHowTo() {
       <section>
         <h3>Stars and Talents</h3>
         <p>A win pays 3 Stars for 18 or more lives left, 2 for 6 or more, 1 otherwise. Replaying pays only what beats your best. Spend Stars on Talents in each family's tree; resetting them is free.</p>
+      </section>
+      <section>
+        <h3>Challenges</h3>
+        <p>Winning a Stage opens its Challenge: the same Stage under its own rule, such as fewer Build Spots or tougher creeps. It always plays Normal, with your Talents. Its first win, with any lives left, pays 1 more Star, up to {MOST_STARS} in all.</p>
       </section>
       <section class="controls-help">
         <h3>Controls</h3>

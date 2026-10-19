@@ -1,3 +1,4 @@
+import { challengeById } from '../../../content/original';
 import { original, TICK_RATE, type GameState } from '../../../sim';
 import { press, useHotkey } from '../../Hud';
 import type { ModeHudProps } from '../../mode-ui';
@@ -14,8 +15,9 @@ function creepsLeft(state: GameState): number {
 
 /**
  * At the bottom of the HUD. Before Wave 1, Send Wave 1. In a Break, Send now
- * with the early-call gold it pays and the countdown to the next Wave. While a
- * Wave is still arriving, how many creeps are on the road.
+ * with the early-call gold it pays (or "no gold" in a Challenge that pays
+ * none) and the countdown to the next Wave. While a Wave is still arriving,
+ * how many creeps are on the road.
  */
 export function SendNow({ s }: ModeHudProps) {
   void revision.value;
@@ -35,17 +37,24 @@ export function SendNow({ s }: ModeHudProps) {
     );
   }
   if (brk) {
+    // Short Supply: Send now still ends the Break, but pays nothing for it.
+    const unpaid = st.challenge !== null && challengeById(st.challenge)?.modifiers.noEarlyCall === true;
     return (
       <button
         type="button"
         class="btn primary start or-send"
         disabled={st.sendNowBlocked !== null}
-        title={st.sendNowBlocked ?? `Send Wave ${brk.wave} now for ${st.earlyCall} gold (Space). The sooner, the more it pays.`}
+        title={st.sendNowBlocked ?? (unpaid
+          ? `Send Wave ${brk.wave} now (Space). This Challenge pays no gold for it.`
+          : `Send Wave ${brk.wave} now for ${st.earlyCall} gold (Space). The sooner, the more it pays.`)}
         data-testid="send-now"
         onClick={press(s, send)}
       >
         <span class="label">Send now</span>
-        <span class="detail"><span class="early" data-testid="early-call">+{st.earlyCall} gold</span> · <span data-testid="break">Wave {brk.wave} in {countdown(brk.ticksLeft / TICK_RATE)}</span></span>
+        <span class="detail">
+          {unpaid ? <span data-testid="early-call">no gold</span> : <span class="early" data-testid="early-call">+{st.earlyCall} gold</span>}
+          {' · '}<span data-testid="break">Wave {brk.wave} in {countdown(brk.ticksLeft / TICK_RATE)}</span>
+        </span>
         <span class="key">Space</span>
       </button>
     );

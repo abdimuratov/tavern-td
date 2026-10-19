@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
-import { CAMPAIGN_LENGTH, STAGES, stageByNumber, type Family, type StageSpec } from '../../../content/original';
+import { CAMPAIGN_LENGTH, CHALLENGE_DIFFICULTY, challengeOfStage, STAGES, stageByNumber, type Family, type StageSpec } from '../../../content/original';
+import type { CampaignProgress } from '../../../platform/storage';
 import { DIFFICULTIES, original, type Difficulty } from '../../../sim';
 import { DIFFICULTY_NAME, difficultyAbout } from '../../catalog';
 import { clock } from '../../format';
@@ -7,12 +8,11 @@ import { Sheet } from '../../menu/Sheet';
 import type { MenuPageProps } from '../../mode-ui';
 import { appActions, savedRuns } from '../../state';
 import {
-  campaign, campaignUnlocks, setTalents, stageOpen, stageRecord, stagesCleared, starsEarned, starsFree,
+  campaign, campaignUnlocks, challengeRecord, challengeState, MOST_STARS, setTalents, stageOpen, stageRecord, stagesCleared, starsEarned,
+  starsFree,
 } from './campaign';
 import { FamilyIcon, StarCount, Stars } from './parts';
 import { FAMILY_NAME, PIN_AT, REGION_INTRO, REGION_NAME, REGIONS } from './text';
-
-const MOST_STARS = CAMPAIGN_LENGTH * 3;
 
 /** The Stage to show first: the earliest open one not yet won, or the last one open. */
 function firstStage(): number {
@@ -46,7 +46,11 @@ function WarMap({ picked, pick }: { picked: number; pick(n: number): void }) {
       {STAGES.map((st) => {
         const open = stageOpen(c, st.number);
         const record = stageRecord(c, st.number);
+        // A won Stage's Challenge: dark while open, gold once won; no mark before the Stage is won.
+        const state = challengeState(c, st.number);
+        const challenge = state === 'open' || state === 'won' ? state : null;
         const cls = ['pin', st.region, open ? '' : 'locked', record ? 'won' : '', picked === st.number ? 'picked' : ''].filter(Boolean).join(' ');
+        const about = challenge === 'won' ? ' · Challenge won' : challenge === 'open' ? ' · Challenge open' : '';
         return (
           <button
             key={st.number}
@@ -54,11 +58,12 @@ function WarMap({ picked, pick }: { picked: number; pick(n: number): void }) {
             class={cls}
             style={pinAt(st.number)}
             aria-pressed={picked === st.number}
-            title={`${st.number} · ${st.name}${open ? '' : ' (locked)'}`}
+            title={`${st.number} · ${st.name}${open ? '' : ' (locked)'}${about}`}
             data-testid={`stage-${st.number}`}
             onClick={() => pick(st.number)}
           >
             <span class="num"><b>{st.number}</b></span>
+            {challenge && <span class={`or-challenge-mark ${challenge}`} aria-hidden="true" data-testid={`challenge-mark-${st.number}`} />}
             {record && <Stars n={record.stars} />}
           </button>
         );
@@ -78,15 +83,61 @@ function Arsenal() {
   );
 }
 
-function StageCard({ stage, start, talents }: { stage: StageSpec; start(d: Difficulty): void; talents(): void }) {
+/** The Stage panel's line under a Challenge: what it pays and on what, its fastest win once won, or how to open it. */
+export function challengeStatus(c: CampaignProgress, stage: number): string {
+  const spec = challengeOfStage(stage);
+  const state = challengeState(c, stage);
+  if (!spec || state === null) return '';
+  if (state === 'locked') return 'Win this Stage to open it';
+  if (state === 'open') return `${spec.stars} Star${spec.stars === 1 ? '' : 's'} · ${DIFFICULTY_NAME[CHALLENGE_DIFFICULTY]}`;
+  const fastest = challengeRecord(c, stage)?.fastest ?? null;
+  return fastest === null ? 'Won' : `Won · fastest ${clock(fastest)}`;
+}
+
+/**
+ * The Stage's Challenge under its Difficulty buttons: its name and rule, its
+ * Star or fastest win, and Play Challenge; dimmed, without the button, until
+ * the Stage is won.
+ */
+function ChallengeBlock({ stage, play }: { stage: number; play(): void }) {
+  const c = campaign.value;
+  const spec = challengeOfStage(stage);
+  const state = challengeState(c, stage);
+  if (!spec || state === null) return null;
+  const open = state !== 'locked';
+  const status = challengeStatus(c, stage);
+  return (
+    <section class={`or-challenge ${state}`} data-testid="challenge">
+      <h3><span class={`or-challenge-mark ${state}`} aria-hidden="true" /><span data-testid="challenge-name">Challenge: {spec.name}</span></h3>
+      <p class="rule" data-testid="challenge-rule">{spec.rule}</p>
+      <div class="foot">
+        <span class="status" data-testid="challenge-status">{status}</span>
+        {open && (
+          <button
+            type="button"
+            class={`btn${state === 'won' ? '' : ' primary'}`}
+            title={`${spec.name} on ${DIFFICULTY_NAME[CHALLENGE_DIFFICULTY]}, with your Talents`}
+            data-testid="challenge-start"
+            onClick={play}
+          >
+            Play Challenge
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function StageCard({ stage, start, talents }: { stage: StageSpec; start(d: Difficulty, challenge?: boolean): void; talents(): void }) {
   const c = campaign.value;
   const open = stageOpen(c, stage.number);
   const record = stageRecord(c, stage.number);
   const [intro1, intro2] = REGION_INTRO[stage.region];
   const free = starsFree(c);
+  // `won` lets a short screen give the Region intro's room to the Challenge block (style.css).
   return (
-    <aside class={`stage-card ${stage.region}`} data-testid="stage-card">
-      <div class="region-intro">
+    <aside class={`stage-card ${stage.region}${record ? ' won' : ''}`} data-testid="stage-card">
+      <div class="region-intro" data-testid="region-intro">
         <h3>{REGION_NAME[stage.region]}</h3>
         <p>{intro1}<br />{intro2}</p>
       </div>
@@ -112,6 +163,7 @@ function StageCard({ stage, start, talents }: { stage: StageSpec; start(d: Diffi
       ) : (
         <p class="locked-note" data-testid="stage-locked">Finish Stage {stage.number - 1} to march on.</p>
       )}
+      <ChallengeBlock stage={stage.number} play={() => start(CHALLENGE_DIFFICULTY, true)} />
       <Arsenal />
       <div class="campaign-foot">
         <span><StarCount n={starsEarned(c)} testid="campaign-stars" /> <span class="muted">of {MOST_STARS}</span></span>
@@ -190,8 +242,10 @@ export function StageSelect({ view, go, back, confirm }: MenuPageProps) {
   const [picked, setPicked] = useState(firstStage);
   if (view === 'talents') return <TalentsPage back={() => go('')} />;
   const stage = stageByNumber(picked) ?? STAGES[0]!;
-  const start = (d: Difficulty): void => {
-    const run = (): void => appActions.value?.newRun('original', d, { stage: String(stage.number) });
+  // A Stage on Difficulty `d`, or its Challenge (always Normal); either asks first before replacing a saved Run.
+  const start = (d: Difficulty, challenge = false): void => {
+    const choices = challenge ? { stage: String(stage.number), challenge: '1' } : { stage: String(stage.number) };
+    const run = (): void => appActions.value?.newRun('original', d, choices);
     const saved = savedRuns.value['original'];
     if (saved?.ok) {
       confirm({
