@@ -5,13 +5,20 @@ import type { Difficulty, GameState, RunOptions } from '../sim';
 import { CATALOG, catalogEntry, type CatalogEntry } from '../ui/catalog';
 import type { RunChoices } from '../ui/mode-ui';
 import { appActions, savedRuns, screen, settings, type CodeCheck, type SavedRunInfo } from '../ui/state';
-import { startPlay, type Play, type PlayTarget } from './game';
+import { startPlay, type Play, type PlayOptions, type PlayTarget } from './game';
 import { checkRun, readCode, SAVE_VERSION, SaveProblem, type SaveRules } from './saves';
 
 declare global {
   interface Window {
     /** The running play screen, for the e2e tests and the Safari inspector. */
     tavern?: Play;
+    /**
+     * Dev and e2e: a Line Wars Run seen from Side 1, as a Versus Guest sees
+     * it, with no network: your Race on Side 1 against the AI's on Side 0, the
+     * board mirrored and Versus' display, nothing saved or recorded. Resolves
+     * once the play screen is up (window.tavern).
+     */
+    tavernMirror?(race?: string, rival?: string): Promise<void>;
   }
 }
 
@@ -35,9 +42,9 @@ function targetFor(entry: CatalogEntry, difficulty: Difficulty, choices: RunChoi
   return { ui, runOptions: () => ({ mode: entry.id, seed: newSeed(), difficulty, ...options() }) };
 }
 
-/** The choices a saved Run was started with, so "Play again" keeps them. */
+/** The choices a saved Run was started with, so "Play again" keeps them. Saves are never Versus, so they're Side 0's. */
 function choicesOf(entry: CatalogEntry, state: GameState): RunChoices {
-  return entry.ui?.optionsOf?.(state) ?? {};
+  return entry.ui?.optionsOf?.(state, 0) ?? {};
 }
 
 function optionsLine(entry: CatalogEntry | undefined, state: GameState): string {
@@ -112,7 +119,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
   }
 
   /** Opens the play screen on `target`. A saved Run resumes paused; `save` writes it at once so Continue finds it. */
-  async function begin(target: PlayTarget, from: { initial?: GameState; save: boolean }): Promise<void> {
+  async function begin(target: PlayTarget, from: { initial?: GameState; save: boolean }, extra: PlayOptions = {}): Promise<void> {
     if (starting) return;
     starting = true;
     try {
@@ -126,6 +133,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
         showGrid: s.showGrid,
         onQuit: () => void quit(),
         ...(opts.fps ? { fps: opts.fps } : {}),
+        ...extra,
       });
       window.tavern = play;
       if (from.save) play.controller.save('start');
@@ -183,6 +191,22 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
       void saveSettings(next);
     },
   };
+
+  /** The rehearsal of a Versus Guest's screen behind window.tavernMirror. */
+  function playMirror(race: string, rival: string): Promise<void> {
+    const entry = catalogEntry('linewars');
+    if (!entry?.ui) return Promise.resolve();
+    const target: PlayTarget = {
+      ui: entry.ui,
+      runOptions: () => ({
+        mode: entry.id, seed: newSeed(), difficulty: 'normal',
+        // The Run's `race` is Side 0's, here the AI's; `rivalRace` is Side 1's, yours.
+        options: { race: rival, rivalRace: race, drivers: ['ai', 'human'] },
+      }),
+    };
+    return begin(target, { save: false }, { viewer: 1, versus: true, record: false });
+  }
+  window.tavernMirror = (race = 'rimeborn', rival = 'ironclad') => playMirror(race, rival);
 
   return {
     showMenu,

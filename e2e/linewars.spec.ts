@@ -255,3 +255,72 @@ test('a Line Wars Run won through the debug handle shows the end card, and Recor
   await expect(page.getByTestId('difficulty-easy')).toContainText('Best steal: 3 lives');
   await expect(page.getByTestId('difficulty-easy')).toContainText("Rival's income ×0.85");
 });
+
+test('the mirror rehearsal shows Side 1 as a Versus Guest sees it: its Field on the right, its own gold, and commands that name Side 1', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.getByTestId('menu')).toBeVisible();
+  // Your Rimeborn on Side 1 against the AI's Ironclad on Side 0, with no network (window.tavernMirror).
+  await page.evaluate(() => window.tavernMirror!('rimeborn', 'ironclad'));
+  await expect(page.getByTestId('lw-status')).toBeVisible();
+  await page.getByTestId('pause').click();
+  await expect(page.getByTestId('paused')).toBeVisible();
+  // Versus' display: 1× only, and the Rival's line without a Difficulty factor.
+  await expect(page.getByTestId('speed-1')).toHaveCount(0);
+  await expect(page.getByTestId('rival')).toHaveText('Ironclad · +10');
+  await expect(page.getByTestId('lives-you')).toHaveText('30');
+
+  // The board is mirrored: Side 1's Field (world columns 0–15) is on the right, Side 0's (28–43) on the left.
+  const canvas = (await page.locator('#board canvas').boundingBox())!;
+  const mine = await worldPoint(page, 8 * 64, 14 * 64);
+  const theirs = await worldPoint(page, 36 * 64, 14 * 64);
+  expect(mine.x).toBeGreaterThan(canvas.x + canvas.width / 2);
+  expect(theirs.x).toBeLessThan(canvas.x + canvas.width / 2);
+  expect(Math.abs(mine.y - theirs.y)).toBeLessThan(1);
+
+  // A Rime Wall built through the HUD lands in Side 1's Field, by a command naming Side 1, paid from Side 1's gold.
+  const side1Towers = (): Promise<string[]> => page.evaluate(() => {
+    const state = window.tavern!.controller.state;
+    return state.towers.filter((t) => t.cell % state.map.cols < 16).map((t) => t.spec);
+  });
+  await page.locator('[data-action="build-wall"]').click();
+  const [wx, wy] = spotCorner(4, 10);
+  const spot = await worldPoint(page, wx, wy);
+  expect(spot.x).toBeGreaterThan(canvas.x + canvas.width / 2);
+  if (touch()) {
+    await tapAt(page, spot.x, spot.y);
+    await expect(page.getByTestId('hint')).toHaveText(/tap again to build/);
+  }
+  await tapAt(page, spot.x, spot.y);
+  await expect.poll(side1Towers).toEqual(['rime_wall']);
+  const log = await page.evaluate(() => window.tavern!.controller.log.map((e) => e.command));
+  expect(log).toEqual([{ type: 'lw.build', side: 1, spec: 'rime_wall', col: 4, row: 10 }]);
+  const purse = await page.evaluate(() => (window.tavern!.controller.state.mode as Sides).sides[1]!.gold);
+  expect(purse).toBe(140);
+  await expect(page.getByTestId('gold')).toHaveText('140');
+
+  // A tap on the left, in Side 0's Field, is the Rival's.
+  const [rx, ry] = spotCorner(32, 10);
+  const left = await worldPoint(page, rx, ry);
+  await tapAt(page, left.x, left.y);
+  await expect(page.getByTestId('hint')).toHaveText(/Rival's Field/);
+  await page.keyboard.press('Escape');
+
+  // A Send bought through the HUD is Side 1's: its Income and Live count rise.
+  await page.evaluate(() => {
+    const c = window.tavern!.controller;
+    c.fastForward(20 * 30 + 1 - c.state.tick);
+  });
+  await page.locator('[data-action="send-snowlings"]').click();
+  await expect(page.getByTestId('income-value')).toHaveText('+12');
+  await expect(page.getByTestId('live')).toHaveText('Live 3/40');
+  const sent = await page.evaluate(() => window.tavern!.controller.log.at(-1)!.command);
+  expect(sent).toEqual({ type: 'lw.send', side: 1, send: 'snowlings' });
+
+  // No save code in Versus, and nothing was autosaved for Continue.
+  await page.getByTestId('menu-button').click();
+  await expect(page.getByTestId('run-menu')).toBeVisible();
+  await expect(page.getByTestId('export')).toHaveCount(0);
+  await page.getByTestId('quit').click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await expect(page.getByTestId('mode-linewars').getByTestId('continue')).toHaveCount(0);
+});

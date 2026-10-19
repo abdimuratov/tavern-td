@@ -153,21 +153,24 @@ function Controls({ s }: { s: PlaySession }) {
       >
         {isPaused ? <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg> : <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>}
       </button>
-      <div class="seg" role="group" aria-label="Speed">
-        {([1, 2, 3] as const).map((n) => (
-          <button
-            key={n}
-            type="button"
-            class={`btn${speed.value === n ? ' active' : ''}`}
-            aria-pressed={speed.value === n}
-            title={`Speed ${n}× (${n})`}
-            data-testid={`speed-${n}`}
-            onClick={press(s, () => s.setSpeed(n))}
-          >
-            {n}×
-          </button>
-        ))}
-      </div>
+      {/* Versus plays 1× only. */}
+      {!s.versus && (
+        <div class="seg" role="group" aria-label="Speed">
+          {([1, 2, 3] as const).map((n) => (
+            <button
+              key={n}
+              type="button"
+              class={`btn${speed.value === n ? ' active' : ''}`}
+              aria-pressed={speed.value === n}
+              title={`Speed ${n}× (${n})`}
+              data-testid={`speed-${n}`}
+              onClick={press(s, () => s.setSpeed(n))}
+            >
+              {n}×
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

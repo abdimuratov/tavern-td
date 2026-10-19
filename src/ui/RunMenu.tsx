@@ -4,7 +4,7 @@ import { SettingsPanel } from './menu/Settings';
 import { runMenu, type PlaySession, type RunMenuPage } from './state';
 
 /** Copies the code if the browser lets us, and always shows it in a box to select by hand: iOS can refuse the clipboard. */
-function ExportCode({ s }: { s: PlaySession }) {
+function ExportCode({ s, exportCode }: { s: PlaySession; exportCode(): Promise<string> }) {
   const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -19,7 +19,7 @@ function ExportCode({ s }: { s: PlaySession }) {
   };
   useEffect(() => {
     let live = true;
-    void s.exportCode().then((c) => {
+    void exportCode().then((c) => {
       if (!live) return;
       setCode(c);
       void copy(c);
@@ -27,7 +27,7 @@ function ExportCode({ s }: { s: PlaySession }) {
     return () => {
       live = false;
     };
-  }, [s]);
+  }, [exportCode]);
   return (
     <>
       <p class="muted">
@@ -61,7 +61,10 @@ const TITLE: Readonly<Record<RunMenuPage, string>> = {
   export: 'Export save code',
 };
 
-/** The in-Run menu: Resume, Settings, How to play, Export save code, Quit to menu. The Run stays paused while it is open. */
+/**
+ * The in-Run menu: Resume, Settings, How to play, Export save code (not in
+ * Versus), Quit to menu. The Run stays paused while it is open.
+ */
 export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
   const HowTo = s.ui.HowTo;
   const back = (): void => {
@@ -83,13 +86,15 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
               <button type="button" class="btn primary" data-testid="resume" onClick={press(s, s.closeMenu)}>Resume</button>
               <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'settings'))}>Settings</button>
               {HowTo && <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'howto'))}>How to play</button>}
-              <button type="button" class="btn" data-testid="export" onClick={press(s, () => (runMenu.value = 'export'))}>Export save code</button>
+              {s.exportCode && (
+                <button type="button" class="btn" data-testid="export" onClick={press(s, () => (runMenu.value = 'export'))}>Export save code</button>
+              )}
               <button type="button" class="btn" data-testid="quit" onClick={press(s, s.quit)}>Quit to menu</button>
             </nav>
           )}
           {page === 'settings' && <SettingsPanel />}
           {page === 'howto' && HowTo && <HowTo />}
-          {page === 'export' && <ExportCode s={s} />}
+          {page === 'export' && s.exportCode && <ExportCode s={s} exportCode={s.exportCode} />}
         </div>
       </div>
     </div>

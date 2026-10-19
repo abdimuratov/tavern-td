@@ -2,8 +2,7 @@ import { linewars } from '../../../sim';
 import { num } from '../../format';
 import type { ModeHudProps } from '../../mode-ui';
 import { revision, runClock } from '../../state';
-import { raceName } from '../maul/text';
-import { factorText, incomeSeconds, suddenText } from './text';
+import { incomeSeconds, rivalLine, sidesFrom, suddenText } from './text';
 
 /** Beside gold: your Income and a ring that fills toward the next Income tick, "+42 in 6 s". */
 export function IncomeTick({ s }: ModeHudProps) {
@@ -11,7 +10,7 @@ export function IncomeTick({ s }: ModeHudProps) {
   void runClock.value;
   const st = linewars.lwStatus(s.view.state);
   if (st.over) return null;
-  const me = st.sides[0];
+  const [me] = sidesFrom(st, s.view.side);
   const k = Math.min(1, Math.max(0, 1 - st.incomeIn / st.incomeTicks));
   const secs = incomeSeconds(st.incomeIn);
   const C = 2 * Math.PI * 7;
@@ -29,13 +28,13 @@ export function IncomeTick({ s }: ModeHudProps) {
 
 /**
  * Under the speed controls: the lives as one tug-of-war bar, the Rival's Race
- * and Income with its Difficulty factor, and the Sudden Death clock.
+ * and Income with its Difficulty factor (none in Versus), and the Sudden Death clock.
  */
 export function LwStatus({ s }: ModeHudProps) {
   void revision.value;
   void runClock.value;
   const st = linewars.lwStatus(s.view.state);
-  const [me, rival] = st.sides;
+  const [me, rival] = sidesFrom(st, s.view.side);
   const total = me.lives + rival.lives;
   const share = total > 0 ? me.lives / total : 0.5;
   return (
@@ -46,8 +45,8 @@ export function LwStatus({ s }: ModeHudProps) {
         <span class="who"><b data-testid="lives-rival">{rival.lives}</b> Rival</span>
       </div>
       <div class="lw-line">
-        <span class="lw-rival" title="The Rival's Race, and its Income with its Difficulty factor" data-testid="rival">
-          {raceName(rival.race)} · +{num(rival.income)} {factorText(rival.factor)}
+        <span class="lw-rival" title={s.versus ? "The Rival's Race and Income" : "The Rival's Race, and its Income with its Difficulty factor"} data-testid="rival">
+          {rivalLine(rival, s.versus)}
         </span>
         <span class={`lw-clock${st.sudden ? ' sudden' : ''}`} data-testid="clock">{suddenText(st)}</span>
       </div>

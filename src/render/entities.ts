@@ -137,7 +137,14 @@ export class Entities {
   private readonly marks: SpritePool;
   private readonly projectiles: SpritePool;
 
-  constructor(private readonly atlas: Atlas, layers: EntityLayers, private looks: LookCache) {
+  /**
+   * 1, or −1 inside a mirrored world: what turns screen-right offsets (a
+   * shadow's drop, a bar's fill, a tower's number) back to the right on screen.
+   */
+  private readonly right: 1 | -1;
+
+  constructor(private readonly atlas: Atlas, layers: EntityLayers, private looks: LookCache, mirrored = false) {
+    this.right = mirrored ? -1 : 1;
     this.ground = new SpritePool(layers.ground, atlas.shape('circle'));
     this.air = new SpritePool(layers.air, atlas.shape('chevron'));
     this.shadows = new SpritePool(layers.shadows, atlas.glyph('shadow'));
@@ -192,11 +199,12 @@ export class Entities {
       const y = v.py + (v.y - v.py) * alpha;
       v.body!.position.set(x, y);
       if (v.mark) v.mark.position.set(x, y);
-      if (v.shadow) v.shadow.position.set(x + SHADOW_DROP * 0.6, y + SHADOW_DROP);
+      if (v.shadow) v.shadow.position.set(x + this.right * SHADOW_DROP * 0.6, y + SHADOW_DROP);
       if (v.barBack) {
         const top = y - v.size * 0.62 - (v.air ? 6 : 0);
         v.barBack.position.set(x, top);
-        v.barFill!.position.set(x - BAR_W / 2, top);
+        // The fill grows from the bar's left end on screen, mirrored or not.
+        v.barFill!.position.set(x - this.right * (BAR_W / 2), top);
       }
     }
     for (let i = 0; i < this.shots.length; i++) {
@@ -279,7 +287,7 @@ export class Entities {
         v.barBack.tint = 0x15110d;
         v.barBack.scale.set((BAR_W + 2) / WHITE, (BAR_H + 2) / WHITE);
         v.barFill = this.bars.acquire();
-        v.barFill.anchor.set(0, 0.5);
+        v.barFill.anchor.set(this.right === 1 ? 0 : 1, 0.5);
         v.barFill.scale.y = BAR_H / WHITE;
         v.barBack.alpha = v.barFill.alpha = v.status?.alpha ?? 1;
         v.hp = 1;
@@ -377,12 +385,14 @@ export class Entities {
         style: { fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '800', fontSize: 26, fill: 0xffffff, stroke: { color: 0x0b0908, width: 6 } },
       });
       v.label.anchor.set(0.5);
+      // Inside a mirrored world the number is turned back so it reads.
+      v.label.scale.x = this.right;
       this.labels.addChild(v.label);
     }
     v.label.visible = true;
     v.label.text = label.text;
     v.label.style.fill = label.color;
-    v.label.position.set(t.x + v.span * 0.33, t.y - v.span * 0.33);
+    v.label.position.set(t.x + this.right * v.span * 0.33, t.y - v.span * 0.33);
   }
 
   private dressTower(v: TowerView, t: Tower, state: GameState): void {

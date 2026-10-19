@@ -1,7 +1,7 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { loadRecords, type ModeRecord } from '../../platform/storage';
+import { loadRecord, loadRecords, type ModeRecord } from '../../platform/storage';
 import { DIFFICULTIES, type Difficulty } from '../../sim';
 import { CATALOG, catalogEntry, DIFFICULTY_NAME, difficultyAbout, type CatalogEntry } from '../catalog';
 import { ago, clock, num } from '../format';
@@ -113,6 +113,22 @@ function useRecords(modeId: string, board?: string): Record<Difficulty, ModeReco
   return records;
 }
 
+/** The Records of boards kept at one Difficulty only (Line Wars' Versus), in the boards' order. */
+function useRowRecords(modeId: string, rows: readonly RecordBoard[]): readonly ModeRecord[] | null {
+  const [records, setRecords] = useState<readonly ModeRecord[] | null>(null);
+  const key = rows.map((b) => `${b.id}/${b.only ?? ''}`).join(',');
+  useEffect(() => {
+    let live = true;
+    setRecords(null);
+    void Promise.all(rows.map((b) => loadRecord(modeId, b.only ?? 'normal', b.id))).then((r) => live && setRecords(r));
+    return () => {
+      live = false;
+    };
+    // `key` stands for `rows`, which the Records page rebuilds on every render.
+  }, [modeId, key]);
+  return records;
+}
+
 /** A New Run choice as a row of buttons, such as All Pick or All Random. */
 function OptionRow({ label, choices, value, testid, onPick }: {
   label: string;
@@ -198,9 +214,24 @@ function DifficultyPage({ modeId, back, confirm }: { modeId: string; back(): voi
   );
 }
 
-function RecordsTable({ modeId, board }: { modeId: string; board?: RecordBoard }) {
+function RecordRow({ name, r, wave, testid }: { name: string; r: ModeRecord; wave(n: number): string; testid?: string }) {
+  return (
+    <tr data-testid={testid}>
+      <th>{name}</th>
+      <td>{r.bestWave > 0 ? wave(r.bestWave) : '–'}</td>
+      <td>{r.bestScore > 0 ? num(r.bestScore) : '–'}</td>
+      <td>{r.fastestWin !== null ? clock(r.fastestWin) : '–'}</td>
+      <td>{r.played}</td>
+      <td>{r.won}</td>
+    </tr>
+  );
+}
+
+/** A table by Difficulty, then a row for each board kept at one Difficulty only (`rows`), such as Versus. */
+function RecordsTable({ modeId, board, rows = [] }: { modeId: string; board?: RecordBoard; rows?: readonly RecordBoard[] }) {
   const records = useRecords(modeId, board?.id);
-  if (!records) return <p class="muted">Loading…</p>;
+  const extra = useRowRecords(modeId, rows);
+  if (!records || !extra) return <p class="muted">Loading…</p>;
   const wave = (n: number): string => (board?.wave ? board.wave(n) : String(n));
   const heading = catalogEntry(modeId)?.ui?.recordWave?.heading ?? 'Best Wave';
   return (
@@ -209,19 +240,10 @@ function RecordsTable({ modeId, board }: { modeId: string; board?: RecordBoard }
         <tr><th>Difficulty</th><th>{heading}</th><th>Score</th><th>Fastest win</th><th>Runs</th><th>Won</th></tr>
       </thead>
       <tbody>
-        {DIFFICULTIES.map((d) => {
-          const r = records[d];
-          return (
-            <tr key={d}>
-              <th>{DIFFICULTY_NAME[d]}</th>
-              <td>{r.bestWave > 0 ? wave(r.bestWave) : '–'}</td>
-              <td>{r.bestScore > 0 ? num(r.bestScore) : '–'}</td>
-              <td>{r.fastestWin !== null ? clock(r.fastestWin) : '–'}</td>
-              <td>{r.played}</td>
-              <td>{r.won}</td>
-            </tr>
-          );
-        })}
+        {DIFFICULTIES.map((d) => <RecordRow key={d} name={DIFFICULTY_NAME[d]} r={records[d]} wave={wave} />)}
+        {rows.map((b, i) => (
+          <RecordRow key={`board-${b.id}`} name={b.name} r={extra[i]!} wave={b.wave ?? wave} testid={`records-row-${b.id}`} />
+        ))}
       </tbody>
     </table>
   );
@@ -230,22 +252,28 @@ function RecordsTable({ modeId, board }: { modeId: string; board?: RecordBoard }
 function RecordsPage({ back }: { back(): void }) {
   return (
     <Sheet title="Records" onBack={back} wide>
-      {CATALOG.map((e) => (
-        <section key={e.id} class="records-mode">
-          <h2>
-            {e.name} <span class="muted">{e.origin}</span>
-            {!e.ui?.result && !e.ui?.Records && <span class="tag soon">Coming later</span>}
-          </h2>
-          {e.ui?.Records && <e.ui.Records />}
-          {e.ui?.result && !e.ui.Records && !e.ui.recordBoards && <RecordsTable modeId={e.id} />}
-          {e.ui?.result && e.ui.recordBoards?.map((b) => (
-            <div key={b.id} class="records-board">
-              <h3>{b.name}</h3>
-              <RecordsTable modeId={e.id} board={b} />
-            </div>
-          ))}
-        </section>
-      ))}
+      {CATALOG.map((e) => {
+        // Boards kept at one Difficulty are rows under the table by Difficulty; the rest are tables of their own.
+        const boards = e.ui?.recordBoards ?? [];
+        const tables = boards.filter((b) => b.only === undefined);
+        const rows = boards.filter((b) => b.only !== undefined);
+        return (
+          <section key={e.id} class="records-mode">
+            <h2>
+              {e.name} <span class="muted">{e.origin}</span>
+              {!e.ui?.result && !e.ui?.Records && <span class="tag soon">Coming later</span>}
+            </h2>
+            {e.ui?.Records && <e.ui.Records />}
+            {e.ui?.result && !e.ui.Records && tables.length === 0 && <RecordsTable modeId={e.id} rows={rows} />}
+            {e.ui?.result && tables.map((b) => (
+              <div key={b.id} class="records-board">
+                <h3>{b.name}</h3>
+                <RecordsTable modeId={e.id} board={b} />
+              </div>
+            ))}
+          </section>
+        );
+      })}
     </Sheet>
   );
 }

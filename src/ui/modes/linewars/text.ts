@@ -3,7 +3,7 @@ import { RACES, type RaceId } from '../../../content/maul';
 import { linewars, TICK_RATE, type Difficulty, type GameState } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
 import { clock, num } from '../../format';
-import type { EndText, RunChoices } from '../../mode-ui';
+import type { EndText, RunChoices, ViewerSide } from '../../mode-ui';
 import { ARMOR_NAME, BEST_AGAINST, countdown, KIND_TAG, raceName } from '../maul/text';
 
 // Line Wars' words: the Rival's Difficulty, why a Send can't be bought, a
@@ -12,6 +12,20 @@ import { ARMOR_NAME, BEST_AGAINST, countdown, KIND_TAG, raceName } from '../maul
 /** "×1.1", "×0.85", "×1". */
 export function factorText(factor: number): string {
   return `×${num(factor)}`;
+}
+
+/**
+ * The Viewer Side's status and the Rival's, in that order: `lwStatus` names
+ * the Sides absolutely, and a Versus Guest is Side 1.
+ */
+export function sidesFrom(st: linewars.LwStatus, me: ViewerSide): readonly [linewars.LwSideStatus, linewars.LwSideStatus] {
+  return [st.sides[me], st.sides[linewars.other(me)]];
+}
+
+/** "Ironclad · +42 ×1.1": the Rival's Race and Income, with its Difficulty factor; Versus has none, so it drops it. */
+export function rivalLine(rival: linewars.LwSideStatus, versus: boolean): string {
+  const line = `${raceName(rival.race)} · +${num(rival.income)}`;
+  return versus ? line : `${line} ${factorText(rival.factor)}`;
 }
 
 /** How the Rival plays on each Difficulty, in a line (design §12). */
@@ -119,9 +133,13 @@ export function progressText(state: GameState): string {
   return `${clock(Math.floor(state.tick / TICK_RATE))} in`;
 }
 
-/** Victory, Defeat or Draw, and why the Run ended (design §10). */
-export function lwEndText(state: GameState): EndText {
-  const r = linewars.lwRecord(state);
+/**
+ * Victory, Defeat or Draw from the Viewer Side, and why the Run ended (design
+ * §10). `state.phase` is `won` only when Side 0 wins, so this reads the result
+ * against `me`: Side 1 winning is a Versus Guest's Victory.
+ */
+export function lwEndText(state: GameState, me: ViewerSide = 0): EndText {
+  const r = linewars.lwRecord(state, me);
   const d = DIFFICULTY_NAME[state.difficulty];
   const wave = String(r.wave);
   if (r.draw) return { won: false, title: 'Draw', summary: `Both Sides ran out of lives together, on the same Income, on ${d}`, wave };

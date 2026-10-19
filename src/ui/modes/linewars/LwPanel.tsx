@@ -23,7 +23,7 @@ function Upgrade({ s, tower, u, i }: { s: PlaySession; tower: number; u: linewar
       // Short of gold it stays pressable, and the refusal says so.
       dim={u.blocked !== null}
       {...(UPGRADE_KEYS[i] ? { hotkey: UPGRADE_KEYS[i] } : {})}
-      run={() => s.view.send({ type: 'lw.upgrade', side: 0, tower, to: u.to })}
+      run={() => s.view.send({ type: 'lw.upgrade', side: s.view.side, tower, to: u.to })}
     />
   );
 }
@@ -35,9 +35,9 @@ function Upgrade({ s, tower, u, i }: { s: PlaySession; tower: number; u: linewar
 export function LwPanel({ s, tower }: ModePanelProps) {
   void revision.value;
   const state = s.view.state;
-  const a = linewars.towerActions(state, 0, tower.id);
+  const a = linewars.towerActions(state, s.view.side, tower.id);
   const sell = (): void => {
-    s.view.send({ type: 'lw.sell', side: 0, tower: tower.id });
+    s.view.send({ type: 'lw.sell', side: s.view.side, tower: tower.id });
     s.view.select(0);
   };
   useHotkey(s, 's', 'Sell', sell, a?.mine === true);

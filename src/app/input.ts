@@ -118,7 +118,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       ? previewAllRoutes(s, ghost.placement.cells) : null;
     routeWanted = null;
     const style = preview ? 'preview' : 'current';
-    const picked = ui.routes?.(s);
+    const picked = ui.routes?.(s, view.side);
     if (picked) {
       const live = picked.live.map((i) => preview?.[i] ?? routeCells(s, i));
       routeShown = live[0] ?? [];

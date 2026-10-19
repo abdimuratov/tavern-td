@@ -7,10 +7,23 @@ import type { ModeLook, TowerLook } from '../render/look';
 import { getMode, type Command, type Difficulty, type GameState, type Json, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
 import type { Hint, HintTone, PlaySession, RunEnd } from './state';
 
-/** What a Game Mode's UI sees of the Run it is attached to. */
+/**
+ * The Side a device shows as you (CONTEXT.md, Viewer Side): 0, except on a
+ * Versus Guest's device, where it is 1. Only Line Wars has Sides; every other
+ * Game Mode sees 0 and ignores it. The sim never knows it.
+ */
+export type ViewerSide = 0 | 1;
+
+/**
+ * What a Game Mode's UI sees of the Run it is attached to. ModeUi methods
+ * handed only the state take the Viewer Side as an optional last argument,
+ * 0 when it is left out.
+ */
 export interface RunView {
   /** The live state: read it, never write it. Change the Run with send(). */
   readonly state: GameState;
+  /** The Viewer Side: the commands the UI builds name it, and its readouts are from it. */
+  readonly side: ViewerSide;
   /** Queues a command for the next tick. */
   send(command: Command): void;
   /** Re-reads the mode's buttons and the ghost, after the mode's own UI state changed. */
@@ -144,6 +157,11 @@ export interface RecordBoard {
   readonly name: string;
   /** A Wave number as the Records table shows it, such as "Boss 3" past Element's 55. */
   wave?(n: number): string;
+  /**
+   * The one Difficulty the board keeps, such as Versus' Normal: it shows as a
+   * row named `name` under the mode's table by Difficulty, not as a table of its own.
+   */
+  readonly only?: Difficulty;
 }
 
 /** The end card's words, for a Run whose end the core's defaults don't describe. */
@@ -167,8 +185,12 @@ export interface EndText {
  */
 export interface ModeUi {
   readonly modeId: string;
-  /** Shapes and colours for its towers and creeps; DEFAULT_LOOK fills the rest. */
-  readonly look?: Partial<ModeLook>;
+  /**
+   * Shapes and colours for its towers and creeps; DEFAULT_LOOK fills the rest.
+   * A function gets the Viewer Side, for a look that says which Side is you
+   * (Line Wars' banners).
+   */
+  readonly look?: Partial<ModeLook> | ((side: ViewerSide) => Partial<ModeLook>);
   /** False hides the lives readout, for modes without lives such as Gem. */
   readonly showLives?: boolean;
   /** False hides the start-Wave button, for modes that start Waves themselves. */
@@ -188,7 +210,7 @@ export interface ModeUi {
    * spawn's alike: `live` ones are drawn and previewed as usual, `faint` ones
    * thin and dim, such as the Rival's route in Line Wars.
    */
-  routes?(state: GameState): { readonly live: readonly number[]; readonly faint: readonly number[] };
+  routes?(state: GameState, side?: ViewerSide): { readonly live: readonly number[]; readonly faint: readonly number[] };
   /** The HUD's Wave readout, such as "3/55" or "Boss 2"; null hides it. Default: number/total. */
   waveLabel?(view: RunView): { readonly label: string; readonly value: string } | null;
   /** What a Difficulty does, for the New Run page, when the rules keep it in their own tables. */
@@ -208,16 +230,19 @@ export interface ModeUi {
    * page, such as the Original's Stage select; the mode card's button says `label`.
    */
   readonly MenuPage?: { readonly label: string; readonly Page: ComponentType<MenuPageProps> };
-  /** The choices a Run was started with, so Continue's "Play again" keeps them. */
-  optionsOf?(state: GameState): RunChoices;
+  /**
+   * The choices a Run was started with, so Continue's "Play again" keeps them;
+   * in Line Wars as the Viewer Side sees them ("your Race" is that Side's).
+   */
+  optionsOf?(state: GameState, side?: ViewerSide): RunChoices;
   /** The choices in a few words, such as "Express · All Random", for Continue and the end card. */
   optionsText?(choices: RunChoices): string;
   /** The Record boards it keeps, when its Records split within a Difficulty. */
   readonly recordBoards?: readonly RecordBoard[];
-  /** The board a Run with these choices counts toward. */
+  /** The board a Run with these choices counts toward. A Versus Run counts toward `versus` instead. */
   recordBoard?(choices: RunChoices): string;
-  /** The end card's words; the core's defaults otherwise. */
-  endText?(state: GameState): EndText;
+  /** The end card's words from the Viewer Side; the core's defaults otherwise. */
+  endText?(state: GameState, side?: ViewerSide): EndText;
   /**
    * Called once when a Run ends, to fold it into the mode's own progress, such
    * as the Original's Campaign. The end card's `End` shows what it changed.
@@ -241,8 +266,8 @@ export interface ModeUi {
   wavePreview?(view: RunView, index: number): WavePreview | null;
   /** Called by Esc and right-click after the ghost and selection are cleared: drop the mode's own build choice. */
   cancel?(view: RunView): void;
-  /** A sound or haptic other than the default for this event; undefined keeps the default. */
-  feedback?(event: SimEvent, state: GameState): CueOverride | undefined;
+  /** A sound or haptic other than the default for this event, as the Viewer Side hears it; undefined keeps the default. */
+  feedback?(event: SimEvent, state: GameState, side?: ViewerSide): CueOverride | undefined;
   /** Every tick's events, for a mode's own UI state. */
   onEvents?(view: RunView, events: readonly SimEvent[]): void;
   /** A tap on a structure while the mode waits for a second pick (Gem's swap). True when the mode used it. */
@@ -261,8 +286,10 @@ export interface ModeUi {
   marks?(state: GameState): readonly StructureMark[];
   /** The hint line when no ghost or message is up, such as what to do next. */
   hint?(view: RunView): Hint | null;
-  /** The finished Run as a Record entry; modes without one keep no Records. */
-  result?(state: GameState): RunResult;
+  /** The finished Run as the Viewer Side's Record entry; modes without one keep no Records. */
+  result?(state: GameState, side?: ViewerSide): RunResult;
+  /** The gold the HUD shows, when it isn't the core's `gold`: Line Wars' is Side 0's copy, so it gives the Viewer Side's own purse. */
+  gold?(state: GameState, side?: ViewerSide): number;
   /** A deeper check of the mode's own state in a loaded save; false refuses the save as damaged. */
   validSave?(state: GameState): boolean;
   /** The mode's own readouts in the top row beside gold, such as Line Wars' income and its countdown. */

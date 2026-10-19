@@ -2,11 +2,11 @@ import { FIELD_WIDTH, LW_SENDS, fieldOfCol, fieldSpawns, isSendId } from '../../
 import { RACE_SPECS, RACES } from '../../../content/maul';
 import { footprintAt } from '../../../render/footprint';
 import { CELL, cellCol, cellRow, findTower, linewars, TICK_RATE, type GameState, type SimEvent } from '../../../sim';
-import type { CueOverride, ModeUi, Placement, RunChoices, RunView } from '../../mode-ui';
+import type { CueOverride, ModeUi, Placement, RunChoices, RunView, ViewerSide } from '../../mode-ui';
 import { LwActions } from './BuildMenu';
 import { LwEnd } from './End';
 import { LwHowTo } from './HowTo';
-import { LW_LOOK } from './look';
+import { lwLook } from './look';
 import { LwPanel } from './LwPanel';
 import { IncomeTick, LwStatus } from './LwStatus';
 import { building, lastSend } from './picks';
@@ -20,6 +20,8 @@ import {
 // the build menu with a 2 × 2 Ghost that only your Field takes, the ten Sends
 // one tap each, "In your Field" as the wave preview, a read-only panel for
 // the Rival's towers, and toasts for what the Rival sends and what leaks.
+// "You" is the Viewer Side (`me`): Side 0, or Side 1 on a Versus Guest's
+// device, whose board is mirrored so its Field is on the right too.
 
 const FOOTPRINT = 2;
 /** "Air in 0:30" comes this many seconds before the Harpies unlock. */
@@ -35,13 +37,14 @@ function placement(view: RunView, p: { x: number; y: number }): Placement | null
   if (!cells) return null;
   const col = cellCol(s.map, cells[0]!);
   const row = cellRow(s.map, cells[0]!);
-  const option = linewars.buildOptions(s, 0).find((o) => o.spec === spec);
+  const me = view.side;
+  const option = linewars.buildOptions(s, me).find((o) => o.spec === spec);
   if (!option) return null;
-  const spot = linewars.buildSpot(s, 0, col, row);
+  const spot = linewars.buildSpot(s, me, col, row);
   return {
     cells: spot.cells,
     spec,
-    command: { type: 'lw.build', side: 0, spec, col, row },
+    command: { type: 'lw.build', side: me, spec, col, row },
     error: spot.error ?? option.blocked,
     checked: true,
     label: `${option.name} · ${option.cost} gold`,
@@ -49,9 +52,10 @@ function placement(view: RunView, p: { x: number; y: number }): Placement | null
   };
 }
 
-function choicesOf(state: GameState): RunChoices {
+/** Your Race and the Rival's, as the Viewer Side sees them. */
+function choicesOf(state: GameState, me: ViewerSide = 0): RunChoices {
   const ms = linewars.lwState(state);
-  return { race: ms.sides[0].race, rivalRace: ms.sides[1].race };
+  return { race: ms.sides[me].race, rivalRace: ms.sides[linewars.other(me)].race };
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -80,40 +84,50 @@ function fieldAtX(x: number): -1 | 0 | 1 {
   return fieldOfCol(Math.floor(x / CELL));
 }
 
-function rivalTower(state: GameState, id: number): boolean {
+function rivalTower(state: GameState, id: number, me: ViewerSide): boolean {
   const t = findTower(state, id);
-  return t !== undefined && linewars.towerSide(state, t) === 1;
+  return t !== undefined && linewars.towerSide(state, t) === linewars.other(me);
 }
 
-/** Sounds and haptics: the Rival's builds, upgrades, shots and kills are silent; its creeps arriving in your Field are not. */
-function feedback(e: SimEvent, state: GameState): CueOverride | undefined {
+const WIN: CueOverride = { sound: 'win', haptic: null };
+const LOSE: CueOverride = { sound: 'lose', haptic: 'error' };
+
+/**
+ * Sounds and haptics as the Viewer Side hears them: the Rival's builds,
+ * upgrades, shots and kills are silent; its creeps arriving in your Field are
+ * not. The core's `won` is Side 0's win, so the end plays from your result.
+ */
+function feedback(e: SimEvent, state: GameState, me: ViewerSide = 0): CueOverride | undefined {
+  const them = linewars.other(me);
   switch (e.type) {
-    case 'fire': return rivalTower(state, e.tower) ? SILENT : undefined;
-    case 'kill': return fieldAtX(e.x) === 1 ? SILENT : undefined;
-    case 'placed': return fieldOfCol(cellCol(state.map, e.cell)) === 1 ? SILENT : undefined;
-    case 'changed': return rivalTower(state, e.tower) ? SILENT : undefined;
-    // A sale plays its own chime; the Rival never sells.
-    case 'removed': return fieldOfCol(cellCol(state.map, e.cell)) === 1 ? SILENT : { sound: null, haptic: 'tap' };
+    case 'fire': return rivalTower(state, e.tower, me) ? SILENT : undefined;
+    case 'kill': return fieldAtX(e.x) === them ? SILENT : undefined;
+    case 'placed': return fieldOfCol(cellCol(state.map, e.cell)) === them ? SILENT : undefined;
+    case 'changed': return rivalTower(state, e.tower, me) ? SILENT : undefined;
+    // A sale plays its own chime; the Rival's are silent.
+    case 'removed': return fieldOfCol(cellCol(state.map, e.cell)) === them ? SILENT : { sound: null, haptic: 'tap' };
     // lw.leak says which way the lives went.
     case 'leak': return SILENT;
-    case 'rejected': return (e.command as { side?: unknown } | null)?.side === 1 ? SILENT : undefined;
+    case 'rejected': return (e.command as { side?: unknown } | null)?.side === them ? SILENT : undefined;
+    case 'won':
+    case 'lost': return linewars.lwRecord(state, me).won ? WIN : LOSE;
     case 'mode': break;
     default: return undefined;
   }
   const d = (e.data ?? {}) as { side?: number; send?: string; from?: number; to?: number; tower?: number };
   switch (e.name) {
     case 'lw.sent': {
-      if (d.side === 0) return { sound: 'click', haptic: 'tap' };
+      if (d.side === me) return { sound: 'click', haptic: 'tap' };
       if (!isSendId(d.send)) return SILENT;
       const c = sendCreep(d.send);
       return { sound: c.flying || c.maul.kind === 'boss' ? 'horn' : 'arrive', haptic: null };
     }
-    case 'lw.leak': return d.to === 0 ? { sound: 'resource', haptic: null } : { sound: 'leak', haptic: 'leak' };
-    case 'lw.juggle': return d.side === 0 ? { sound: 'resource', haptic: 'tap' } : SILENT;
-    case 'lw.sold': return d.side === 0 ? { sound: 'resource', haptic: null } : SILENT;
+    case 'lw.leak': return d.to === me ? { sound: 'resource', haptic: null } : { sound: 'leak', haptic: 'leak' };
+    case 'lw.juggle': return d.side === me ? { sound: 'resource', haptic: 'tap' } : SILENT;
+    case 'lw.sold': return d.side === me ? { sound: 'resource', haptic: null } : SILENT;
     case 'lw.unlock': return { sound: 'resource', haptic: null };
     case 'lw.sudden': return { sound: 'horn', haptic: 'error' };
-    case 'maul.chain': return d.tower !== undefined && rivalTower(state, d.tower) ? SILENT : { sound: 'splash', haptic: null };
+    case 'maul.chain': return d.tower !== undefined && rivalTower(state, d.tower, me) ? SILENT : { sound: 'splash', haptic: null };
     default: return undefined;
   }
 }
@@ -123,6 +137,7 @@ const AIR_WARNING_TICK = Math.round((LW_SENDS.harpies.unlock - AIR_WARNING_SECON
 
 function onEvents(view: RunView, events: readonly SimEvent[]): void {
   const s = view.state;
+  const me = view.side;
   // The tick just stepped is the one before state.tick.
   if (s.tick - 1 === AIR_WARNING_TICK) view.say('Air in 0:30: Harpies fly straight over the maze', 'info', 3600);
   let stolen = 0;
@@ -134,7 +149,7 @@ function onEvents(view: RunView, events: readonly SimEvent[]): void {
     switch (e.name) {
       case 'lw.sent':
         if (!isSendId(d.send)) break;
-        if (d.side === 0) {
+        if (d.side === me) {
           lastSend.value = { seed: s.seed, send: d.send };
         } else {
           const text = rivalSendText(d.send);
@@ -142,14 +157,14 @@ function onEvents(view: RunView, events: readonly SimEvent[]): void {
         }
         break;
       case 'lw.leak':
-        if (d.to === 0) stolen += d.lives ?? 0;
-        else if (d.from === 0) {
+        if (d.to === me) stolen += d.lives ?? 0;
+        else if (d.from === me) {
           lost += d.lives ?? 0;
           if (isSendId(d.send)) through.push(sendCreep(d.send).name);
         }
         break;
       case 'lw.juggle':
-        if (d.side === 0) view.say(`Juggled: ${d.turned ?? 0} creep${d.turned === 1 ? '' : 's'} turned back`, 'ok', 1800);
+        if (d.side === me) view.say(`Juggled: ${d.turned ?? 0} creep${d.turned === 1 ? '' : 's'} turned back`, 'ok', 1800);
         break;
       case 'lw.unlock':
         if (isSendId(d.send)) view.say(`${LW_SENDS[d.send].name} unlocked`, 'ok', 2000);
@@ -165,14 +180,17 @@ function onEvents(view: RunView, events: readonly SimEvent[]): void {
   if (lost > 0) view.say(leakedText(lost, through), 'error', 2400);
 }
 
-/** Your Field's route is drawn from the middle of its spawn strip; the Rival's, fainter, shows where your Sends will walk. */
-const YOUR_SPAWN = fieldSpawns(0)[0] + FIELD_WIDTH / 2;
-const RIVAL_SPAWN = fieldSpawns(1)[0] + FIELD_WIDTH / 2;
-const ROUTES = { live: [YOUR_SPAWN], faint: [RIVAL_SPAWN] } as const;
+/** Each Side's route is drawn from the middle of its Field's spawn strip. */
+const midSpawn = (side: ViewerSide): number => fieldSpawns(side)[0] + FIELD_WIDTH / 2;
+/** Your Field's route live; the Rival's, fainter, shows where your Sends will walk. */
+const ROUTES = [
+  { live: [midSpawn(0)], faint: [midSpawn(1)] },
+  { live: [midSpawn(1)], faint: [midSpawn(0)] },
+] as const;
 
 export const LINEWARS_UI: ModeUi = {
   modeId: linewars.LW_MODE_ID,
-  look: LW_LOOK,
+  look: lwLook,
   showLives: false,
   showStartWave: false,
   Stats: IncomeTick,
@@ -201,7 +219,7 @@ export const LINEWARS_UI: ModeUi = {
   optionsText: matchup,
   progressText,
   recordWave: { heading: 'Best steal', best: bestSteal },
-  routes: () => ROUTES,
+  routes: (_state, side = 0) => ROUTES[side],
 
   // No Waves: no Wave readout, no lives (both Sides' are in the status) and no preview but "In your Field".
   waveLabel: () => null,
@@ -220,7 +238,7 @@ export const LINEWARS_UI: ModeUi = {
     const s = view.state;
     if (over(s)) return null;
     if (building.value) return { text: 'Tap open ground in your Field, on the right, to place it', tone: 'info' };
-    if (!s.towers.some((t) => linewars.towerSide(s, t) === 0)) return { text: 'Pick a Wall or a tower, then tap your Field on the right', tone: 'info' };
+    if (!s.towers.some((t) => linewars.towerSide(s, t) === view.side)) return { text: 'Pick a Wall or a tower, then tap your Field on the right', tone: 'info' };
     return null;
   },
 
@@ -228,10 +246,17 @@ export const LINEWARS_UI: ModeUi = {
   onEvents,
   validSave: validLwSave,
 
-  result(state) {
-    const r = linewars.lwRecord(state);
+  /** The Viewer Side's Record entry: a Versus Guest records Side 1's steal, score and result. */
+  result(state, side = 0) {
+    const r = linewars.lwRecord(state, side);
     return { wave: r.wave, score: r.score, won: r.won, seconds: r.seconds ?? state.tick / TICK_RATE };
   },
 
   endText: lwEndText,
+
+  // The core's gold is Side 0's copy; a Versus Guest sees its own purse.
+  gold: (state, side = 0) => linewars.sideOf(state, side).gold,
+
+  // A Versus Run's own board: each device records its own Side's result, always on Normal.
+  recordBoards: [{ id: 'versus', name: 'Versus', only: 'normal' }],
 };

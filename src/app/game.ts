@@ -1,22 +1,23 @@
 import { play } from '../platform/audio';
 import { onBackground } from '../platform/lifecycle';
 import { haptic } from '../platform/native';
-import { clearRun, recordResult, saveRun } from '../platform/storage';
+import { clearRun, recordResult, saveRun, type RecordUpdate } from '../platform/storage';
 import { createBoard } from '../render/board';
 import { cellsBox, towerCells } from '../render/footprint';
 import type { BoardMark } from '../render/marks';
 import { CELL, findTower, TICK_RATE, type Command, type GameState, type RunOptions, type SimEvent } from '../sim';
 import { createHotkeys, keyName } from '../ui/hotkeys';
-import type { ModeUi, RunView } from '../ui/mode-ui';
+import type { ModeUi, RunView, ViewerSide } from '../ui/mode-ui';
 import { defaultEndText } from '../ui/RunEnd';
 import {
   gold, hint, lives, paused, phase, revision, runClock, runEnd, runMenu, session, speed, waveNumber, waveTotal,
   type RunEnd, type Speed,
 } from '../ui/state';
-import { createRunController, type AutosaveReason, type RunController } from './controller';
+import { createRunController, type AutosaveReason, type RunController, type TickSource } from './controller';
 import { createFeedback } from './feedback';
 import { createInput, type Input } from './input';
 import { SAVE_VERSION, writeCode } from './saves';
+import { recordVersus, VERSUS_BOARD, type VersusOutcome } from './versus-records';
 
 /** One Game Mode's Runs, ready to play: what the main menu hands to startPlay. */
 export interface PlayTarget {
@@ -33,6 +34,25 @@ export interface PlayOptions {
   readonly paused?: boolean;
   readonly speed?: Speed;
   readonly showGrid?: boolean;
+  /**
+   * The Side this device shows as you (Line Wars): 0 by default, 1 for a
+   * Versus Guest. The UI's commands name it, the HUD reads it, and 1 mirrors
+   * the board so its Field is on the right.
+   */
+  readonly viewer?: ViewerSide;
+  /**
+   * A Versus Run (docs/versus-design.md §6, §7): no autosave and no save code,
+   * 1× only (no speed buttons or 1–3 keys), the Rival's line without its
+   * factor, and its Record on the Versus board. The app going to the background
+   * is the session's to handle (lifecycle's onBackground and onForeground).
+   */
+  readonly versus?: boolean;
+  /** False keeps a finished Run out of Records, as the mirror rehearsal does (window.tavernMirror). */
+  readonly record?: boolean;
+  /** Where the Run's ticks get their commands: Versus passes the lockstep (RunControllerOptions.ticks). */
+  readonly ticks?: TickSource;
+  /** Replaces what the pause button and P do: Versus asks the lockstep, so both devices stop on one tick. */
+  onPause?(): void;
   /** Called by Quit to menu once the Run is saved. */
   onQuit?(): void;
   fps?(fps: number): void;
@@ -44,6 +64,15 @@ export interface Play {
   worldToClient(x: number, y: number): { x: number; y: number };
   /** Resolves once the latest autosave (or clearing it), and the mode's record of a finished Run, have been written. */
   flush(): Promise<unknown>;
+  /**
+   * Versus: records a Run the session ended rather than the sim, on the Versus
+   * board from the Viewer Side (design §6). 'conceded' is a loss, and
+   * 'rival-conceded' and 'claimed' are wins, each with the score so far and no
+   * fastest time; 'desync' records nothing, and 'run' is what the Run's own end
+   * already recorded, so it records nothing again. Resolves to the Record's
+   * update, or null when nothing was recorded.
+   */
+  recordVersus(outcome: VersusOutcome): Promise<RecordUpdate | null>;
   setShowGrid(show: boolean): void;
   stop(): void;
 }
@@ -62,6 +91,8 @@ const MARK_EVENTS = new Set<SimEvent['type']>(['placed', 'removed', 'changed', '
  */
 export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts: PlayOptions = {}): Promise<Play> {
   const { ui } = target;
+  const side: ViewerSide = opts.viewer ?? 0;
+  const versus = opts.versus === true;
   const hotkeys = createHotkeys();
   // The page knows which Game Mode is up, so its stylesheet can size the HUD for it (Line Wars' is wider).
   document.documentElement.dataset['mode'] = ui.modeId;
@@ -70,7 +101,10 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     onTap: (p, kind) => input?.tap(p, kind),
     onHover: (p) => input?.hover(p),
     onSecondary: () => input?.secondary(),
+    // A Versus Guest's board is mirrored, so its Field is on the right beside the HUD.
+    mirror: side === 1,
   });
+  const look = typeof ui.look === 'function' ? ui.look(side) : ui.look;
   board.setShowGrid(opts.showGrid ?? true);
 
   let lastWrite: Promise<unknown> = Promise.resolve();
@@ -80,14 +114,19 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     runOptions: target.runOptions,
     ...(opts.initial ? { initial: opts.initial } : {}),
     paused: opts.paused ?? false,
-    autosave: (s: GameState) => (lastWrite = saveRun(s.modeId, s, SAVE_VERSION)),
-    clearSave: (s: GameState) => (lastWrite = clearRun(s.modeId)),
+    ...(opts.ticks ? { ticks: opts.ticks } : {}),
+    // A Versus Run can't go on alone, so it is never saved (design §6).
+    ...(versus ? {} : {
+      autosave: (s: GameState) => (lastWrite = saveRun(s.modeId, s, SAVE_VERSION)),
+      clearSave: (s: GameState) => (lastWrite = clearRun(s.modeId)),
+    }),
   });
-  controller.setSpeed(opts.speed ?? 1);
+  controller.setSpeed(versus ? 1 : opts.speed ?? 1);
   const view: RunView = {
     get state() {
       return controller.state;
     },
+    side,
     send: (command) => controller.send(command),
     refresh: () => input?.refresh(),
     select: (id) => input?.select(id),
@@ -95,13 +134,13 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     showGhost: (p, kind) => input?.pin(p, kind),
     toScreen: (p) => board.worldToClient(p),
   };
-  const feedback = createFeedback({ play, haptic }, () => board.looks, () => ui);
+  const feedback = createFeedback({ play, haptic }, () => board.looks, () => ui, side);
   input = createInput({ controller, board, ui, view, feedback });
   const inp = input;
 
   let dirty = false;
   const syncHud = (s: GameState): void => {
-    gold.value = s.gold;
+    gold.value = ui.gold ? ui.gold(s, side) : s.gold;
     lives.value = s.lives;
     waveNumber.value = s.wave.number;
     waveTotal.value = s.wave.total;
@@ -126,11 +165,14 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     board.setMarks(marks);
   };
 
-  /** Records the finished Run and shows the end screen; the Record's "new best" arrives once it is merged. */
+  /**
+   * Records the finished Run and shows the end screen, both from the Viewer
+   * Side; the Record's "new best" arrives once it is merged.
+   */
   const ended = (s: GameState): void => {
-    const result = ui.result?.(s) ?? null;
-    const text = ui.endText?.(s) ?? defaultEndText(s);
-    const choices = ui.optionsOf?.(s) ?? {};
+    const result = opts.record === false ? null : ui.result?.(s, side) ?? null;
+    const text = ui.endText?.(s, side) ?? defaultEndText(s);
+    const choices = ui.optionsOf?.(s, side) ?? {};
     const end: RunEnd = {
       won: text.won,
       ...(text.title ? { title: text.title } : {}),
@@ -145,13 +187,14 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     runEnd.value = end;
     if (ui.finish) finishing = ui.finish(s).catch((err: unknown) => console.error('[play] could not record the Run', err));
     if (!result) return;
-    void recordResult(s.modeId, s.difficulty, result, ui.recordBoard?.(choices)).then((update) => {
+    const recordBoard = versus ? VERSUS_BOARD : ui.recordBoard?.(choices);
+    void recordResult(s.modeId, s.difficulty, result, recordBoard).then((update) => {
       if (runEnd.value === end) runEnd.value = { ...end, update };
     });
   };
 
   const offRun = controller.onRun((s) => {
-    board.setRun(s, ui.look);
+    board.setRun(s, look);
     inp.reset();
     ui.cancel?.(view);
     runEnd.value = null;
@@ -198,7 +241,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     controller.setPaused(p);
     paused.value = p;
   };
-  const togglePause = (): void => setPaused(!controller.paused);
+  const togglePause = opts.onPause ?? ((): void => setPaused(!controller.paused));
   const startWave = (): void => controller.send({ type: 'startWave' });
   const openMenu = (): void => {
     setPaused(true);
@@ -224,9 +267,12 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
   const unbind = [
     hotkeys.bind('space', 'Start the next Wave', startWave),
     hotkeys.bind('p', 'Pause', togglePause),
-    hotkeys.bind('1', 'Speed 1×', () => setSpeed(1)),
-    hotkeys.bind('2', 'Speed 2×', () => setSpeed(2)),
-    hotkeys.bind('3', 'Speed 3×', () => setSpeed(3)),
+    // Versus plays 1× only.
+    ...(versus ? [] : [
+      hotkeys.bind('1', 'Speed 1×', () => setSpeed(1)),
+      hotkeys.bind('2', 'Speed 2×', () => setSpeed(2)),
+      hotkeys.bind('3', 'Speed 3×', () => setSpeed(3)),
+    ]),
     hotkeys.bind('escape', 'Back', escape),
   ];
   // While the in-Run menu is open, only Esc reaches the game, so a letter typed there can't buy or build.
@@ -241,7 +287,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     if (hotkeys.handle(e)) e.preventDefault();
   };
   window.addEventListener('keydown', onKey);
-  const offBackground = onBackground(() => {
+  // In Versus the session pauses both devices when the app goes to the background (step 3b wires it).
+  const offBackground = versus ? () => {} : onBackground(() => {
     controller.background();
     paused.value = true;
   });
@@ -269,6 +316,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     view,
     ui,
     hotkeys,
+    versus,
     startWave,
     setSpeed,
     togglePause,
@@ -284,7 +332,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
       save('quit');
       opts.onQuit?.();
     },
-    exportCode: () => writeCode(controller.state),
+    // A Versus Run has no save code (design §6).
+    ...(versus ? {} : { exportCode: () => writeCode(controller.state) }),
   };
   controller.start();
 
@@ -292,6 +341,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     controller,
     worldToClient: (x, y) => board.worldToClient({ x, y }),
     flush: () => Promise.all([lastWrite, finishing]),
+    recordVersus: (outcome) => (opts.record === false ? Promise.resolve(null) : recordVersus(ui, controller.state, side, outcome)),
     setShowGrid: (show) => board.setShowGrid(show),
     stop,
   };

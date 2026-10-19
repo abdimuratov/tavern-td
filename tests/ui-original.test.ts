@@ -20,7 +20,7 @@ function viewOf(state: GameState): FakeView {
   const sent: Command[] = [];
   const ghosts: (Point | null)[] = [];
   return {
-    state, sent, ghosts,
+    state, side: 0, sent, ghosts,
     send: (c) => void sent.push(c),
     refresh: () => {},
     select: () => {},

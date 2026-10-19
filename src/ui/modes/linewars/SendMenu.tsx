@@ -8,7 +8,7 @@ import { revision, runClock, type PlaySession } from '../../state';
 import { countdown } from '../maul/text';
 import { CreepIcon } from './CreepIcon';
 import { lastSend } from './picks';
-import { sendAbout, sendTags, sendWhy } from './text';
+import { sendAbout, sendTags, sendWhy, sidesFrom } from './text';
 
 /** A press held this long says what the Send is, or why it's dim, instead of buying it. */
 const LONG_PRESS_MS = 450;
@@ -20,14 +20,15 @@ const LONG_PRESS_MS = 450;
  */
 export function trySend(s: PlaySession, send: SendId): void {
   const state = s.view.state;
-  const o = linewars.sendOptions(state, 0).find((x) => x.send === send);
+  const side = s.view.side;
+  const o = linewars.sendOptions(state, side).find((x) => x.send === send);
   if (!o) return;
   if (o.blocked !== null) {
-    const me = linewars.lwStatus(state).sides[0];
+    const [me] = sidesFrom(linewars.lwStatus(state), side);
     s.view.say(`${o.name}: ${sendWhy(o, me.gold, me.live, me.cap) ?? o.blocked}`, 'error', 2200);
     return;
   }
-  s.view.send({ type: 'lw.send', side: 0, send });
+  s.view.send({ type: 'lw.send', side, send });
   lastSend.value = { seed: state.seed, send };
 }
 
@@ -97,8 +98,8 @@ export function SendMenu({ s }: ModeHudProps) {
   void runClock.value;
   const state = s.view.state;
   const st = linewars.lwStatus(state);
-  const me = st.sides[0];
-  const options = linewars.sendOptions(state, 0);
+  const [me] = sidesFrom(st, s.view.side);
+  const options = linewars.sendOptions(state, s.view.side);
   const last = lastSend.value?.seed === state.seed ? lastSend.value.send : null;
   const again = (): void => {
     const repeat = lastSend.value?.seed === s.view.state.seed ? lastSend.value.send : null;

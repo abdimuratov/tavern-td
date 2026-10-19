@@ -6,7 +6,7 @@ import { abilities, specOf, statLine } from '../src/ui/modes/gem/text';
 import { draftWith, finishWave, newGemRun, OPEN_SPOTS, send } from './sim/gem/helpers';
 
 function viewOf(state: ReturnType<typeof newGemRun>): RunView {
-  return { state, send: () => {}, refresh: () => {}, select: () => {}, say: () => {} };
+  return { state, side: 0, send: () => {}, refresh: () => {}, select: () => {}, say: () => {} };
 }
 
 /** The world point a 2×2 footprint with top-left (col, row) centres on. */

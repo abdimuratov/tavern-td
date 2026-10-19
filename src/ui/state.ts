@@ -17,6 +17,11 @@ export interface PlaySession {
   readonly view: RunView;
   readonly ui: ModeUi;
   readonly hotkeys: Hotkeys;
+  /**
+   * A Versus Run: 1× only, so the speed buttons and their keys are gone, and
+   * the Rival's line has no Difficulty factor. It has no save code either.
+   */
+  readonly versus: boolean;
   startWave(): void;
   setSpeed(speed: Speed): void;
   togglePause(): void;
@@ -32,8 +37,8 @@ export interface PlaySession {
   closeMenu(): void;
   /** Saves the Run and goes back to the main menu. */
   quit(): void;
-  /** The Run as it stands as a save code. */
-  exportCode(): Promise<string>;
+  /** The Run as it stands as a save code; absent for a Run that has none (Versus). */
+  exportCode?(): Promise<string>;
 }
 
 export const session = signal<PlaySession | null>(null);

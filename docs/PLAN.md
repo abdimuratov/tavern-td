@@ -129,8 +129,14 @@ Phase 5 progress (2026-10-18):
   - The session: Hello with the version check, the lobby with Random drawn by the picker, pings that set the Input Delay, Start, Started and Go, Concede, claiming the win after 2 min, Rematch, reconnects and rejoins. `rtc.ts` wraps `RTCPeerConnection` with one negotiated DataChannel and gathering that stops 1 s after the first server-reflexive candidate.
   - `vite.config.ts` defines `__SIM_HASH__` and `__BUILD__`. `lwRecord` takes a Side, and the scripted bots play either Side. Every existing replay hash and bot result is unchanged.
 - Tested: 32 tests in `tests/net/` and one in `tests/sim/linewars/`, about 2 s in all. Over a fake transport on a virtual clock, two controllers with a bot each play a whole Run at 40 ± 30 ms each way: 1,059 hash checks agree, both end alike, and either replay reaches the final hash. Also 300 ms of ping at D = 3 with no waits, a pause from each Side, the Guest away for 20 s, a dropped connection and its resends, a rejoin from nothing, a Desync repaired and a second ending both, and a peer sending the other Side's commands. The codes round-trip over hand-written Chrome, Safari, Android WebView and Firefox descriptions.
-- Left for the screens: `src/app/versus.ts` and `src/ui/versus/`, the Viewer Side and the mirrored board, the Versus Records board, the QR and share sheet (`uqr`, `@capacitor/share`), and the e2e test that runs `rtc.ts` in real browsers.
-- Next: the Versus screens, the Viewer Side and an e2e test with two pages over loopback WebRTC.
+- Done: the Viewer Side, the mirrored board and the Versus Records board ([versus-design.md §11](versus-design.md#11-filled-in-by-the-build) lists what they fill in):
+  - The play screen takes a Viewer Side, 0 unless a Versus Guest's is 1. Line Wars builds its commands for it and reads its gold, Income, lives, Sends, "In your Field", tower panel, routes, banners, sounds, toasts, hint, end card and Record from it. Side 1 winning is that device's Victory, though the sim calls it lost.
+  - Viewer Side 1 draws the Map flipped left to right, so that device's Field is on the right beside the HUD. Taps, pans, pinches and zooms flip with it, and the banners' and labels' text is turned back so it reads. The sim and its world points don't change.
+  - A Versus Run has no autosave and no save code, plays 1× with no speed buttons or 1–3 keys, and drops the Rival's ×factor. Its Record goes to a Versus row under Line Wars' table in Records; a conceded or claimed result records through one call, and a Desync records nothing.
+  - `onForeground` joins `onBackground` in the lifecycle module. `window.tavernMirror()` plays Line Wars against the AI from Side 1, mirrored, with no network.
+  - Tested: unit tests for the camera both ways, Side 1's commands, gold, status, end text and Record, the Versus Records and the foreground hook; an e2e test of the mirror in desktop Chrome. Single-player plays as before.
+- Left for the screens: `src/app/versus.ts` and `src/ui/versus/`, Pause and the end card wired to the session, a Versus paragraph in How to play, the QR and share sheet (`uqr`, `@capacitor/share`), and the e2e test that runs `rtc.ts` in real browsers.
+- Next: the Versus screens and an e2e test with two pages over loopback WebRTC.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

@@ -9,7 +9,7 @@ import { abilityLines, addedElement, specOf } from '../src/ui/modes/element/text
 import { buildAt, newElementRun, send, setLevels, skipWave } from './sim/element/helpers';
 
 function viewOf(state: GameState): RunView {
-  return { state, send: () => {}, refresh: () => {}, select: () => {}, say: () => {} };
+  return { state, side: 0, send: () => {}, refresh: () => {}, select: () => {}, say: () => {} };
 }
 
 /** The world point a 2×2 footprint with top-left (col, row) centres on. */

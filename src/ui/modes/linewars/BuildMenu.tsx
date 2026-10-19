@@ -51,10 +51,11 @@ function BuildMenu({ s }: ModeHudProps) {
   void revision.value;
   void building.value;
   const state = s.view.state;
+  const me = s.view.side;
   const picked = selected.value === 0 ? undefined : findTower(state, selected.value);
-  const mine = picked !== undefined && linewars.towerSide(state, picked) === 0;
-  const options = linewars.buildOptions(state, 0);
-  const race = linewars.lwState(state).sides[0].race;
+  const mine = picked !== undefined && linewars.towerSide(state, picked) === me;
+  const options = linewars.buildOptions(state, me);
+  const race = linewars.lwState(state).sides[me].race;
   return (
     <div class="ml-build" data-testid="build-menu">
       <div class={`el-build ml-build-row n${options.length}`} role="group" aria-label="Build">
@@ -72,10 +73,11 @@ function InField({ s }: ModeHudProps) {
   void revision.value;
   void runClock.value;
   const state = s.view.state;
-  const groups = linewars.inField(state, 0);
+  const me = s.view.side;
+  const groups = linewars.inField(state, me);
   const next = linewars.nextUnlock(state);
   const air = next !== null && sendCreep(next.send).flying && next.ticksLeft <= AIR_WARNING_SECONDS * TICK_RATE;
-  const hp = new Map(linewars.sendOptions(state, 1).map((o) => [o.send, o.hp]));
+  const hp = new Map(linewars.sendOptions(state, linewars.other(me)).map((o) => [o.send, o.hp]));
   return (
     <section class="waves lw-field" data-testid="in-field">
       <h2>In your Field</h2>

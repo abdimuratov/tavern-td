@@ -2,7 +2,7 @@ import type { PlayOptions, SoundName } from '../platform/audio';
 import type { HapticKind } from '../platform/native';
 import type { LookCache } from '../render/look';
 import { findTower, getMode, type GameState, type SimEvent } from '../sim';
-import type { ModeUi } from '../ui/mode-ui';
+import type { ModeUi, ViewerSide } from '../ui/mode-ui';
 
 export interface FeedbackOutputs {
   play(name: SoundName, opts?: PlayOptions): unknown;
@@ -37,13 +37,16 @@ export function defaultCue(e: SimEvent, state: GameState): Cue {
   }
 }
 
-/** Turns each tick's events into sounds and Android haptics. The voice limiter in audio keeps volleys sane. */
-export function createFeedback(out: FeedbackOutputs, looks: () => LookCache, ui: () => ModeUi) {
+/**
+ * Turns each tick's events into sounds and Android haptics, as the Viewer
+ * Side hears them. The voice limiter in audio keeps volleys sane.
+ */
+export function createFeedback(out: FeedbackOutputs, looks: () => LookCache, ui: () => ModeUi, side: ViewerSide = 0) {
   return {
     events(state: GameState, events: readonly SimEvent[]): void {
       const mode = ui();
       for (const e of events) {
-        const cue = mode.feedback?.(e, state) ?? defaultCue(e, state);
+        const cue = mode.feedback?.(e, state, side) ?? defaultCue(e, state);
         if (cue.sound) {
           if (cue.sound === 'shoot' && e.type === 'fire') {
             const tower = findTower(state, e.tower);
