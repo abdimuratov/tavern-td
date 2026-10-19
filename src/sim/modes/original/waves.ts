@@ -1,14 +1,14 @@
 import {
   BOUNTY_POOL, EARLY_CALL, GHOUL_HP, ORIGINAL_CREEPS, WAVE_BONUS, stageByNumber,
-  type OriginalWave, type StageSpec,
+  type ChallengeModifiers, type OriginalWave, type StageSpec,
 } from '../../../content/original';
 import { difficultyHp } from '../../combat/creeps';
 import { powDet } from '../../core/math';
 import type { WaveGroup, WaveSpec } from '../../core/specs';
-import type { GameState } from '../../core/state';
+import type { Difficulty, GameState } from '../../core/state';
 import { getMode } from '../registry';
 import { runModifiers } from './challenge';
-import { orState, threatOf } from './state';
+import { ORIGINAL_MODE_ID, orState, threatOf } from './state';
 
 // Threat and the curves it drives (docs/original-design.md §10). A Wave's
 // Threat is the Stage's first Threat plus the Wave number minus one, so the
@@ -26,9 +26,23 @@ export function runGhoulHp(state: GameState, threat: number): number {
 
 /** What this Run multiplies creep HP by: its Difficulty, times its Challenge's HP if it has one. */
 export function runHpScale(state: GameState): number {
-  const diff = difficultyHp(getMode(state.modeId), state.difficulty);
-  const hp = runModifiers(state).hp;
+  return hpScaleFor(state.difficulty, runModifiers(state));
+}
+
+/**
+ * What creep HP is multiplied by on `difficulty` under a Challenge's
+ * modifiers (pass `{}` for a Stage's own Run): the Difficulty, times the
+ * Challenge's HP if it sets one. A Run's runHpScale, or the Waves tab's with no Run.
+ */
+export function hpScaleFor(difficulty: Difficulty, mods: ChallengeModifiers): number {
+  const diff = difficultyHp(getMode(ORIGINAL_MODE_ID), difficulty);
+  const hp = mods.hp;
   return hp === undefined ? diff : diff * hp;
+}
+
+/** A Shield of `share` × a Ghoul's HP at Threat T, with creep HP times `hpScale`: what a Shieldbearer spawns with. */
+export function shieldAt(share: number, threat: number, hpScale: number): number {
+  return Math.round(share * (ghoulHp(threat) * hpScale));
 }
 
 /** The gold a Wave's creeps carry between them: 10 × (1 + ⌊T/4⌋). */
@@ -73,6 +87,23 @@ export function groupStarts(wave: OriginalWave): number[] {
 }
 
 /**
+ * Each group's creep at Threat T, before Difficulty and a Challenge: its HP (its
+ * multiple of a Ghoul's HP at T) and its bounty, the pool split by each creep's
+ * share of the Wave's HP, to the hundredth of a gold. waveSpec builds a Run's
+ * Waves from it, and the Waves tab its rows.
+ */
+export function groupNumbers(wave: OriginalWave, threat: number): { readonly hp: number; readonly bounty: number }[] {
+  const ghoul = ghoulHp(threat);
+  let total = 0;
+  for (const g of wave.groups) total += g.count * (ORIGINAL_CREEPS[g.creep]?.original.hpMult ?? 0);
+  const pool = bountyPool(threat);
+  return wave.groups.map((g) => {
+    const mult = ORIGINAL_CREEPS[g.creep]?.original.hpMult ?? 1;
+    return { hp: ghoul * mult, bounty: total > 0 ? Math.round((pool * mult * 100) / total) / 100 : 0 };
+  });
+}
+
+/**
  * Wave `index` (0-based) as core groups. HP is the creep's multiple of a
  * Ghoul's HP at the Wave's Threat (the core applies Difficulty). The bounty
  * pool is split by each creep's share of the Wave's HP, to the hundredth of a
@@ -81,17 +112,12 @@ export function groupStarts(wave: OriginalWave): number[] {
 export function waveSpec(state: GameState, index: number): WaveSpec | undefined {
   const wave = runWaves(state)[index];
   if (!wave) return undefined;
-  const threat = threatOf(state, index + 1);
-  const ghoul = ghoulHp(threat);
-  let total = 0;
-  for (const g of wave.groups) total += g.count * (ORIGINAL_CREEPS[g.creep]?.original.hpMult ?? 0);
-  const pool = bountyPool(threat);
+  const numbers = groupNumbers(wave, threatOf(state, index + 1));
   const starts = groupStarts(wave);
   const groups = wave.groups.map((g, i): WaveGroup => {
-    const mult = ORIGINAL_CREEPS[g.creep]?.original.hpMult ?? 1;
     const gap = g.gap ?? ORIGINAL_CREEPS[g.creep]?.original.gap ?? 1;
-    const bounty = total > 0 ? Math.round((pool * mult * 100) / total) / 100 : 0;
-    const group: WaveGroup = { creep: g.creep, count: g.count, interval: gap, delay: starts[i]!, hp: ghoul * mult, bounty };
+    const { hp, bounty } = numbers[i]!;
+    const group: WaveGroup = { creep: g.creep, count: g.count, interval: gap, delay: starts[i]!, hp, bounty };
     return g.route === undefined ? group : { ...group, route: g.route };
   });
   // A Challenge's tougher creeps; the core multiplies it in with the Difficulty.

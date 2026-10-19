@@ -73,7 +73,7 @@ export interface Hint {
 export const hint = signal<Hint | null>(null);
 
 /** The in-Run menu's page, null while it is closed. */
-export type RunMenuPage = 'main' | 'settings' | 'howto' | 'export' | 'concede';
+export type RunMenuPage = 'main' | 'settings' | 'howto' | 'reference' | 'export' | 'concede';
 export const runMenu = signal<RunMenuPage | null>(null);
 
 /** How the Run ended, for the end screen. `update` arrives once the Record is merged. */

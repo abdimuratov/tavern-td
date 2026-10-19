@@ -6,12 +6,14 @@ import { DIFFICULTY_NAME, difficultyAbout } from '../../catalog';
 import { clock } from '../../format';
 import { Sheet } from '../../menu/Sheet';
 import type { MenuPageProps } from '../../mode-ui';
+import { ReferenceSheet } from '../../reference/Reference';
 import { appActions, savedRuns } from '../../state';
 import {
   campaign, campaignUnlocks, challengeRecord, challengeState, MOST_STARS, setTalents, stageOpen, stageRecord, stagesCleared, starsEarned,
   starsFree,
 } from './campaign';
 import { FamilyIcon, StarCount, Stars } from './parts';
+import { ORIGINAL_REFERENCE } from './reference';
 import { FAMILY_NAME, PIN_AT, REGION_INTRO, REGION_NAME, REGIONS } from './text';
 
 /** The Stage to show first: the earliest open one not yet won, or the last one open. */
@@ -237,11 +239,21 @@ function TalentsPage({ back }: { back(): void }) {
   );
 }
 
-/** The Original's page in the main menu: Stage select, and from it the Talent screen. */
+/** The Original's page in the main menu: Stage select, and from it the Talent screen and Waves & Towers on the Stage picked. */
 export function StageSelect({ view, go, back, confirm }: MenuPageProps) {
   const [picked, setPicked] = useState(firstStage);
   if (view === 'talents') return <TalentsPage back={() => go('')} />;
   const stage = stageByNumber(picked) ?? STAGES[0]!;
+  if (view === 'reference') {
+    return (
+      <ReferenceSheet
+        modes={[{ id: 'original', name: 'Original', reference: ORIGINAL_REFERENCE }]}
+        modeId="original"
+        ctx={{ from: { stage: String(stage.number) } }}
+        onBack={() => go('')}
+      />
+    );
+  }
   // A Stage on Difficulty `d`, or its Challenge (always Normal); either asks first before replacing a saved Run.
   const start = (d: Difficulty, challenge = false): void => {
     const choices = challenge ? { stage: String(stage.number), challenge: '1' } : { stage: String(stage.number) };
@@ -257,7 +269,16 @@ export function StageSelect({ view, go, back, confirm }: MenuPageProps) {
     } else run();
   };
   return (
-    <Sheet title="The Original · Campaign" onBack={back} wide>
+    <Sheet
+      title="The Original · Campaign"
+      onBack={back}
+      wide
+      actions={(
+        <button type="button" class="btn" title={`Every Wave of ${stage.name}, and every tower`} data-testid="reference-button" onClick={() => go('reference')}>
+          Waves &amp; Towers
+        </button>
+      )}
+    >
       <div class="or-campaign" data-testid="campaign">
         <WarMap picked={stage.number} pick={setPicked} />
         <StageCard stage={stage} start={start} talents={() => go('talents')} />

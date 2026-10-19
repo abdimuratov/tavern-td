@@ -198,6 +198,13 @@ Performance (2026-10-19), on the dev Mac (M5 Pro). A phone core is taken as 3× 
 - No frame missed 60 fps at ×4 in any mode, window, zoom or speed. Line Wars' HUD frames (4 a second) are the heaviest at ×4: 5–6 ms of main thread, 13–17 ms at worst.
 - Guards in `pnpm test`: a perf test per Game Mode with budgets several times the Mac's numbers.
 
+Waves & Towers (2026-10-20), at your request: a sheet with a Waves tab and a Towers tab for each Game Mode, every number read from the content tables and sim queries.
+- Done: the sheet. It opens from the main menu beside How to play (with a tab per Game Mode), from the Original's war map on the Stage picked there, and in a Run from the Run menu, which stays paused. In a Run the Waves tab marks the current Wave Now and the next Next, opens both and scrolls to them. Rows are one line and open on a tap, Enter or Space; ← and → switch the tabs on the Mac. On a phone on its side the tabs and filters fit one row and only the list scrolls.
+- Done: Best against, ranked from each mode's damage-vs-armor table, with what can't hit air dropped for a flyer and the mode's own rules breaking ties.
+- Done: the Original. The Waves tab picks the Stage and Difficulty, and a Challenge toggle shows its rule and applies it (Difficulty locks to Normal). Each Wave has its Threat, bounty pool and bonus; each creep its HP, armor, speed, Shield, bounty, Leak, traits and Best against, by damage type and by family. The Towers tab has all 30 towers by family: prices, damage, type, speed, range, what it hits, abilities, the upgrade path, what opens it, the Tower Level bonus and Perks, and Strong and Weak against. A Challenge dims what it forbids. The sim's Wave numbers are now shared helpers the tab calls too; every replay hash and bot result is unchanged.
+- Tested: 25 unit tests (the ranking, and the Original's rows against a real Run's numbers at each Difficulty and Challenge) and `e2e/reference.spec.ts` from the main menu, the war map and a Run, in Chrome and on the iPhone project.
+- My calls, open to change: no DPS figure, since poison, clouds, beams and crits have no single one, so a tower shows damage per hit, attacks per second and its abilities; numbers leave out Talents and Tower Levels; Totem is left out of the family rankings, since it doesn't attack before its Specialisations; the main menu opens on Stage 1, the war map on the Stage picked.
+
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element

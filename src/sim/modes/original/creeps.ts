@@ -5,7 +5,7 @@ import type { Creep, GameState } from '../../core/state';
 import { drop, isPoisoned } from './combat';
 import { familyTalents } from './talents';
 import { creepInfo, creepState, modeEvent, orState, peekCreep, ticks, type OriginalCreepState } from './state';
-import { runGhoulHp } from './waves';
+import { runHpScale, shieldAt } from './waves';
 
 // Creep behaviour each tick (docs/original-design.md §5): regeneration, the
 // Plague Mother's brood, and the Shield every Shieldbearer spawns with. Splits,
@@ -16,7 +16,7 @@ export function initCreep(state: GameState, creep: Creep): OriginalCreepState {
   const cs = creepState(state, creep);
   const info = creepInfo(creep.spec);
   // assumed: the Shield scales with Difficulty, as the Ghoul's HP it is a share of does.
-  if (info?.shield) cs.shield = Math.round(info.shield * runGhoulHp(state, cs.threat));
+  if (info?.shield) cs.shield = shieldAt(info.shield, cs.threat, runHpScale(state));
   if (info?.boss?.kind === 'brood') cs.next = state.tick + ticks(info.boss.every);
   return cs;
 }

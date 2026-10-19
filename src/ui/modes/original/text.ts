@@ -69,12 +69,12 @@ export const ARMOR_NAME: Readonly<Record<ArmorType, string>> = {
   unarmored: 'Unarmored', armored: 'Armored', warded: 'Warded', boss: 'Boss',
 };
 
-function pct(fraction: number): string {
+export function pct(fraction: number): string {
   return `${num(Math.round(fraction * 1000) / 10)}%`;
 }
 
 /** Seconds as a player reads them: "2 s", "0.5 s". */
-function secs(s: number): string {
+export function secs(s: number): string {
   return `${num(Math.round(s * 100) / 100)} s`;
 }
 
@@ -153,12 +153,19 @@ export function creepTags(spec: OriginalCreepSpec): string[] {
 export function creepAbout(spec: OriginalCreepSpec): string {
   const i = spec.original;
   const parts = [`${ARMOR_NAME[spec.armorType]}`, `speed ${num(spec.speed)}`, `a Leak costs ${i.lives} ${i.lives === 1 ? 'life' : 'lives'}`];
+  return [...parts, ...creepTraitLines(spec)].join(' · ');
+}
+
+/** How a creep fights beyond its HP, armor and speed, one short line each: its Shield, regeneration, split and boss behaviour. */
+export function creepTraitLines(spec: OriginalCreepSpec): string[] {
+  const i = spec.original;
+  const parts: string[] = [];
   if (i.shield) parts.push('its Shield blocks a flat amount from every hit; poison ignores it');
   if (i.regen) parts.push(`regains ${pct(i.regen)} of its HP each second`);
-  if (i.split) parts.push(`bursts into ${i.split.count} Crawlers`);
+  if (i.split) parts.push(`bursts into ${i.split.count} ${creepSpecOf(i.split.creep)?.name ?? i.split.creep}s`);
   const b = i.boss;
   if (b?.kind === 'enrage') parts.push(`at ${pct(b.at)} HP it enrages: +${pct(b.haste)} speed for ${secs(b.duration)}`);
-  if (b?.kind === 'brood') parts.push(`every ${secs(b.every)} drops ${b.count} Crawlers behind it`);
-  if (b?.kind === 'rift') parts.push(`at ${b.at.map(pct).join(', ')} HP it raises a Shield and calls ${b.count} Hounds`);
-  return parts.join(' · ');
+  if (b?.kind === 'brood') parts.push(`every ${secs(b.every)} drops ${b.count} ${creepSpecOf(b.creep)?.name ?? b.creep}s behind it`);
+  if (b?.kind === 'rift') parts.push(`at ${b.at.map(pct).join(', ')} HP it raises a Shield and calls ${b.count} ${creepSpecOf(b.creep)?.name ?? b.creep}s`);
+  return parts;
 }

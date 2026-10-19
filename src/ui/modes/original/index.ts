@@ -11,6 +11,7 @@ import { creepColor, ORIGINAL_LOOK } from './look';
 import { OriginalPanel } from './OriginalPanel';
 import { OriginalStatus } from './OriginalStatus';
 import { OriginalRecords } from './Records';
+import { ORIGINAL_REFERENCE } from './reference';
 import { buildPicked, cellAtPoint, closeRing, followPlace, groundWhyNot, inPlace, isOpenGround, openRing, placeAt, ring } from './ring';
 import { SendNow } from './SendNow';
 import { StageSelect } from './StageSelect';
@@ -189,6 +190,7 @@ export const ORIGINAL_UI: ModeUi = {
   Panel: OriginalPanel,
   Footer: SendNow,
   HowTo: OriginalHowTo,
+  reference: ORIGINAL_REFERENCE,
   Board: BuildRing,
   End: OriginalEnd,
   Records: OriginalRecords,

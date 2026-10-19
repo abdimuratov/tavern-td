@@ -5,6 +5,7 @@ import type { RunResult } from '../platform/storage';
 import type { PointerKind } from '../render/gestures';
 import type { ModeLook, TowerLook } from '../render/look';
 import { getMode, type Command, type Difficulty, type GameState, type Json, type Point, type SimEvent, type Tower, type WaveSpec } from '../sim';
+import type { ModeReference } from './reference/types';
 import type { Hint, HintTone, PlaySession, RunEnd } from './state';
 
 /**
@@ -337,6 +338,12 @@ export interface ModeUi {
   readonly Footer?: ComponentType<ModeHudProps>;
   /** The mode's one-screen how-to-play. */
   readonly HowTo?: ComponentType;
+  /**
+   * The mode's Waves & Towers sheet: its Waves tab (Line Wars' Sends), its
+   * Towers tab and their filters, derived from its content tables and sim
+   * queries. The main menu, the in-Run menu and the mode's own page open it.
+   */
+  readonly reference?: ModeReference;
   /** The mode's own layer over the board, such as the Original's build ring. */
   readonly Board?: ComponentType<ModeHudProps>;
 }

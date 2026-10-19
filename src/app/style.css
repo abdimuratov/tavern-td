@@ -603,6 +603,91 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
   .run-over .card { padding: 14px 20px; }
   .run-over h1 { font-size: 24px; }
 }
+/* ---------- Waves & Towers: one sheet for every Game Mode ---------- */
+/* Buttons at a sheet header's right end, such as the war map's Waves & Towers or the sheet's Game Mode tabs. */
+.sheet > header .sheet-actions { margin-left: auto; display: flex; gap: 6px; min-width: 0; }
+.sheet-actions > .btn { padding: 0 12px; font-weight: 650; white-space: nowrap; }
+.sheet-actions .seg { flex: none; }
+.sheet-actions .seg .btn { padding: 0 12px; white-space: nowrap; }
+/* The sheet takes the screen's height, so only its list scrolls and the tabs and filters stay put. */
+.screen > .sheet.ref-sheet { display: flex; flex-direction: column; margin: auto; height: 100%; max-height: 860px; }
+.ref-sheet > .sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ref { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.ref-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ref-bar .seg { flex: none; }
+.ref-bar .seg .btn { padding: 0 10px; white-space: nowrap; }
+.ref-tabs .btn { min-width: 76px; }
+.ref-select {
+  font: inherit;
+  color: var(--text);
+  background: var(--button);
+  border: 1px solid var(--button-line);
+  border-radius: 8px;
+  min-height: 44px;
+  max-width: 220px;
+  padding: 0 8px;
+}
+.ref-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn.ref-toggle { font-weight: 650; white-space: nowrap; }
+.ref-toggle .short { display: none; }
+.ref-locked { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border-radius: 8px; border: 1px dashed var(--line); font-weight: 650; white-space: nowrap; }
+.ref-locked .why { font-weight: 500; font-size: 12px; color: var(--muted); }
+.ref-intro { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; font-size: 12px; }
+.ref-intro .tag { margin-left: 0; padding: 1px 5px; font-size: 10px; }
+.ref-note { flex-basis: 100%; color: #f2d9a0; line-height: 1.3; }
+.tag.good { background: #24402a; color: #b8f0c4; }
+.tag.bad { background: #4a2a1c; color: #ffc9b0; }
+.tag.mark { background: var(--accent); color: #1b140c; }
+.ref-list { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 3px; padding-right: 2px; }
+.ref-group { display: grid; gap: 3px; }
+.ref-group + .ref-group { margin-top: 6px; }
+.btn.ref-row { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 10px; text-align: left; font-size: 13px; }
+.btn.ref-row:disabled { opacity: 1; cursor: default; }
+.ref-row .lead { flex: none; min-width: 26px; padding: 0 4px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); color: var(--muted); font-size: 11px; font-weight: 750; text-align: center; }
+.ref-row .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.ref-row .tag { flex: none; margin-left: 0; }
+.ref-row .summary { flex: none; margin-left: auto; padding-left: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ref-row .chevron { flex: none; width: 10px; color: var(--muted); font-size: 11px; }
+.ref .dot { flex: none; display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55); }
+.ref-item.head .ref-row { background: #221c16; font-size: 14px; }
+.ref-item.off .ref-row { opacity: 0.5; }
+.ref-item.now .ref-row { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.ref-item.next .ref-row { border-color: #8a6a24; }
+.ref-detail { display: grid; gap: 6px; margin: 2px 0 4px 12px; padding: 6px 10px; border-left: 2px solid var(--line); border-radius: 0 6px 6px 0; background: #17130f; font-size: 12px; }
+.ref-item.now .ref-detail { border-left-color: var(--accent); }
+.ref-sec h4 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0 0 3px; font-size: 12.5px; }
+.ref-sec h4 .tag { margin-left: 0; }
+.ref-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px 14px; margin: 0; font-variant-numeric: tabular-nums; }
+.ref-facts div { display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+.ref-facts dt { color: var(--muted); white-space: nowrap; }
+.ref-facts dd { min-width: 0; margin: 0; text-align: right; overflow-wrap: anywhere; }
+.ref-lines { display: grid; gap: 1px; margin: 3px 0 0; padding-left: 14px; line-height: 1.3; color: var(--muted); }
+.ref-rank { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 4px; }
+.ref-rank .label { flex: none; min-width: 84px; font-weight: 650; color: var(--muted); }
+.ref-rank ol { display: flex; flex-wrap: wrap; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.ref-rank li { padding: 0 6px; border-radius: 4px; background: var(--button); font-weight: 650; white-space: nowrap; }
+.ref-rank li.best { background: #24402a; color: #b8f0c4; }
+.ref-rank li .value { font-weight: 500; opacity: 0.8; }
+.ref-why { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--muted); }
+.ref-off { margin: 0; color: var(--error); }
+
+/* A phone on its side: shorter controls in one row and one-line rows, so the list keeps most of the 393 px. */
+@media (max-height: 520px) {
+  .ref { gap: 4px; }
+  .ref-bar { gap: 4px; }
+  .ref-bar .btn, .ref-select, .ref-locked, .sheet-actions .btn { min-height: 36px; font-size: 12.5px; }
+  .ref-bar .seg .btn { padding: 0 7px; }
+  .ref-tabs .btn { min-width: 0; }
+  .ref-select { max-width: 160px; }
+  .ref-locked .why { font-size: 11px; }
+  .ref-toggle .long { display: none; }
+  .ref-toggle .short { display: inline; }
+  .btn.ref-row { min-height: 34px; padding: 0 8px; font-size: 12.5px; }
+  .ref-detail { margin-left: 6px; padding: 4px 8px; }
+  .ref-facts { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1px 10px; }
+  .ref-rank .label { min-width: 0; }
+}
+
 /* ---------- Element ---------- */
 .el-dot {
   display: inline-flex;

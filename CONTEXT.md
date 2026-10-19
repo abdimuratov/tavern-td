@@ -38,6 +38,18 @@ _Avoid_: high score, achievement, stats
 A Run in progress as copyable text, made by Export save code in the in-Run menu and loaded by Import save code in the main menu. A Versus Run has none, and no autosave.
 _Avoid_: save string, password, export
 
+**Waves tab**:
+The first tab of a Game Mode's Waves & Towers sheet, opened from the main menu, the Original's War map or the in-Run menu: every Wave in order, each with its creeps, their numbers and traits, and what is Best against them, filtered by Stage, Challenge or Difficulty where the mode has them. In a Run it marks the Wave being fought (Now) and the next, and the Run stays paused. In Line Wars it lists the Sends instead.
+_Avoid_: wave list, bestiary, encyclopedia
+
+**Towers tab**:
+The second tab of the Waves & Towers sheet: every tower of the Game Mode with its cost, damage, Damage type, speed, range and whether it hits air, its upgrade path and what opens it, and what it is strong and weak against.
+_Avoid_: tower list, codex, tech tree
+
+**Best against**:
+The damage types and towers that hurt a creep most, ranked from its Game Mode's damage-vs-armor table and rules: what can't hit air drops out for a flyer, and in the Original Poison ranks up on a Shield. Always derived, never written by hand; `counters` is fine in code.
+_Avoid_: counters (in player text), weakness, recommended, tips
+
 ### Play
 
 **Wave**:

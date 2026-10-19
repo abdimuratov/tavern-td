@@ -6,6 +6,7 @@ import { DIFFICULTIES, type Difficulty } from '../../sim';
 import { CATALOG, catalogEntry, DIFFICULTY_NAME, difficultyAbout, type CatalogEntry } from '../catalog';
 import { ago, clock, num } from '../format';
 import type { ConfirmSpec, RecordBoard, RunChoices } from '../mode-ui';
+import { ReferenceSheet, type ReferenceMode } from '../reference/Reference';
 import { appActions, savedRuns, type CodeCheck, type SavedRunInfo } from '../state';
 import { SettingsPanel } from './Settings';
 import { Sheet } from './Sheet';
@@ -27,6 +28,8 @@ type Page =
   | { readonly name: 'records' }
   | { readonly name: 'settings' }
   | { readonly name: 'howto'; readonly modeId: string }
+  /** Waves & Towers, on one Game Mode's tab. */
+  | { readonly name: 'reference'; readonly modeId: string }
   | { readonly name: 'import' };
 
 function savedLine(info: SavedRunInfo & { ok: true }): string {
@@ -77,9 +80,15 @@ function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) 
   );
 }
 
+/** The Game Modes that have a Waves & Towers sheet, in the catalog's order. */
+function referenceModes(): ReferenceMode[] {
+  return CATALOG.flatMap((e) => (e.ui?.reference ? [{ id: e.id, name: e.name, reference: e.ui.reference }] : []));
+}
+
 function MainPage({ go }: { go(page: Page): void }) {
   const playable = CATALOG.filter((e) => e.ui);
   const later = CATALOG.filter((e) => !e.ui);
+  const firstReference = referenceModes()[0];
   return (
     <div class="menu-main">
       <header class="menu-head">
@@ -102,6 +111,9 @@ function MainPage({ go }: { go(page: Page): void }) {
           <button type="button" class="btn" data-testid="records" onClick={() => go({ name: 'records' })}>Records</button>
           <button type="button" class="btn" data-testid="settings-button" onClick={() => go({ name: 'settings' })}>Settings</button>
           <button type="button" class="btn" data-testid="howto-button" onClick={() => go({ name: 'howto', modeId: playable[0]?.id ?? 'gem' })}>How to play</button>
+          {firstReference && (
+            <button type="button" class="btn" data-testid="reference-button" onClick={() => go({ name: 'reference', modeId: firstReference.id })}>Waves &amp; Towers</button>
+          )}
           <button type="button" class="btn" data-testid="import" onClick={() => go({ name: 'import' })}>Import save code</button>
         </nav>
       </div>
@@ -353,7 +365,7 @@ function ConfirmDialog({ c, close }: { c: ConfirmSpec; close(): void }) {
   );
 }
 
-/** The main menu: Game Modes, Continue and New Run, Records, Settings, How to play and Import save code. */
+/** The main menu: Game Modes, Continue and New Run, Records, Settings, How to play, Waves & Towers and Import save code. */
 export function Menu() {
   const [page, setPage] = useState<Page>({ name: 'main' });
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
@@ -406,6 +418,9 @@ export function Menu() {
       );
       break;
     }
+    case 'reference':
+      body = <ReferenceSheet modes={referenceModes()} modeId={page.modeId} pick={(modeId) => setPage({ name: 'reference', modeId })} onBack={back} />;
+      break;
     case 'import': body = <ImportPage back={back} confirm={setConfirm} />; break;
   }
   return (

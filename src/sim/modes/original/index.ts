@@ -19,7 +19,7 @@ export {
 } from './state';
 export { STATUS, KEY, deal, kill, levelFor, isPoisoned, stackCount, shieldOf, typeShare } from './combat';
 export { priceOf, sellValue, sellShare, runUnlocks, placeCells, placeError, capError } from './build';
-export { ghoulHp, bountyPool, waveBonus, earlyCallGold, waveSpec, groupStarts } from './waves';
+export { ghoulHp, bountyPool, waveBonus, earlyCallGold, waveSpec, groupStarts, groupNumbers, hpScaleFor, shieldAt } from './waves';
 export { towerBonus, attackRange, auraRadius, perkOf } from './auras';
 export { pickTarget, remaining } from './targeting';
 export { foldTalents, runTalents, type FamilyTalents, type RunTalents } from './talents';
@@ -31,6 +31,6 @@ export {
 export { runChallenge, runModifiers, challengeProblem, challengeUnlocks, challengeMap, runMap } from './challenge';
 export { upgradeSave } from './saves';
 export {
-  originalStatus, placeInfo, towerActions, wavePreview, originalResult,
+  originalStatus, placeInfo, towerActions, wavePreview, previewWave, originalResult,
   type OriginalStep, type OriginalStatus, type BuildOption, type PlaceInfo, type UpgradeOption, type TowerActions, type WavePreview,
 } from './queries';

@@ -1,6 +1,6 @@
 import {
   FAMILY_BASE, LEVEL_XP, MAX_LEVEL, ORIGINAL_CREEPS, PERKS,
-  type Family, type PerkSpec, type Targeting,
+  type Family, type OriginalWave, type PerkSpec, type Targeting,
 } from '../../../content/original';
 import { TICK_RATE } from '../../core/constants';
 import type { Difficulty, GameState } from '../../core/state';
@@ -10,7 +10,7 @@ import { runChallenge } from './challenge';
 import { starsFor, type StageResult, type Unlocks } from './progression';
 import { sendNowError } from './rules';
 import { orState, peekTower, threatOf, towerInfo, towerSpec } from './state';
-import { earlyCallGold, ghoulHp, groupStarts, runHpScale, runWaves, waveBonus, waveSpec } from './waves';
+import { earlyCallGold, ghoulHp, groupNumbers, groupStarts, runHpScale, runWaves, waveBonus } from './waves';
 
 // Pure questions the UI and the bots ask about an Original Run. None of them change the state.
 
@@ -179,25 +179,34 @@ export interface WavePreview {
 
 /** What Wave `wave` (1-based) brings, or null past the last. */
 export function wavePreview(state: GameState, wave: number): WavePreview | null {
-  const spec = waveSpec(state, wave - 1);
-  const source = runWaves(state)[wave - 1];
-  if (!spec || !source) return null;
-  const threat = threatOf(state, wave);
-  const diff = runHpScale(state);
+  return previewWave(runWaves(state), wave, threatOf(state, 1), runHpScale(state));
+}
+
+/**
+ * What Wave `wave` (1-based) of `waves` brings when Wave 1 has Threat
+ * `firstThreat` and creep HP is multiplied by `hpScale` (hpScaleFor), or null
+ * past the last: a Run's wave preview, or a Stage's on the Waves tab with no
+ * Run. HP is each creep's as it spawns.
+ */
+export function previewWave(waves: readonly OriginalWave[], wave: number, firstThreat: number, hpScale: number): WavePreview | null {
+  const source = wave >= 1 ? waves[wave - 1] : undefined;
+  if (!source) return null;
+  const threat = firstThreat + wave - 1;
+  const numbers = groupNumbers(source, threat);
   const starts = groupStarts(source);
   return {
     wave,
     threat,
-    ghoulHp: Math.round(ghoulHp(threat) * diff),
+    ghoulHp: Math.round(ghoulHp(threat) * hpScale),
     bonus: waveBonus(threat),
-    groups: spec.groups.map((g, i) => ({
+    groups: source.groups.map((g, i) => ({
       creep: g.creep,
       name: ORIGINAL_CREEPS[g.creep]?.name ?? g.creep,
       count: g.count,
       route: g.route ?? 0,
       at: starts[i]!,
-      hp: Math.max(1, Math.round((g.hp ?? 0) * diff)),
-      bounty: g.bounty ?? 0,
+      hp: Math.max(1, Math.round(numbers[i]!.hp * hpScale)),
+      bounty: numbers[i]!.bounty,
       flying: ORIGINAL_CREEPS[g.creep]?.flying ?? false,
     })),
   };

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { press } from './Hud';
 import { SettingsPanel } from './menu/Settings';
+import { ReferenceBody } from './reference/Reference';
 import { runMenu, type PlaySession, type RunMenuPage } from './state';
 import { versus, versusActions } from './versus/state';
 
@@ -59,6 +60,7 @@ const TITLE: Readonly<Record<RunMenuPage, string>> = {
   main: 'Paused',
   settings: 'Settings',
   howto: 'How to play',
+  reference: 'Waves & Towers',
   export: 'Export save code',
   concede: 'Concede',
 };
@@ -74,14 +76,19 @@ function CopyReport({ s, copy }: { s: PlaySession; copy(): Promise<boolean> }) {
 }
 
 /**
- * The in-Run menu: Resume, Settings, How to play, Export save code (not in
- * Versus), Quit to menu. The Run stays paused while it is open. In a Versus
+ * The in-Run menu: Resume, Settings, How to play, Waves & Towers, Export save
+ * code (not in Versus), Quit to menu. The Run stays paused while it is open,
+ * on every page of it. In a Versus
  * session it doesn't pause, since the Rival plays on (versus-design §5.1):
  * Pause asks both devices to stop, Concede replaces Quit, and Copy desync
  * report appears after a Desync.
  */
 export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
   const HowTo = s.ui.HowTo;
+  const reference = s.ui.reference;
+  const referenceButton = reference && (
+    <button type="button" class="btn" data-testid="reference-button" onClick={press(s, () => (runMenu.value = 'reference'))}>Waves &amp; Towers</button>
+  );
   // A Versus session's Run; the mirror rehearsal (Versus' display, no session) keeps Resume and Quit.
   const vs = s.versus && versus.value ? versusActions.value : null;
   const report = vs !== null && versus.value?.report === true;
@@ -91,7 +98,7 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
   };
   return (
     <div class="screen run-menu interactive" data-testid="run-menu">
-      <div class={`sheet${page === 'howto' ? ' wide' : page === 'main' ? ' narrow' : ''}`}>
+      <div class={`sheet${page === 'howto' ? ' wide' : page === 'reference' ? ' wide ref-sheet' : page === 'main' ? ' narrow' : ''}`}>
         <header>
           <button type="button" class="btn icon" aria-label={page === 'main' ? 'Resume' : 'Back'} title="Back (Esc)" onClick={press(s, back)}>
             {page === 'main' ? '×' : '‹'}
@@ -114,6 +121,7 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
                 Pause
               </button>
               {HowTo && <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'howto'))}>How to play</button>}
+              {referenceButton}
               <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'settings'))}>Settings</button>
               {report && <CopyReport s={s} copy={vs.copyReport} />}
               <button type="button" class="btn danger" data-testid="concede" onClick={press(s, () => (runMenu.value = 'concede'))}>Concede</button>
@@ -133,6 +141,7 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
               <button type="button" class="btn primary" data-testid="resume" onClick={press(s, s.closeMenu)}>Resume</button>
               <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'settings'))}>Settings</button>
               {HowTo && <button type="button" class="btn" onClick={press(s, () => (runMenu.value = 'howto'))}>How to play</button>}
+              {referenceButton}
               {s.exportCode && (
                 <button type="button" class="btn" data-testid="export" onClick={press(s, () => (runMenu.value = 'export'))}>Export save code</button>
               )}
@@ -141,6 +150,7 @@ export function RunMenu({ s, page }: { s: PlaySession; page: RunMenuPage }) {
           )}
           {page === 'settings' && <SettingsPanel />}
           {page === 'howto' && HowTo && <HowTo />}
+          {page === 'reference' && reference && <ReferenceBody reference={reference} ctx={{ view: s.view }} />}
           {page === 'export' && s.exportCode && <ExportCode s={s} exportCode={s.exportCode} />}
         </div>
       </div>
