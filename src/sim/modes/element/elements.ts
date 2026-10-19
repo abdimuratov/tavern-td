@@ -6,7 +6,7 @@ import {
 import { spawnCreep } from '../../combat/creeps';
 import type { SimEvent } from '../../core/events';
 import { nextInt, type RngState } from '../../core/rng';
-import type { GameState } from '../../core/state';
+import type { Difficulty, GameState } from '../../core/state';
 import { creepSpec, elState, modeEvent, type ElementDraw } from './state';
 
 // Elements, Lumber, Elementals and Pure Essence (docs/research/element-td-rules.md
@@ -27,11 +27,16 @@ export function nextWave(state: GameState): number {
   return state.phase === 'wave' ? state.wave.number : state.wave.number + 1;
 }
 
+/** HP of the Elemental for `level` summoned while waiting for or fighting Wave `wave`: base × 1.5^⌊wave / 5⌋ × Difficulty, floored. */
+export function elementalHpAt(difficulty: Difficulty, level: number, wave: number): number {
+  let growth = 1;
+  for (let i = Math.floor(wave / 5); i > 0; i--) growth *= ELEMENTAL_HP_GROWTH;
+  return Math.floor(ELEMENTAL_HP[level - 1]! * growth * DIFFICULTY_HP[difficulty]);
+}
+
 /** HP of the Elemental that would raise `element` to `level` now: base × 1.5^⌊next Wave / 5⌋ × Difficulty, floored. */
 export function elementalHp(state: GameState, level: number): number {
-  let growth = 1;
-  for (let i = Math.floor(nextWave(state) / 5); i > 0; i--) growth *= ELEMENTAL_HP_GROWTH;
-  return Math.floor(ELEMENTAL_HP[level - 1]! * growth * DIFFICULTY_HP[state.difficulty]);
+  return elementalHpAt(state.difficulty, level, nextWave(state));
 }
 
 /** A summon right now grants the level with no Elemental to kill: always in Express, and All Pick's free first Element. */

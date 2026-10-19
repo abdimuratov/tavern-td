@@ -8,6 +8,7 @@ import { GemPanel } from './GemPanel';
 import { GemStatus } from './GemStatus';
 import { DRAFT_GHOST, GEM_LOOK } from './look';
 import { extraChanceOpen, movingSlate, swapFrom } from './picks';
+import { GEM_REFERENCE } from './reference';
 import { specName, specOf } from './text';
 
 // Gem's play screen: Draft placement with a 2×2 ghost, the Draft choice, the
@@ -101,6 +102,7 @@ export const GEM_UI: ModeUi = {
   Actions: GemActions,
   Panel: GemPanel,
   HowTo: GemHowTo,
+  reference: GEM_REFERENCE,
 
   placement(view, p) {
     if (movingSlate.value !== 0) return slatePlacement(view, p);

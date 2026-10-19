@@ -374,7 +374,11 @@ function avenge(sim: Sim, killer: Tower): void {
 
 /** Lives a leak costs: an Elemental 3, a creep 1 (3 during boss Waves), doubled for bulky. */
 export function leakLives(creep: Creep, bossWaves: boolean): number {
-  const spec = creepSpec(creep.spec);
+  return leakLivesFor(creepSpec(creep.spec), bossWaves);
+}
+
+/** Lives a creep of `spec` costs when it leaks: an Elemental 3, a creep 1 (3 in the boss Waves), twice that when bulky. */
+export function leakLivesFor(spec: ElementCreepSpec | undefined, bossWaves: boolean): number {
   if (spec?.elemental) return LEAK_LIVES.elemental;
   const base = bossWaves ? LEAK_LIVES.boss : LEAK_LIVES.creep;
   return spec?.trait === 'bulky' ? base * 2 : base;

@@ -1,4 +1,4 @@
-import { BUILDABLE, ELEMENTS, SELL, elementName, type Element, type ElementTowerInfo } from '../../../content/element';
+import { BUILDABLE, ELEMENTS, SELL, elementName, type Element, type ElementTowerInfo, type Picks } from '../../../content/element';
 import { addTower, removeTower, setTowerSpec } from '../../combat/towers';
 import { findTower } from '../../combat/targeting';
 import { TICK_RATE } from '../../core/constants';
@@ -38,19 +38,31 @@ export function spotError(state: GameState, col: number, row: number): string | 
   }
 }
 
-function listNeeds(needs: [Element, number][]): string {
+function listNeeds(needs: readonly (readonly [Element, number])[]): string {
   return needs.map(([e, l]) => `${elementName(e)} ${l}`).join(' and ');
+}
+
+/** What a tower needs held: its Element levels, in Element order, and for the Periodic tower all six at level 1 or more. */
+export interface TowerNeeds {
+  readonly levels: readonly (readonly [Element, number])[];
+  readonly allSix: boolean;
+}
+
+export function towerNeeds(info: ElementTowerInfo): TowerNeeds {
+  const levels: [Element, number][] = [];
+  for (const e of ELEMENTS) {
+    const need = info.requires[e] ?? 0;
+    if (need > 0) levels.push([e, need]);
+  }
+  return { levels, allSix: info.kind === 'periodic' };
 }
 
 /** The Element levels a tower still needs, as "needs Water 2 and Earth 2", or null when they are met. */
 export function requirementError(state: GameState, info: ElementTowerInfo): string | null {
   const levels = elState(state).levels;
-  const missing: [Element, number][] = [];
-  for (const e of ELEMENTS) {
-    const need = info.requires[e] ?? 0;
-    if (levels[e] < need) missing.push([e, need]);
-  }
-  if (info.kind === 'periodic' && ELEMENTS.some((e) => levels[e] < 1)) return 'needs all six Elements at level 1';
+  const needs = towerNeeds(info);
+  const missing = needs.levels.filter(([e, need]) => levels[e] < need);
+  if (needs.allSix && ELEMENTS.some((e) => levels[e] < 1)) return 'needs all six Elements at level 1';
   return missing.length === 0 ? null : `needs ${listNeeds(missing)}`;
 }
 
@@ -145,8 +157,13 @@ export function upgrade(state: GameState, tower: Tower, to: string, events: SimE
 export function sellValue(state: GameState, tower: Tower): number {
   const info = towerInfoOf(tower.spec);
   if (!info || isClone(state, tower)) return 0;
+  return saleValue(info, elState(state).picks);
+}
+
+/** What a finished tower sells for in a Run of `picks`: 90% of its total, 98% for the Arrow and Cannon lines, 100% in All Random. */
+export function saleValue(info: ElementTowerInfo, picks: Picks): number {
   const arrowCannon = info.family === 'arrow' || info.family === 'cannon';
-  const pct = elState(state).picks === 'allRandom' ? SELL.random : arrowCannon ? SELL.arrowCannon : SELL.normal;
+  const pct = picks === 'allRandom' ? SELL.random : arrowCannon ? SELL.arrowCannon : SELL.normal;
   const raw = info.totalCost * pct;
   return info.kind === 'elementalBasic' ? Math.ceil(raw) : roundHalfUp(raw);
 }

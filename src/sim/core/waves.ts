@@ -4,8 +4,34 @@ import { spawnCount } from '../path/grid';
 import { routeCount } from '../path/route';
 import { TICK_RATE } from './constants';
 import type { SimEvent } from './events';
-import type { Sim } from './mode';
-import type { ActiveWave, GameState, SpawnGroup } from './state';
+import type { GameModeRules, Sim } from './mode';
+import type { WaveGroup, WaveSpec } from './specs';
+import type { ActiveWave, Difficulty, GameState, SpawnGroup } from './state';
+
+/** What each creep of a Wave group spawns with. */
+export interface WaveGroupNumbers {
+  readonly hp: number;
+  /** World units per second. */
+  readonly speed: number;
+  readonly bounty: number;
+}
+
+/**
+ * The HP, speed and bounty each creep of group `g` of Wave `spec` spawns with
+ * at `difficulty`: its own HP (else the Wave's, else the creep's) × the mode's
+ * Difficulty factor × the Wave's hpMult, rounded and at least 1; the creep's
+ * speed × speedMult; its bounty × bountyMult. startNextWave uses it, and the
+ * Waves tab reads the same numbers.
+ */
+export function waveGroupNumbers(rules: GameModeRules, spec: WaveSpec, g: WaveGroup, difficulty: Difficulty): WaveGroupNumbers {
+  const cs = rules.creeps[g.creep]!;
+  const hpScale = difficultyHp(rules, difficulty) * (spec.hpMult ?? 1);
+  return {
+    hp: Math.max(1, Math.round((g.hp ?? spec.hp ?? cs.hp) * hpScale)),
+    speed: cs.speed * (spec.speedMult ?? 1),
+    bounty: (g.bounty ?? cs.bounty) * (spec.bountyMult ?? 1),
+  };
+}
 
 /**
  * Starts the next Wave, or returns why it can't. The startWave command uses
@@ -29,18 +55,17 @@ export function startNextWave(state: GameState, events: SimEvent[]): string | nu
   }
   if (problems.length > 0) throw new Error(`Game Mode ${rules.id}: ${problems.join('; ')}`);
 
-  const hpScale = difficultyHp(rules, state.difficulty) * (spec.hpMult ?? 1);
   const groups: SpawnGroup[] = spec.groups.map((g) => {
-    const cs = rules.creeps[g.creep]!;
+    const { hp, speed, bounty } = waveGroupNumbers(rules, spec, g, state.difficulty);
     const group: SpawnGroup = {
       creep: g.creep,
       count: g.count,
       spawned: 0,
       start: state.tick + (g.delay ?? 0) * TICK_RATE,
       interval: g.interval * TICK_RATE,
-      hp: Math.max(1, Math.round((g.hp ?? spec.hp ?? cs.hp) * hpScale)),
-      speed: cs.speed * (spec.speedMult ?? 1),
-      bounty: (g.bounty ?? cs.bounty) * (spec.bountyMult ?? 1),
+      hp,
+      speed,
+      bounty,
     };
     // Only groups that name a route carry one, so Runs on one-route Maps serialize as before.
     if (g.route !== undefined) group.route = g.route;

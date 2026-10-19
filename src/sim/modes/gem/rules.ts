@@ -186,6 +186,16 @@ function isGemCommand(type: string): type is GemCommand['type'] {
   return (GEM_COMMANDS as readonly string[]).includes(type);
 }
 
+/** Gold paid when Wave `wave` ends: 5 + 2 × the Wave (Trig_New_Level_P1_Actions). */
+export function waveEndGold(wave: number): number {
+  return 5 + 2 * wave;
+}
+
+/** Whether a creep of Wave `wave` that leaks ends the Run: from Wave 10 on; before, it costs only its bounty. */
+export function leakEndsRun(wave: number): boolean {
+  return wave >= FATAL_LEAK_WAVE;
+}
+
 /** Damage a creep of the latest Wave has taken so far. */
 function damageTaken(creep: { maxHp: number; hp: number }): number {
   return creep.maxHp - Math.max(0, creep.hp);
@@ -227,7 +237,7 @@ export const GEM_RULES: GameModeRules<GemState> = {
   },
   onWaveEnd(state, wave, events) {
     const gs = gemState(state);
-    earnGold(state, 5 + 2 * wave, events);
+    earnGold(state, waveEndGold(wave), events);
     gs.mana = Math.min(SWAP_MANA, gs.mana + 1);
     // Explosions still waiting would otherwise go off in the next Wave.
     gs.blasts = [];
@@ -242,6 +252,6 @@ export const GEM_RULES: GameModeRules<GemState> = {
     const gs = gemState(state);
     if (creep.wave === state.wave.number) gs.waveDamage += damageTaken(creep);
     // Free (bar the lost bounty) before Wave 10; from then on a leak ends the Run.
-    return { lives: creep.wave >= FATAL_LEAK_WAVE ? 1 : 0, then: 'remove' };
+    return { lives: leakEndsRun(creep.wave) ? 1 : 0, then: 'remove' };
   },
 };

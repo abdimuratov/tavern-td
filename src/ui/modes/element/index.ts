@@ -9,6 +9,7 @@ import { ElementStatus } from './ElementStatus';
 import { ElementHowTo } from './HowTo';
 import { ELEMENT_COLOR, ELEMENT_LOOK } from './look';
 import { building, elementsOpen } from './picks';
+import { ELEMENT_REFERENCE } from './reference';
 import { SendNow } from './SendNow';
 import { damageName, TRAIT_ABOUT, TRAIT_NAME, towerName } from './text';
 
@@ -136,6 +137,7 @@ export const ELEMENT_UI: ModeUi = {
   Panel: ElementPanel,
   Footer: SendNow,
   HowTo: ElementHowTo,
+  reference: ELEMENT_REFERENCE,
   marksEvery: 10,
 
   runOptions: [

@@ -19,7 +19,7 @@ export { createRun } from './core/run';
 export { step, advance } from './core/step';
 export { snapshot, restore, hashState, fnv1a } from './core/snapshot';
 export { replay, replayHash, type Replay, type ReplayEntry } from './core/replay';
-export { startNextWave } from './core/waves';
+export { startNextWave, waveGroupNumbers, type WaveGroupNumbers } from './core/waves';
 export { powDet } from './core/math';
 export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rng';
 

@@ -17,13 +17,15 @@ export {
   type ElementState, type ElementGameState, type ElementTowerState, type ElementCreepState, type ElementTimer,
   type ElementDraw, type InterestState, type Tornado,
 } from './state';
-export { FOOTPRINT, sellValue } from './build';
-export { drawOrder, elementalHp } from './elements';
-export { bossGroups, bossHp, breakSeconds, netWorth } from './waves';
-export { STATUS, SHIELD, DEAD, STUN, HASTE, ACID, FAERIE, FIRE_UP, SPRING, slowKey, targetable, type DamageResult } from './combat';
+export { FOOTPRINT, sellValue, saleValue, towerNeeds, type TowerNeeds } from './build';
+export { drawOrder, elementalHp, elementalHpAt } from './elements';
+export { bossGroups, bossHp, breakBefore, breakSeconds, fixedWaves, netWorth, waveRow, waveSpecFor, waveTotal } from './waves';
+export {
+  STATUS, SHIELD, DEAD, STUN, HASTE, ACID, FAERIE, FIRE_UP, SPRING, slowKey, targetable, leakLivesFor, type DamageResult,
+} from './combat';
 export { dealDamage } from './api';
 export {
-  elementStatus, buildOptions, buildSpot, summonOptions, towerActions, towerInfo, wavePreview, routePolyline, elementRecord,
+  elementStatus, buildOptions, buildSpot, summonOptions, towerActions, towerInfo, wavePreview, previewWave, routePolyline, elementRecord,
   type ElementStep, type ElementStatus, type BuildOption, type SummonOption, type SummonOptions, type UpgradeOption,
   type ElementTowerActions, type ElementTowerInfo, type WavePreview, type ElementRecord,
 } from './queries';

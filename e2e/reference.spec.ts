@@ -121,6 +121,51 @@ test('Waves & Towers for Maul and Line Wars: their Waves and Sends, and their to
   await expect(page.getByTestId('ref-row-race-ironclad')).toBeVisible();
 });
 
+test('Waves & Towers for Gem and Element: their Waves with Best against, Full and Express, and their towers', async ({ page }) => {
+  await page.goto('./');
+  await page.getByTestId('reference-button').click();
+  // Every Game Mode has a tab now, and they fit beside the title.
+  await expect(page.getByTestId('reference-mode-linewars')).toBeInViewport({ ratio: 1 });
+
+  // Gem: the 50 Waves and the Damage Test; a flyer leaves Diamond out.
+  await page.getByTestId('reference-mode-gem').click();
+  await expect(page.getByTestId('ref-tab-waves')).toHaveText('Waves');
+  await expectFits(page);
+  await expect(page.getByTestId('ref-waves').locator('.ref-row')).toHaveCount(51);
+  const bats = page.getByTestId('ref-row-wave-4');
+  await bats.click();
+  await expect(bats).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('ref-detail-wave-4')).toContainText('Can\'t hit air: Diamond');
+  await expect(page.getByTestId('ref-row-damage-test')).toContainText('500,000 HP');
+  await page.getByTestId('ref-tab-towers').click();
+  await expect(page.getByTestId('ref-group-gem-amethyst')).toBeVisible();
+  await page.getByTestId('ref-row-recipe-malachite').click();
+  await expect(page.getByTestId('ref-detail-recipe-malachite')).toContainText('Chipped Aquamarine + Chipped Emerald + Chipped Opal');
+
+  // Element: Full's 55 Waves and the boss line, then Express's 30.
+  await page.getByTestId('reference-mode-element').click();
+  await expect(page.getByTestId('ref-tab-waves')).toHaveAttribute('aria-selected', 'true');
+  await expectFits(page);
+  const rows = page.getByTestId('ref-group-waves').locator('.ref-row');
+  await expect(rows).toHaveCount(56);
+  await expect(page.getByTestId('ref-row-boss')).toBeAttached();
+  await page.getByTestId('ref-filter-length-express').click();
+  await expect(page.getByTestId('ref-filter-length-express')).toHaveAttribute('aria-pressed', 'true');
+  await expect(rows).toHaveCount(30);
+  await expect(page.getByTestId('ref-row-boss')).toHaveCount(0);
+  const owl = page.getByTestId('ref-row-wave-3');
+  await owl.click();
+  await expect(owl).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('ref-detail-wave-3')).toContainText('Best against');
+  await expect(page.getByTestId('ref-detail-wave-3')).toContainText('Towers');
+  await page.getByTestId('ref-tab-towers').click();
+  await expect(page.getByTestId('ref-towers').locator('.ref-group')).toHaveCount(7);
+  const anvil = page.getByTestId('ref-row-tower-blacksmith_tower');
+  await anvil.click();
+  await expect(anvil).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('ref-detail-tower-blacksmith_tower')).toContainText('Fire 1 and Earth 1');
+});
+
 test('Waves & Towers from the war map opens on the Stage picked there', async ({ page }) => {
   await page.goto('./');
   await page.getByTestId('mode-original').getByTestId('mode-page').click();

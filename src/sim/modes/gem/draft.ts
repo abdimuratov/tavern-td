@@ -88,20 +88,36 @@ export function draftRecipe(state: GameState): string | null {
 
 export type MergeCount = 2 | 3 | 4;
 
-/** What merging `count` copies of a Draft gem makes, or null when the Draft can't: ×2 needs 2+, ×3 exactly 3, ×4 4+. */
-export function mergeResult(state: GameState, tower: Tower, count: MergeCount): string | null {
-  const parts = gemParts(tower.spec);
+/** Whether `n` identical gems in a Draft allow merging ×`count`: ×2 needs 2 or more, ×3 exactly 3, ×4 4 or more. */
+export function mergeAllowed(count: MergeCount, n: number): boolean {
+  return !(count === 2 ? n < 2 : count === 3 ? n !== 3 : n < 4);
+}
+
+/** What merging ×`count` of basic gem `spec` makes: one quality up for ×2, two for ×3 and ×4, the Stone of Bryvx above Great; null for anything else. */
+export function mergedSpec(spec: string, count: MergeCount): string | null {
+  const parts = gemParts(spec);
   if (!parts) return null;
-  const n = draftSpecs(state).filter((s) => s === tower.spec).length;
-  if (count === 2 ? n < 2 : count === 3 ? n !== 3 : n < 4) return null;
   const q = qualityIndex(parts.quality) + (count === 2 ? 1 : 2);
   return q >= QUALITIES.length ? STONE_OF_BRYVX : gemId(parts.type, QUALITIES[q]!);
 }
 
-export function downgradeResult(tower: Tower): string | null {
-  const parts = gemParts(tower.spec);
+/** What merging `count` copies of a Draft gem makes, or null when the Draft can't: ×2 needs 2+, ×3 exactly 3, ×4 4+. */
+export function mergeResult(state: GameState, tower: Tower, count: MergeCount): string | null {
+  if (!gemParts(tower.spec)) return null;
+  const n = draftSpecs(state).filter((s) => s === tower.spec).length;
+  if (!mergeAllowed(count, n)) return null;
+  return mergedSpec(tower.spec, count);
+}
+
+/** Basic gem `spec` one quality down, or null for a Chipped gem or anything else. */
+export function downgradedSpec(spec: string): string | null {
+  const parts = gemParts(spec);
   if (!parts || parts.quality === 'chipped') return null;
   return gemId(parts.type, QUALITIES[qualityIndex(parts.quality) - 1]!);
+}
+
+export function downgradeResult(tower: Tower): string | null {
+  return downgradedSpec(tower.spec);
 }
 
 /** The base slate this Draft gem can be kept as (it is that slate's Normal gem and a Flawed piece is in the Draft). */

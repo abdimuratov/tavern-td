@@ -1,7 +1,7 @@
 import {
   BOSS_HP_BASE, BOSS_HP_GROWTH, BOSS_TRAITS, CREEPS_PER_WAVE, DIFFICULTY_HP, ELEMENT_EXPRESS_WAVES, ELEMENT_FULL_WAVES,
   ESSENCE_AFTER, EXPRESS_WAVES, FIRST_BOSS_BREAK, FIRST_SPAWN, FULL_WAVES, INTEREST_PERIOD, INTEREST_RATE,
-  INTEREST_STOPS_AFTER, LUMBER_AFTER, SCORE, SCORE_BONUS, bossId,
+  INTEREST_STOPS_AFTER, LUMBER_AFTER, MAX_BOSS_WAVES, SCORE, SCORE_BONUS, bossId,
   type ElementWave, type RunLength,
 } from '../../../content/element';
 import { TICK_RATE } from '../../core/constants';
@@ -51,28 +51,41 @@ export function bossGroups(difficulty: Difficulty, n: number): WaveGroup[] {
   return groups;
 }
 
-/** Wave `index` (0-based): a fixed Wave, or boss Wave index − 54 after Full's 55. */
-export function waveSpec(state: GameState, index: number): WaveSpec | undefined {
-  const es = elState(state);
-  const wave = index + 1;
-  const row = waveRow(es.length, wave);
-  if (row) {
-    return {
-      groups: [{ creep: row.creep, count: row.count, interval: row.interval, delay: FIRST_SPAWN, hp: row.hp[state.difficulty] }],
-      bountyMult: row.bounty[state.difficulty],
-    };
-  }
-  if (es.length !== 'full' || wave <= FULL_WAVES) return undefined;
-  // Boss creeps pay nothing.
-  return { groups: bossGroups(state.difficulty, wave - FULL_WAVES), bountyMult: 0 };
+/** Every Wave a Run of `length` can reach: Full's 55 and its boss Waves (capped), or Express's 30. */
+export function waveTotal(length: RunLength): number {
+  return length === 'full' ? FULL_WAVES + MAX_BOSS_WAVES : fixedWaves(length);
 }
 
-/** Seconds of break before `wave`: the table, 60 before the first boss Wave, none before later ones. */
-export function breakSeconds(state: GameState, wave: number): number {
-  const es = elState(state);
-  const row = waveRow(es.length, wave);
-  if (row) return row.breakBefore[state.difficulty];
+/** Wave `index` (0-based) of a `length` Run at `difficulty`: a fixed Wave, or boss Wave index − 54 after Full's 55. */
+export function waveSpecFor(length: RunLength, difficulty: Difficulty, index: number): WaveSpec | undefined {
+  const wave = index + 1;
+  const row = waveRow(length, wave);
+  if (row) {
+    return {
+      groups: [{ creep: row.creep, count: row.count, interval: row.interval, delay: FIRST_SPAWN, hp: row.hp[difficulty] }],
+      bountyMult: row.bounty[difficulty],
+    };
+  }
+  if (length !== 'full' || wave <= FULL_WAVES) return undefined;
+  // Boss creeps pay nothing.
+  return { groups: bossGroups(difficulty, wave - FULL_WAVES), bountyMult: 0 };
+}
+
+/** Wave `index` (0-based) of this Run. */
+export function waveSpec(state: GameState, index: number): WaveSpec | undefined {
+  return waveSpecFor(elState(state).length, state.difficulty, index);
+}
+
+/** Seconds of break before `wave` of a `length` Run at `difficulty`: the table, 60 before the first boss Wave, none before later ones. */
+export function breakBefore(length: RunLength, difficulty: Difficulty, wave: number): number {
+  const row = waveRow(length, wave);
+  if (row) return row.breakBefore[difficulty];
   return wave === FULL_WAVES + 1 ? FIRST_BOSS_BREAK : 0;
+}
+
+/** Seconds of break before `wave` in this Run. */
+export function breakSeconds(state: GameState, wave: number): number {
+  return breakBefore(elState(state).length, state.difficulty, wave);
 }
 
 /** Starts the break before `wave`: its countdown and the Lumber, draw and Pure Essence the cleared Wave brings. */

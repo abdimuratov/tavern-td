@@ -32,6 +32,10 @@ export function typeName(type: GemType): string {
   return TYPE_NAME[type];
 }
 
+export function qualityName(quality: Quality): string {
+  return QUALITY_NAME[quality];
+}
+
 /** [min damage, max damage, cooldown s, range, projectile speed], Chipped to Great. */
 type Row = readonly [number, number, number, number, number];
 

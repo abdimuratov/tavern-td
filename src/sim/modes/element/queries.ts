@@ -14,7 +14,7 @@ import { FIRE_UP, SPRING, statusValue } from './combat';
 import { activeElemental, elementalHp, essenceError, summonError } from './elements';
 import { sendNowError } from './rules';
 import { elState, isBuilt, peekTower, towerInfoOf, towerSpec } from './state';
-import { breakSeconds, clearSeconds, finalScore, fixedWaves, waveRow, waveSpec } from './waves';
+import { breakBefore, clearSeconds, finalScore, fixedWaves, waveRow, waveSpecFor, waveTotal } from './waves';
 
 // Pure questions the UI asks about an Element Run. None of them change the state.
 
@@ -301,27 +301,32 @@ export interface WavePreview {
   readonly essence: boolean;
 }
 
-/** Wave `index` (0-based) as the player would see it coming, or null past the end. */
-export function wavePreview(state: GameState, index: number): WavePreview | null {
-  if (!Number.isInteger(index) || index < 0 || index >= state.wave.total) return null;
-  const es = elState(state);
+/** Wave `index` (0-based) of a `length` Run at `difficulty`, as the player would see it coming, or null past the end. */
+export function previewWave(length: RunLength, difficulty: Difficulty, index: number): WavePreview | null {
+  if (!Number.isInteger(index) || index < 0 || index >= waveTotal(length)) return null;
   const wave = index + 1;
-  const row = waveRow(es.length, wave);
-  const spec = waveSpec(state, index);
+  const row = waveRow(length, wave);
+  const spec = waveSpecFor(length, difficulty, index);
   if (!spec) return null;
   if (row) {
     return {
       wave, name: unitName(row.unit), element: row.element, traits: row.trait ? [row.trait] : [], count: row.count,
-      hp: row.hp[state.difficulty], bounty: row.bounty[state.difficulty], boss: false,
-      breakBefore: breakSeconds(state, wave), lumber: row.lumber, essence: row.essence,
+      hp: row.hp[difficulty], bounty: row.bounty[difficulty], boss: false,
+      breakBefore: breakBefore(length, difficulty, wave), lumber: row.lumber, essence: row.essence,
     };
   }
   const nonBulky = spec.groups.find((g) => g.creep !== bossId('bulky'));
   return {
     wave, name: unitName('icefrog'), element: 'composite', traits: BOSS_TRAITS,
     count: spec.groups.reduce((n, g) => n + g.count, 0), hp: nonBulky?.hp ?? 0, bounty: 0, boss: true,
-    breakBefore: breakSeconds(state, wave), lumber: false, essence: wave === FULL_WAVES + 1,
+    breakBefore: breakBefore(length, difficulty, wave), lumber: false, essence: wave === FULL_WAVES + 1,
   };
+}
+
+/** Wave `index` (0-based) as the player would see it coming, or null past the end. */
+export function wavePreview(state: GameState, index: number): WavePreview | null {
+  if (!Number.isInteger(index) || index < 0 || index >= state.wave.total) return null;
+  return previewWave(elState(state).length, state.difficulty, index);
 }
 
 /** The route's corners in world units (spawn first, exit last), for the path line. */

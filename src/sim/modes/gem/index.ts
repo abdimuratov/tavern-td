@@ -7,13 +7,16 @@ import { GEM_RULES } from './rules';
 
 registerMode(GEM_RULES);
 
-export { GEM_RULES, GEM_COMMANDS, type GemCommand } from './rules';
+export { GEM_RULES, GEM_COMMANDS, waveEndGold, leakEndsRun, type GemCommand } from './rules';
 export {
   GEM_MODE_ID, GEM_TOWERS, DRAFT_SIZE, SWAP_MANA, START_GOLD,
   killStep, killAward, burnBonus,
   type GemState, type GemGameState, type GemTowerState, type ExtraChanceState,
 } from './state';
-export { GEM_FOOTPRINT, gemFootprint, draftChoices, draftRecipe, mergeResult, type DraftChoice, type MergeCount } from './draft';
+export {
+  GEM_FOOTPRINT, gemFootprint, draftChoices, draftRecipe, mergeResult, mergeAllowed, mergedSpec, downgradedSpec,
+  type DraftChoice, type MergeCount,
+} from './draft';
 export { upgradeOf, nextQualityCost } from './field';
 export { qualityOdds, rollGem } from './chance';
 export {

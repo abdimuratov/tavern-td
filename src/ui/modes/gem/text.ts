@@ -1,5 +1,6 @@
 import {
   SPECIAL_LINES,
+  type ArmorType,
   type GemBounceEffect, type GemFireMarkEffect, type GemFrostEffect, type GemGrabEffect, type GemIncinerateEffect,
   type GemKillCritEffect, type GemLightningEffect, type GemLuckyEffect, type GemNovaEffect, type GemPermaSlowEffect,
   type GemPoisonEffect, type GemShadowStrikeEffect, type GemSpellsEffect, type GemStrikeEffect, type GemStunHitEffect,
@@ -21,10 +22,20 @@ export function specName(id: string): string {
   return specOf(id)?.name ?? id;
 }
 
-
-function pct(fraction: number): string {
+/** "175%", "8.3%". */
+export function pct(fraction: number): string {
   return `${num(Math.round(fraction * 1000) / 10)}%`;
 }
+
+/** Armor types by their WC3 names (Gem TD+ colours them: Red small, Blazed medium, White large, Green fortified, Yellow normal, Blue hero, Bryvx divine, Pink none). */
+export const ARMOR_NAME: Readonly<Record<ArmorType, string>> = {
+  small: 'Small', medium: 'Medium', large: 'Large', fort: 'Fortified', normal: 'Normal', hero: 'Hero', divine: 'Divine', none: 'Unarmored',
+};
+
+/** Attack types as the damage table names them; Spells is spell damage (burns, poison, novas, slate spells). */
+export const ATTACK_NAME: Readonly<Record<string, string>> = {
+  chaos: 'Chaos', hero: 'Hero', magic: 'Magic', normal: 'Normal', pierce: 'Pierce', siege: 'Siege', spells: 'Spells',
+};
 
 function seconds(s: number): string {
   return `${num(s)} s`;

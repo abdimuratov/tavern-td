@@ -1,5 +1,5 @@
 import {
-  ELEMENT_CREEPS, ELEMENT_MAP, FREE_ELEMENTS, FULL_WAVES, MAX_BOSS_WAVES, START, START_LIVES,
+  ELEMENT_CREEPS, ELEMENT_MAP, FREE_ELEMENTS, FULL_WAVES, START, START_LIVES,
   type HasteHit, type Picks, type RunLength,
 } from '../../../content/element';
 import { intArg, reject, stringArg, type Command } from '../../core/commands';
@@ -19,8 +19,8 @@ import {
   type ElementState,
 } from './state';
 import {
-  breakSeconds, clearInterestLock, fixedWaves, pauseInterest, runInterest, scoreWaveClear, startBreak, startInterest,
-  waveSpec,
+  breakSeconds, clearInterestLock, pauseInterest, runInterest, scoreWaveClear, startBreak, startInterest, waveSpec,
+  waveTotal,
 } from './waves';
 
 // The Element Game Mode: Element TD (MNoya/Element-TD, port 1.18) as Tavern TD
@@ -204,7 +204,7 @@ export const ELEMENT_RULES: GameModeRules<ElementState> = {
     setMap(state, typeof opts.map === 'object' ? opts.map : ELEMENT_MAP);
     state.gold = START[options.length].gold;
     state.lives = START_LIVES;
-    state.wave.total = options.length === 'full' ? FULL_WAVES + MAX_BOSS_WAVES : fixedWaves(options.length);
+    state.wave.total = waveTotal(options.length);
     const es = newState(options);
     state.mode = es;
     if (options.picks === 'allRandom') {

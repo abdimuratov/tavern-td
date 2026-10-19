@@ -51,7 +51,8 @@ export function countdown(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function pct(fraction: number): string {
+/** "200%", "12.5%". */
+export function pct(fraction: number): string {
   return `${num(Math.round(fraction * 1000) / 10)}%`;
 }
 
