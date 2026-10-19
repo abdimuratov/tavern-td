@@ -23,10 +23,10 @@ const MILL_ROAD_WAVES: readonly OriginalWave[] = [
   wave(g('ghoul', 15, { gap: 0.5 }), g('hound', 11, { gap: 0.45, at: 3 })),
   wave(g('hound', 31, { gap: 0.3 })),
   wave(g('ghoul', 22, { gap: 0.45 }), g('hound', 13, { gap: 0.4, at: 4 })),
-  wave(g('hound', 29, { gap: 0.3 }), g('ghoul', 15, { gap: 0.4 })),
-  wave(g('ghoul', 31, { gap: 0.35 }), g('hound', 10, { gap: 0.3 })),
+  wave(g('hound', 30, { gap: 0.29 }), g('ghoul', 15, { gap: 0.4 })),
+  wave(g('ghoul', 32, { gap: 0.34 }), g('hound', 10, { gap: 0.3 })),
   // The last Wave is the hardest: Hounds catch up with the Ghouls on the second bend.
-  wave(g('ghoul', 28, { gap: 0.35 }), g('hound', 25, { gap: 0.3, at: 5 })),
+  wave(g('ghoul', 29, { gap: 0.34 }), g('hound', 26, { gap: 0.29, at: 5 })),
 ];
 
 export const MILL_ROAD: StageSpec = {
@@ -94,8 +94,8 @@ export const GREYRIVER_CROSSING: StageSpec = {
     wave(g('crawler', 44, { gap: 0.15 }), g('ghoul', 15, { gap: 0.5 })),
     wave(g('ghoul', 28, { gap: 0.3 }), g('crawler', 38, { gap: 0.15, at: 4 })),
     wave(g('hound', 32, { gap: 0.25 }), g('crawler', 35, { gap: 0.15 })),
-    wave(g('ghoul', 38, { gap: 0.25 }), g('hound', 23, { gap: 0.3, at: 5 })),
-    wave(g('ghoul', 39, { gap: 0.2 }), g('hound', 30, { gap: 0.2, at: 4 }), g('hound', 30, { gap: 0.25, at: 7 })),
+    wave(g('hound', 40, { gap: 0.3 }), g('ghoul', 24, { gap: 0.4, at: 5 })),
+    wave(g('hound', 46, { gap: 0.25 }), g('hound', 36, { gap: 0.3, at: 4 }), g('hound', 36, { gap: 0.3, at: 7 })),
   ],
 };
 
@@ -137,9 +137,9 @@ export const GALLOWS_HILL: StageSpec = {
     wave(g('ghoul', 14, { gap: 0.55 }), g('crawler', 20, { gap: 0.2 })),
     wave(g('hound', 18, { gap: 0.45 }), g('bloodbat', 15, { gap: 0.4, at: 2 })),
     wave(g('ghoul', 19, { gap: 0.5 }), g('hound', 12, { gap: 0.4 })),
-    wave(g('crawler', 41, { gap: 0.2 }), g('bloodbat', 16, { gap: 0.4, at: 3 })),
-    wave(g('ghoul', 17, { gap: 0.45 }), g('hound', 17, { gap: 0.4 }), g('bloodbat', 13, { gap: 0.35 })),
-    wave(g('ghoul', 23, { gap: 0.45 }), g('crawler', 32, { gap: 0.15, at: 3 }), g('bloodbat', 19, { gap: 0.35, at: 6 })),
+    wave(g('crawler', 43, { gap: 0.19 }), g('bloodbat', 17, { gap: 0.38, at: 3 })),
+    wave(g('ghoul', 18, { gap: 0.43 }), g('hound', 18, { gap: 0.38 }), g('bloodbat', 14, { gap: 0.33 })),
+    wave(g('ghoul', 24, { gap: 0.43 }), g('crawler', 34, { gap: 0.14, at: 3 }), g('bloodbat', 20, { gap: 0.33, at: 6 })),
   ],
 };
 
@@ -180,11 +180,11 @@ export const FORT_HARROW: StageSpec = {
     wave(g('revenant', 3, { gap: 1.05 }), g('hound', 14, { gap: 0.45, at: 2 })),
     wave(g('ghoul', 18, { gap: 0.55 }), g('bloodbat', 15, { gap: 0.45, at: 3 })),
     wave(g('revenant', 8, { gap: 0.8 })),
-    wave(g('hound', 16, { gap: 0.55 }), g('crawler', 20, { gap: 0.2, at: 2 })),
-    wave(g('ghoul', 13, { gap: 0.45 }), g('revenant', 4, { gap: 0.8 }), g('bloodbat', 13, { gap: 0.35 })),
-    wave(g('crawler', 56, { gap: 0.15 }), g('revenant', 5, { gap: 0.65 })),
-    wave(g('ghoul', 18, { gap: 0.45 }), g('hound', 12, { gap: 0.35 }), g('bloodbat', 16, { gap: 0.35 })),
+    wave(g('hound', 17, { gap: 0.52 }), g('crawler', 21, { gap: 0.19, at: 2 })),
+    wave(g('ghoul', 14, { gap: 0.42 }), g('revenant', 4, { gap: 0.8 }), g('bloodbat', 14, { gap: 0.33 })),
+    wave(g('crawler', 64, { gap: 0.14 }), g('revenant', 6, { gap: 0.54 })),
+    wave(g('ghoul', 22, { gap: 0.37 }), g('hound', 15, { gap: 0.28 }), g('bloodbat', 19, { gap: 0.29 })),
     // The Gravelord and his escort.
-    wave(g('gravelord', 1), g('revenant', 4, { gap: 0.55, at: 2 }), g('ghoul', 11, { gap: 0.4, at: 4 })),
+    wave(g('gravelord', 1), g('revenant', 5, { gap: 0.44, at: 2 }), g('ghoul', 14, { gap: 0.32, at: 4 })),
   ],
 };

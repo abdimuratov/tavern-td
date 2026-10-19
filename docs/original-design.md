@@ -267,7 +267,7 @@ One new tool per Stage until all six families are out, while each Stage also bri
 
 **Wave recipes.** The design started from a normal Wave of 10 Ghouls' worth of HP, a new creep's first Wave alone at 0.8× followed by a Wave that mixes it in, late Waves at 1.2–1.5×, a boss Wave of the boss plus a few escorts, and each Stage's last Wave its hardest. The bots kept the shape and changed the sizes (§15):
 - **A Stage ramps.** Its opening Waves are light, 7–10 Ghouls' worth, so the starting gold carries them even on Insane. Its last third is 1.5–3× the old recipe. A Stage is decided at its end, not in its opening.
-- **Groups keep their length.** A bigger group packs its creeps closer together instead of taking longer to arrive, so Waves of 30–70 creeps are normal by Region 2.
+- **Groups keep their length.** A bigger group packs its creeps closer together instead of taking longer to arrive, so Waves of 30–70 creeps are normal by Region 2. The exception since free placement is Greyriver's last two Waves: Hounds spread out at 0.25–0.3 s, because a wall of Cannons splashed packed groups whatever their size (§15).
 - **Armor and wards show up in force.** From a third of the way into Stages 5–12, Ghoul groups became Revenants or Cultists of the same HP, so armored or warded creeps carry about a third of a Stage's HP.
 - **Still true:** each new creep's first Wave is alone and lighter than the mix after it, bosses close Stages 4, 8 and 12 with escorts, and every Stage's last Wave is its heaviest in HP at its Threat (tests/sim/original/stages.test.ts checks all of it).
 
@@ -374,7 +374,7 @@ The rules session (2026-10-18) built §13 as written. Where this doc left a gap,
 
 `pnpm balance` (`tools/balance/`) plays every Stage with scripted bots over many seeds and every Difficulty. Each bot uses the unlocks the Campaign has by then (Stages finished = Stage − 1) and the Talents a decent player would hold. It reports win rate, Wave reached, lives and Stars, then checks PLAN §4's targets. `pnpm test` runs a small sample on every push.
 
-These bots and results are from Build Spots. §17 says how the bots choose places under free placement, and step 2 retunes against it.
+The bots, the changes and the results down to the Watch line below are from Build Spots and stay as history. §17 says how the bots choose places under free placement, and "Free placement retune" at the end of this section gives today's numbers.
 
 **The bots.**
 - **Balanced** is the competent player. It judges each purchase by the lives it would save against the creep groups of the next five Waves (later ones count for less): their armor types, Shields, flyers, spacing, regeneration and overkill. It counts slows and Totem auras, picks Specialisations the same way, and builds around Arrow, adding another family's tower when it is worth 10% more. With every Spot full it may replace a Tier 1 tower. Seeds give it small quirks (Spot order, ±15% noise in its judgement, calling Waves early or not), so each seed plays like a different competent player.
@@ -383,7 +383,7 @@ These bots and results are from Build Spots. §17 says how the bots choose place
 
 **Assumed for the bots:** a decent player holds 2.5 Stars per Stage finished, rounded down (27 by Stage 12). It fills one Talent tree at a time: Arrow, then Arcane, Frost, Cannon, Poison and Totem, or its own family first for a single-family run. It wants 1.6 times a group's HP in damage before it feels safe. Bot choices live in `tools/balance/value.ts`.
 
-**What the bots changed** (every other number is as §4–§11 give it):
+**What the bots changed on Build Spots** (every other number is as §4–§11 give it):
 
 | What | Was | Now | Why |
 |---|---|---|---|
@@ -395,7 +395,7 @@ These bots and results are from Build Spots. §17 says how the bots choose place
 | Ranger Lodge | 18 an arrow | 15 | The most damage per gold in the game, on air too |
 | Deadeye Perch | 85 a shot | 72 | The best single target per gold, armor ignored |
 
-**Results**, 20 seeds a cell. Win rate of the balanced bot, then the best single family on Normal:
+**Results on Build Spots**, 20 seeds a cell. Win rate of the balanced bot, then the best single family on Normal:
 
 | Stage | Easy | Normal | Hard | Insane | Best single family, Normal |
 |---|---|---|---|---|---|
@@ -418,6 +418,44 @@ These bots and results are from Build Spots. §17 says how the bots choose place
   - Tried and dropped: a shorter Deadeye reach, Deadeye without its armor exemption, and more armored and warded creeps. Each moved one family down and another up; dropping the exemption also sank the balanced bot on Stages 11 and 12.
   - **Recommendation:** keep the soft counters you chose, accept one-family wins on Normal for now (on Hard and Insane nothing clears, mixed or not), and decide after the play-test whether one-family builds feel degenerate. Enforcing the rule means hard counters below 50% or taking away those in-family answers, which reverses the soft-counter decision.
 - **Watch in play-testing:** the bots' win rate falls from ~60% on Normal to almost 0% on Hard. A human plays better than the bot, but Hard may be too steep a step.
+
+### Free placement retune (2026-10-19)
+
+Free placement (§17) changed the balance. Untuned, over seeds 1–5, the balanced bot won Easy 100%, Normal 73% (20% on Sunken Chapel and The Blight Pit, 100% on six Stages), Hard 10% and Insane 0%, and the Challenges 0–100%. The retune needed only §17's first lever, each Stage's Waves; no Stage's starting gold, Scenery or shared number moved. A ramp below starts 60% of the way through a Stage (halfway on Three Gates) and rises evenly to its factor in the last Wave, scaling every group's count but a boss's and packing the group closer, so it takes as long to arrive.
+
+| What | Was | Now | Why |
+|---|---|---|---|
+| Last Waves of Gallows Hill, Fort Harrow, Drowned Causeway, The Scar, Black Cliffs and Riftmaw | As tuned on Build Spots | A ramp up to 1.06×, 1.23×, 1.12×, 1.05×, 1.08× and 1.2×; the Gravelord's escort is 5 Revenants and 14 Ghouls | They won 80–100% on Normal |
+| Three Gates, Waves 11–20 | As tuned on Build Spots | A ramp up to 1.25× | 100% on Normal and 60% on Hard |
+| The Mill Road, Waves 8–12 | As tuned on Build Spots | 1.04× | 70% over seeds 1–10 |
+| Last Waves of Sunken Chapel, Plague Fords and The Blight Pit | As tuned on Build Spots | A ramp down to 0.91×, 0.94× and 0.86×; the Plague Mother's escort is 11 Bloaters and 6 Cultists | They fell to 20–40%: the places the bot lays out there hold less than the old Spots did |
+| Greyriver Crossing, Waves 11–12 | 38 Ghouls and 23 Hounds; 39 Ghouls and 60 Hounds at 0.2–0.25 s | 40 Hounds and 24 Ghouls; 118 Hounds at 0.25–0.3 s | A wall of Tier 1 Cannons splashed its packed groups whatever their size: Waves 5–12 ramped up to 2.2× still won 100% with 18 lives left. Hounds spread out slip the Cannons' slow shells |
+| Every Challenge's own modifiers | §16 as tuned on Build Spots | §16 | Back to 25–40%, below each Stage |
+
+- **Tried and dropped:** less starting gold on Greyriver (160–200 instead of 270) only cost lives in its opening and still won 80–100%; water on its best ground, the east bank's strips between legs, still won 100%.
+- **Small groups move in steps.** Plague Fords, Three Gates and Riftmaw send mostly groups of 2–7, where a few percent rounds to no extra creep, so their factors overstate the change.
+
+**Results**, 20 seeds a cell (`pnpm balance --seeds 20 --threads 1 --strategies balanced,single`, 2,120 Runs in about 12 min). Win rate of the balanced bot, then the best single family on Normal:
+
+| Stage | Easy | Normal | Hard | Insane | Best single family, Normal |
+|---|---|---|---|---|---|
+| 1 The Mill Road | 100% | 65% | 5% | 0% | Cannon 100% (Arrow and Cannon only; no flyers yet) |
+| 2 Greyriver Crossing | 100% | 65% | 15% | 0% | Cannon 100% |
+| 3 Gallows Hill | 100% | 65% | 0% | 0% | Arrow 15% |
+| 4 Fort Harrow | 100% | 55% | 0% | 0% | Arcane 100% |
+| 5 Drowned Causeway | 100% | 60% | 0% | 0% | Arcane 100%, Poison 100% |
+| 6 Sunken Chapel | 100% | 60% | 0% | 0% | Arcane 40%, Poison 40% |
+| 7 Plague Fords | 100% | 65% | 0% | 0% | Arrow 85%, Arcane 85% |
+| 8 The Blight Pit | 100% | 70% | 0% | 0% | Arcane 95% |
+| 9 The Scar | 100% | 60% | 0% | 0% | Arrow 75% |
+| 10 Black Cliffs | 100% | 60% | 0% | 0% | Arcane 100% |
+| 11 Three Gates | 100% | 55% | 5% | 0% | Arcane 85% |
+| 12 Riftmaw | 100% | 55% | 0% | 0% | Arrow 20% |
+
+- **Met:** Easy 100% everywhere, Normal 61% on average (55–70% per Stage), Insane 0% everywhere. Hard is 2% on average and 15% at most (Greyriver), never above Normal. The Challenges win 25–40%, 35% on average, each below its Stage (§16).
+- **Not met, as on Build Spots: one family alone still clears Stages from Stage 5 on,** more often than before. Arcane alone wins 85–100% of Stages 4, 5, 7, 8, 10 and 11, Arrow 70–85% of Stages 5, 7, 8 and 9, and Poison 70–100% of Stages 5, 8 and 9. Cannon, Frost and Totem alone still never clear one from Stage 3 on. The recommendation above stands: decide after the play-test.
+- **Watch: the bot still upgrades, but much less.** At the end of 12 Normal Runs (Stages 3, 6, 9 and 12, seeds 1–3) it held, a Run, 15.8 Tier 1 towers, 2.2 at Tier 2, 0.3 at Tier 3 and 1.7 Specialisations; untuned it held 16.1, 1.7, 0.3 and 1.8, and on Build Spots 5.1, 2.8, 1.2 and 2.1. So a fifth of its towers stand above Tier 1, against half on Build Spots. It walls the road with Tier 1 towers, upgrades a few, and from The Scar on specialises 3–4 Deadeyes; on Gallows Hill and Sunken Chapel it barely upgrades at all. The Tier prices stay: every target is met without touching them, and a flatter step would move every Stage and Challenge at once.
+- **Watch in play-testing:** whether upgrading feels worth it beside another Tier 1 tower (if not, flatten the Tier 2 and 3 prices and retune); whether Greyriver's spread-out Hounds at the end feel fair to Cannons; and Hard, still a cliff after ~60% on Normal.
 
 ## 16. Challenges (2026-10-19)
 
@@ -453,23 +491,30 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 
 | # | Challenge | Rule | Why | Bot wins, seeds 1–5 | 20 seeds | Stage |
 |---|---|---|---|---|---|---|
-| 1 | The Burnt Mill | Fire took the lower bend: build above the middle road only, 4 towers at most. | Hold the road from one bend | to be retuned in step 2 (40% on Build Spots) | to be retuned in step 2 (40%) | 75% |
-| 2 | Cold Water | Cannon and Frost towers only, and creeps have 30% more HP. | The swarm answered with splash and slows | 20% | 40% | 80% |
-| 3 | Short Rope | Towers stop at Tier 2. | Gallows Hill brings Tier 3; this holds it back | 40% | 40% | 60% |
-| 4 | The Gravelord's Host | Creeps have 15% more HP. | Armor and the boss, tougher | 40% | 30% | 55% |
-| 5 | Wardbreakers | No Frost or Arcane towers, and you start with 15 lives. | Cultists cut Magic: answer them without it | 20% | 25% | 55% |
-| 6 | The Old Rites | No Specialisations, and you start with 350 gold. | The chapel brings Specialisations; this holds them back | 40% | 35% | 50% |
-| 7 | No Rest at the Fords | Breaks last 8 s. | Two columns, and no time between Waves | 40% | 35% | 70% |
-| 8 | Short Supply | Start with 450 gold, and Send now pays no gold. | The Region's exam on a thin purse | 40% | 25% | 65% |
-| 9 | Glass Slope | The middle row burned to glass: nothing stands on it, and 8 towers at most. | The middle strip, which faces two legs, is gone | to be retuned in step 2 (40% on Build Spots) | to be retuned in step 2 (25%) | 65% |
-| 10 | Stone Wings | No Arrow towers, and creeps have 10% more HP. | Gargoyles shrug off Arrows: answer them otherwise | 40% | 30% | 60% |
-| 11 | Three Hordes | Breaks last 18 s: the hordes don't wait for each other. | Three roads meet, with less time to build between Waves | 20% | 30% | 75% |
-| 12 | The Last Stand | Start with 13 lives. | The Riftlord, with little to spare | 60% | 35% | 65% |
+| 1 | The Burnt Mill | Fire took the lower bend and west of the mill: 4 towers at most. | Hold the road from one bend | 40% | 25% | 65% |
+| 2 | Cold Water | Cannon and Frost towers only, and creeps have 44% more HP. | The swarm answered with splash and slows | 40% | 35% | 65% |
+| 3 | Short Rope | Towers stop at Tier 2, and you start with 10 lives. | Gallows Hill brings Tier 3; this holds it back | 20% | 35% | 65% |
+| 4 | The Gravelord's Host | Creeps have 10% more HP. | Armor and the boss, tougher | 40% | 40% | 55% |
+| 5 | Wardbreakers | No Frost or Arcane towers, and you start with 16 lives. | Cultists cut Magic: answer them without it | 20% | 30% | 60% |
+| 6 | The Old Rites | No Specialisations, and you start with 350 gold. | The chapel brings Specialisations; this holds them back | 40% | 35% | 60% |
+| 7 | No Rest at the Fords | Breaks last 8 s, and you start with 17 lives. | Two columns, and no time between Waves | 40% | 35% | 65% |
+| 8 | Short Supply | Start with 430 gold, and Send now pays no gold. | The Region's exam on a thin purse | 20% | 35% | 70% |
+| 9 | Glass Slope | The middle row burned to glass: nothing stands on it, and 8 towers at most. | The middle strip, which faces two legs, is gone | 20% | 40% | 60% |
+| 10 | Stone Wings | No Arrow towers, and creeps have 8% more HP. | Gargoyles shrug off Arrows: answer them otherwise | 40% | 35% | 60% |
+| 11 | Three Hordes | Breaks last 18 s: the hordes don't wait for each other. | Three roads meet, with less time to build between Waves | 20% | 35% | 55% |
+| 12 | The Last Stand | Start with 11 lives. | The Riftlord, with little to spare | 20% | 35% | 55% |
 
-- **The Stage column and the other ten Challenges' numbers are from Build Spots** too. Step 2 retunes them all under free placement (§17).
-- **Met:** every Challenge 20–60% over seeds 1–5 (`pnpm balance --challenges --seeds 5 --threads 2`, 120 Runs in about 20 s; `--first-seed 6` plays a second sample), and 25–40% over 20 seeds, 33% on average, against 50–80% for the Stages: each Challenge is won less often than its Stage.
-- **The bot is noisy and not monotone.** Closing weak Build Spots can raise its win rate (it stops spending on them), Cold Water's two families beat its Arrow-centred build on Greyriver, and a few lives or 10% of HP can swing a Challenge from 50% to nearly 0%. So every number above was checked on 10–20 seeds before it was kept. Rules the bots threw out: Fort Harrow without Arrows (0%), the Blight Pit or Riftmaw on 10 lives (0–10%), Black Cliffs without Talents (0%), only Gallows Hill's 5 hill Spots (0%), and Three Gates with 15–16 s Breaks (0–10%) or 20 s (80% on seeds 1–5).
-- **Why The Gravelord's Host is still a plain HP rule.** A Gravelord with 50% more HP, or double, was the themed rule to try. It changes nothing for the bot: over 10 seeds the bot never kills him, even at his usual HP, leaks him for 5 lives with 3–6 Revenants, and still wins 10 out of 10. A boss-only rule alone is therefore 100% for the bot, and paired with fewer lives ("he must not get through") it is 0–10%. So the bots can't tune it, and Fort Harrow keeps +15% creep HP until a player shows whether focus fire on him is within reach.
+- **Every number above is from free placement**, retuned on 2026-10-19 (§15, "Free placement retune"); the Stage column is §15's Normal over 20 seeds.
+- **Met:** every Challenge 25–40% over 20 seeds, 35% on average, and 20–40% over seeds 1–5 (`pnpm balance --challenges --seeds 5 --threads 1`, 120 Runs in about 75 s; `--first-seed 6` plays a second sample), against 55–70% for the Stages: each Challenge is won less often than its Stage.
+- **What the free-placement retune changed.** Each Challenge's own modifiers, nothing shared:
+  - The Burnt Mill: its cap of 4 alone let the bot win 60%, and a cap of 3 only 10%, so its Burnt ground also takes the inside of the first bend west of the mill (§17).
+  - Cold Water: +30% to +44% HP. It sits on a cliff: +40% wins 45–65% and +45% only 15–20% over two samples of 20 seeds, because it is decided at Wave 6, where spread-out Hounds slip the Cannons' slow shells. Lives or gold instead didn't bite.
+  - Short Rope: Tier 2 alone won 70%, since the bot barely upgrades on Open ground (§17's Watch), so it adds 10 lives.
+  - The Gravelord's Host +15% to +10% HP (15% won 10%); Wardbreakers 15 to 16 lives; Short Supply 450 to 430 gold (440 won 50–70%); Stone Wings +10% to +8% HP (+10% won 15%, +5% 70%); The Last Stand 13 to 11 lives.
+  - No Rest at the Fords: 8 s Breaks alone won 45% and 7 s 15–20%, so it keeps 8 s and adds 17 lives.
+  - The Old Rites, Glass Slope (its cap of 8) and Three Hordes (18 s) keep their numbers.
+- **The bot is noisy and not monotone.** On Build Spots, closing weak Spots could raise its win rate (it stopped spending on them), Cold Water's two families beat its Arrow-centred build on Greyriver, and a few lives or 10% of HP could swing a Challenge from 50% to nearly 0%, so every number was checked on 10–20 seeds. Under free placement the steps are steeper still (Cold Water, Short Supply and No Rest above), so every number above was checked on 20 seeds, and most on 40. Rules the bots threw out on Build Spots: Fort Harrow without Arrows (0%), the Blight Pit or Riftmaw on 10 lives (0–10%), Black Cliffs without Talents (0%), only Gallows Hill's 5 hill Spots (0%), and Three Gates with 15–16 s Breaks (0–10%) or 20 s (80% on seeds 1–5).
+- **Why The Gravelord's Host is still a plain HP rule.** A Gravelord with 50% more HP, or double, was the themed rule to try. It changed nothing for the bot on Build Spots: over 10 seeds it never killed him, even at his usual HP, leaked him for 5 lives with 3–6 Revenants, and still won 10 out of 10. A boss-only rule alone was therefore 100% for the bot, and paired with fewer lives ("he must not get through") 0–10%. So the bots can't tune it, and Fort Harrow keeps a plain HP rule (+15%, +10% since free placement) until a player shows whether focus fire on him is within reach.
 - **For the bot, a Challenge without early-call gold waits its Breaks out,** as a competent player would.
 - **A human plays better than the bot,** so the Challenges will likely feel easier than these numbers. The play-test decides whether any rule needs a second modifier.
 
@@ -551,11 +596,11 @@ The Ghost's words: "on the mill", "in the millpond", "in the river", "on the gal
 
 | # | Challenge | New rule | Modifiers | HUD chips |
 |---|---|---|---|---|
-| 1 | The Burnt Mill | Fire took the lower bend: build above the middle road only, 4 towers at most. | `burnt`: every cell south of the middle road, [0, 10, 32, 8], and west of the second bend, [0, 4, 5, 6], "on burnt ground". `maxTowers`: 4 | Lower bend burnt · 4 towers at most |
+| 1 | The Burnt Mill | Fire took the lower bend and west of the mill: 4 towers at most. | `burnt`: every cell south of the middle road, [0, 10, 32, 8], and west of the mill above it, [0, 4, 13, 6], "on burnt ground". `maxTowers`: 4 | Lower bend and west burnt · 4 towers at most |
 | 9 | Glass Slope | The middle row burned to glass: nothing stands on it, and 8 towers at most. | `burnt`: the strip between the two middle legs, [7, 9, 20, 2], "on the glass". `maxTowers`: 8 | Middle row burnt · 8 towers at most |
 
-- Each keeps its name, id and theme. The burnt ground carries the theme and keeps towers off the lower bend and the middle row. The cap does most of the squeezing.
-- The caps start at the Spots each kept, 4 and 8. Free places make each tower worth more, so the caps may need to fall. These numbers, and the burnt areas, are first guesses: step 2 tunes them with the bot to 25–40% over 20 seeds.
+- Each keeps its name, id and theme. The burnt ground carries the theme and keeps towers off the lower bend, the mill's west and the middle row. The cap does most of the squeezing.
+- The caps stay at the Spots each kept, 4 and 8 (tuned in step 2b, §16). The Burnt Mill's first guess, the lower bend alone, won 60% with a cap of 4 and 10% with 3, so its Burnt ground also takes the inside of the first bend west of the mill: 25% over 20 seeds. Glass Slope's first guess wins 40% and stays. The Burnt Mill leaves 136 Open cells, Glass Slope 241.
 - Burnt ground never covers a Spot the Challenge kept (The Burnt Mill's 0–3, Glass Slope's 0–3 and 8–11), so their older saves load.
 
 **Bots.** Before Wave 1, each bot lays out its own places. It scores every open 2 × 2 by the road within 340 of its centre, summed over the routes, so the inside of a corner and a strip between two legs score highest. Its seed adds ±20% noise to each score. It takes the best place, then the best that overlaps none taken, and so on, until it holds 32 places or the next scores under 40% of the best. The 4 best places by air line seen join them, if they aren't there already, so a Stage with flyers has places by the air line. These places stand in for Spots from then on. Balanced, greedy and single value each family's Tier 1 tower on each free place, at that family's range, as they valued Spots. The rotation bot fills them in order. A Totem's value already counts the towers within its aura, so Totems land among the towers. With every place taken, or a Challenge's Tower cap reached, a Tier 1 tower may make way for another family's, as now. The planner knows towers by their top-left cell, not a Spot index. That is two to four times today's work per decision, which the balance runner can afford.
@@ -570,6 +615,8 @@ The Ghost's words: "on the mill", "in the millpond", "in the river", "on the gal
   4. Only then the numbers every Stage shares: the bounty pool, the end-of-Wave bonus and tower prices. They move every Stage and Challenge at once.
 - **Watch:** with space no longer the limit, Tier 1 towers wall to wall may beat upgrading, since each Tier buys 5–10% less DPS per gold (§6). If the balanced bot stops upgrading, flatten that step in the Tier prices rather than cap towers.
 - **Watch:** one-family wins (§15) and Hard (~0% on Build Spots) may both rise.
+- **Retuned (step 2b, §15 "Free placement retune"):** over 20 seeds the balanced bot wins Easy 100%, Normal 61% (55–70% per Stage), Hard 2% and Insane 0%, and the Challenges 25–40%. Only lever 1 was needed. One-family wins rose (Arcane alone wins 85–100% of six Stages); Hard barely did.
+- **The Watch's result: the bot still upgrades, but much less.** A Normal Run ends with about 16 Tier 1 towers, 2 at Tier 2, under 1 at Tier 3 and 2 Specialisations (Deadeyes, from The Scar on), against 5, 3, 1 and 2 on Build Spots. It hasn't stopped, so the Tier prices stay as they are; the play-test decides whether upgrading feels worth it.
 - **No interest still holds.** Space is no longer the limit; gold is. That makes the early call, the Original's greed lever, matter more, and interest would still pull the other way, towards waiting and banking. Overlapping Waves still blur when a Wave ends.
 
 **The UI** (step 3 builds it)

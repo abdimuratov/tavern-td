@@ -307,18 +307,18 @@ describe('Challenges in the Campaign', () => {
 
   it('counts 48 Stars in all, and gives each rule as short lines', () => {
     expect(MOST_STARS).toBe(48);
-    expect(challengeLines(challengeOfStage(2)!)).toEqual(['Cannon and Frost only', '+30% creep HP']);
+    expect(challengeLines(challengeOfStage(2)!)).toEqual(['Cannon and Frost only', '+44% creep HP']);
     // A rule that allows most families names the ones it leaves out.
-    expect(challengeLines(challengeOfStage(10)!)).toEqual(['No Arrow towers', '+10% creep HP']);
-    expect(challengeLines(challengeOfStage(5)!)).toEqual(['No Frost or Arcane towers', '15 lives']);
-    expect(challengeLines(challengeOfStage(1)!)).toEqual(['Lower bend burnt', '4 towers at most']);
-    expect(challengeLines(challengeOfStage(3)!)).toEqual(['Tiers 1–2']);
+    expect(challengeLines(challengeOfStage(10)!)).toEqual(['No Arrow towers', '+8% creep HP']);
+    expect(challengeLines(challengeOfStage(5)!)).toEqual(['No Frost or Arcane towers', '16 lives']);
+    expect(challengeLines(challengeOfStage(1)!)).toEqual(['Lower bend and west burnt', '4 towers at most']);
+    expect(challengeLines(challengeOfStage(3)!)).toEqual(['Tiers 1–2', '10 lives']);
     expect(challengeLines(challengeOfStage(6)!)).toEqual(['No Specialisations', '350 gold to start']);
-    expect(challengeLines(challengeOfStage(7)!)).toEqual(['8 s Breaks']);
+    expect(challengeLines(challengeOfStage(7)!)).toEqual(['17 lives', '8 s Breaks']);
     expect(challengeLines(challengeOfStage(11)!)).toEqual(['18 s Breaks']);
-    expect(challengeLines(challengeOfStage(8)!)).toEqual(['450 gold to start', 'Send now pays no gold']);
-    expect(challengeLines(challengeOfStage(12)!)).toEqual(['13 lives']);
-    expect(challengeLines(challengeOfStage(4)!)).toEqual(['+15% creep HP']);
+    expect(challengeLines(challengeOfStage(8)!)).toEqual(['430 gold to start', 'Send now pays no gold']);
+    expect(challengeLines(challengeOfStage(12)!)).toEqual(['11 lives']);
+    expect(challengeLines(challengeOfStage(4)!)).toEqual(['+10% creep HP']);
     expect(challengeLines(challengeOfStage(9)!)).toEqual(['Middle row burnt', '8 towers at most']);
   });
 

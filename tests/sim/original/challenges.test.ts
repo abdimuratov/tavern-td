@@ -96,18 +96,19 @@ describe('the modifiers', () => {
     const stage = stageByNumber(1)!.map;
     const s = newRun({ challenge: 'burnt-mill', gold: 5000 });
     const open = (m: typeof stage): number => m.terrain.join('').split('').filter((ch) => ch === '.').length;
-    expect(open(s.map)).toBe(168);
+    expect(open(s.map)).toBe(136);
     expect(open(newRun({ challenge: 'glass-slope' }).map)).toBe(241);
     expect(s.map.scenery!.map((p) => [p.kind, p.name, p.at])).toEqual([
-      ['building', 'the mill', 'on the mill'], ['water', 'the millpond', 'in the millpond'], ['burnt', 'Lower bend burnt', 'on burnt ground'],
+      ['building', 'the mill', 'on the mill'], ['water', 'the millpond', 'in the millpond'], ['burnt', 'Lower bend and west burnt', 'on burnt ground'],
     ]);
-    // The lower bend's ground is burnt; its road stays road, and the pond keeps its words.
+    // The lower bend's ground and the mill's west are burnt; the road stays road, and the pond keeps its words.
     expect(reasons(send(s, buildAt(s, 4, 'arrow_tower')))).toEqual(['on burnt ground']);
     expect(reasons(send(s, buildAt(s, [0, 5], 'arrow_tower')))).toEqual(['on burnt ground']);
+    expect(reasons(send(s, buildAt(s, [5, 5], 'arrow_tower')))).toEqual(['on burnt ground']);
     expect(s.map.terrain[14]).toBe(stage.terrain[14]!.replace(/\./g, '#'));
     expect(reasons(send(s, buildAt(s, [18, 11], 'arrow_tower')))).toEqual(['in the millpond']);
     expect(buildOn(s, 3, 'arrow_tower').spec).toBe('arrow_tower');
-    expect(buildOn(s, [5, 5], 'arrow_tower').spec).toBe('arrow_tower');
+    expect(buildOn(s, [28, 5], 'arrow_tower').spec).toBe('arrow_tower');
     const glass = newRun({ challenge: 'glass-slope' });
     expect(reasons(send(glass, buildAt(glass, 4, 'arrow_tower')))).toEqual(['on the glass']);
     expect(buildOn(glass, 8, 'arrow_tower').spec).toBe('arrow_tower');
@@ -121,21 +122,21 @@ describe('the modifiers', () => {
     const s = newRun({ challenge: 'burnt-mill', gold: 5000 });
     const towers = [0, 1, 2, 3].map((spot) => buildOn(s, spot, 'arrow_tower'));
     const cap = '4 towers stand: the most in this Challenge';
-    expect(reasons(send(s, buildAt(s, [5, 5], 'arrow_tower')))).toEqual([cap]);
-    expect(original.placeInfo(s, 5, 5)).toMatchObject({ error: cap });
-    expect(original.placeInfo(s, 5, 5).options.every((o) => o.blocked === cap)).toBe(true);
+    expect(reasons(send(s, buildAt(s, [28, 5], 'arrow_tower')))).toEqual([cap]);
+    expect(original.placeInfo(s, 28, 5)).toMatchObject({ error: cap });
+    expect(original.placeInfo(s, 28, 5).options.every((o) => o.blocked === cap)).toBe(true);
     // The ground's reasons first, then the cap, then the family and the gold.
     expect(reasons(send(s, buildAt(s, [0, 2], 'arrow_tower')))).toEqual(['on the road']);
     expect(reasons(send(s, buildAt(s, [0, 12], 'arrow_tower')))).toEqual(['on burnt ground']);
     expect(reasons(send(s, buildAt(s, 0, 'arrow_tower')))).toEqual(['a tower stands there']);
     s.gold = 0;
-    expect(reasons(send(s, buildAt(s, [5, 5], 'longbow_tower')))).toEqual([cap]);
+    expect(reasons(send(s, buildAt(s, [28, 5], 'longbow_tower')))).toEqual([cap]);
     s.gold = 5000;
     send(s, { type: 'original.sell', tower: towers[1]!.id });
-    expect(buildOn(s, [5, 5], 'cannon_tower').spec).toBe('cannon_tower');
+    expect(buildOn(s, [28, 5], 'cannon_tower').spec).toBe('cannon_tower');
     expect(reasons(send(s, buildAt(s, 1, 'arrow_tower')))).toEqual([cap]);
     // Towers past the cap (an older save's) stay standing; only new builds wait.
-    placeTower(s, [7, 4], 'arrow_tower');
+    placeTower(s, [10, 0], 'arrow_tower');
     run(s, 30);
     expect(s.towers).toHaveLength(5);
     expect(original.capError(newRun({ stage: 1 }))).toBeNull();
@@ -145,10 +146,12 @@ describe('the modifiers', () => {
   });
 
   it('lives and gold: the Run starts with the Challenge\'s, and test gold still wins', () => {
-    expect(newRun({ challenge: 'last-stand' }).lives).toBe(13);
-    expect(newRun({ challenge: 'wardbreakers' }).lives).toBe(15);
+    expect(newRun({ challenge: 'last-stand' }).lives).toBe(11);
+    expect(newRun({ challenge: 'wardbreakers' }).lives).toBe(16);
+    expect(newRun({ challenge: 'short-rope' }).lives).toBe(10);
+    expect(newRun({ challenge: 'no-rest' }).lives).toBe(17);
     const supply = newRun({ challenge: 'short-supply' });
-    expect([supply.gold, supply.lives]).toEqual([450, 20]);
+    expect([supply.gold, supply.lives]).toEqual([430, 20]);
     expect(newRun({ challenge: 'old-rites' }).gold).toBe(350);
     expect(newRun({ challenge: 'old-rites', gold: 5000 }).gold).toBe(5000);
   });
@@ -157,17 +160,17 @@ describe('the modifiers', () => {
     const host = newRun({ challenge: 'gravelords-host' });
     const plain = newRun({ stage: 4 });
     for (const s of [host, plain]) send(s, { type: 'original.sendNow' });
-    expect(host.creeps[0]!.maxHp).toBe(Math.round(original.ghoulHp(4) * 1.15));
+    expect(host.creeps[0]!.maxHp).toBe(Math.round(original.ghoulHp(4) * 1.1));
     expect(plain.creeps[0]!.maxHp).toBe(Math.round(original.ghoulHp(4)));
-    expect(original.wavePreview(host, 1)!.ghoulHp).toBe(Math.round(original.ghoulHp(4) * 1.15));
+    expect(original.wavePreview(host, 1)!.ghoulHp).toBe(Math.round(original.ghoulHp(4) * 1.1));
     // Wave 2 is 15 Crawlers, then 4 Ghouls.
-    expect(original.wavePreview(host, 2)!.groups[1]!.hp).toBe(Math.round(original.ghoulHp(5) * 1.15));
-    // Stone Wings: 10% more, Shields included. A Shieldbearer of Wave 18 is at Threat 29.
+    expect(original.wavePreview(host, 2)!.groups[1]!.hp).toBe(Math.round(original.ghoulHp(5) * 1.1));
+    // Stone Wings: 8% more, Shields included. A Shieldbearer of Wave 18 is at Threat 29.
     const shield = (s: GameState): number => {
       const c = spawnCreep(s, 'shieldbearer', { wave: 18, route: 0 }, []);
       return (s.mode as original.OriginalState).creeps[String(c.id)]!.shield;
     };
-    expect(shield(newRun({ challenge: 'stone-wings' }))).toBe(Math.round(0.1 * original.ghoulHp(29) * 1.1));
+    expect(shield(newRun({ challenge: 'stone-wings' }))).toBe(Math.round(0.1 * original.ghoulHp(29) * 1.08));
     expect(shield(newRun({ stage: 10 }))).toBe(Math.round(0.1 * original.ghoulHp(29)));
   });
 
@@ -332,8 +335,8 @@ describe('older saves made on Build Spots', () => {
     expect(original.upgradeSave(old)).toBeNull();
     expect(old.map).toBe(original.challengeMap(challengeById('burnt-mill')!));
     expect(old.towers).toHaveLength(4);
-    expect(reasons(send(old, buildAt(old, [5, 5], 'arrow_tower')))).toEqual(['4 towers stand: the most in this Challenge']);
-    send(s, buildAt(s, [5, 5], 'arrow_tower'));
+    expect(reasons(send(old, buildAt(old, [28, 5], 'arrow_tower')))).toEqual(['4 towers stand: the most in this Challenge']);
+    send(s, buildAt(s, [28, 5], 'arrow_tower'));
     s.pathVersion++;
     expect(sameRun(old, s, 600)).toBe(true);
   });

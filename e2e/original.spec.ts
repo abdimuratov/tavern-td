@@ -162,10 +162,10 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
   await expect(page.getByTestId('region-intro')).toBeVisible({ visible: page.viewportSize()!.height > 520 });
   await page.getByTestId('challenge-start').click();
 
-  // A Challenge Run: Normal, its lower bend burnt and 4 towers at most, with its name, Star and rule on the HUD.
+  // A Challenge Run: Normal, its lower bend and the mill's west burnt, 4 towers at most, with its name, Star and rule on the HUD.
   await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
   await expect(page.getByTestId('run-challenge')).toHaveAttribute('title', 'Challenge: The Burnt Mill, on The Mill Road');
-  await expect(page.getByTestId('challenge-rules')).toContainText('Lower bend burnt');
+  await expect(page.getByTestId('challenge-rules')).toContainText('Lower bend and west burnt');
   await expect(page.getByTestId('challenge-rules')).toContainText('4 towers at most');
   await expect(page.getByTestId('run-stars')).toHaveAttribute('aria-label', '1 of 1 Stars');
   await page.waitForFunction(() => !!window.tavern);
@@ -174,7 +174,7 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
     const burnt = s.map.scenery?.find((p) => p.kind === 'burnt')?.name ?? null;
     return { difficulty: s.difficulty, challenge: (s.mode as { challenge?: string }).challenge, burnt, wave: s.wave.number };
   });
-  expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend burnt', wave: 0 });
+  expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend and west burnt', wave: 0 });
   await winRun(page);
 
   // The end card: the Challenge's Star, added to the Campaign's 48, and its time as a new best.
@@ -190,7 +190,7 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
   // Play again restarts the Challenge, and Continue keeps it one.
   await page.getByTestId('play-again').click();
   await expect(page.getByTestId('run-challenge')).toHaveText('The Burnt Mill');
-  await expect.poll(run).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend burnt', wave: 0 });
+  await expect.poll(run).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend and west burnt', wave: 0 });
   await page.getByTestId('menu-button').click();
   await page.getByTestId('quit').click();
   await expect(card.getByTestId('continue')).toContainText('Challenge: The Burnt Mill · The Mill Road · Normal');

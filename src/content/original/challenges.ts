@@ -15,30 +15,30 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   // Ashfield: each Challenge withholds what its Stage leaned on or brought.
   {
     stage: 1, id: 'burnt-mill', name: 'The Burnt Mill', stars: 1,
-    rule: 'Fire took the lower bend: build above the middle road only, 4 towers at most.',
-    // Every cell south of the middle road, and west of the second bend.
-    modifiers: { burnt: { name: 'Lower bend burnt', at: 'on burnt ground', rects: [[0, 10, 32, 8], [0, 4, 5, 6]] }, maxTowers: 4 },
+    rule: 'Fire took the lower bend and west of the mill: 4 towers at most.',
+    // Every cell south of the middle road, and west of the mill above it.
+    modifiers: { burnt: { name: 'Lower bend and west burnt', at: 'on burnt ground', rects: [[0, 10, 32, 8], [0, 4, 13, 6]] }, maxTowers: 4 },
   },
   {
     stage: 2, id: 'cold-water', name: 'Cold Water', stars: 1,
-    rule: 'Cannon and Frost towers only, and creeps have 30% more HP.',
-    modifiers: { families: ['cannon', 'frost'], hp: 1.3 },
+    rule: 'Cannon and Frost towers only, and creeps have 44% more HP.',
+    modifiers: { families: ['cannon', 'frost'], hp: 1.44 },
   },
   {
     stage: 3, id: 'short-rope', name: 'Short Rope', stars: 1,
-    rule: 'Towers stop at Tier 2.',
-    modifiers: { maxTier: 2 },
+    rule: 'Towers stop at Tier 2, and you start with 10 lives.',
+    modifiers: { maxTier: 2, lives: 10 },
   },
   {
     stage: 4, id: 'gravelords-host', name: 'The Gravelord\'s Host', stars: 1,
-    rule: 'Creeps have 15% more HP.',
-    modifiers: { hp: 1.15 },
+    rule: 'Creeps have 10% more HP.',
+    modifiers: { hp: 1.1 },
   },
   // Blightfen.
   {
     stage: 5, id: 'wardbreakers', name: 'Wardbreakers', stars: 1,
-    rule: 'No Frost or Arcane towers, and you start with 15 lives.',
-    modifiers: { families: ['arrow', 'cannon', 'poison', 'totem'], lives: 15 },
+    rule: 'No Frost or Arcane towers, and you start with 16 lives.',
+    modifiers: { families: ['arrow', 'cannon', 'poison', 'totem'], lives: 16 },
   },
   {
     stage: 6, id: 'old-rites', name: 'The Old Rites', stars: 1,
@@ -47,13 +47,13 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   },
   {
     stage: 7, id: 'no-rest', name: 'No Rest at the Fords', stars: 1,
-    rule: 'Breaks last 8 s.',
-    modifiers: { breakSeconds: 8 },
+    rule: 'Breaks last 8 s, and you start with 17 lives.',
+    modifiers: { breakSeconds: 8, lives: 17 },
   },
   {
     stage: 8, id: 'short-supply', name: 'Short Supply', stars: 1,
-    rule: 'Start with 450 gold, and Send now pays no gold.',
-    modifiers: { gold: 450, noEarlyCall: true },
+    rule: 'Start with 430 gold, and Send now pays no gold.',
+    modifiers: { gold: 430, noEarlyCall: true },
   },
   // Rift.
   {
@@ -64,8 +64,8 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   },
   {
     stage: 10, id: 'stone-wings', name: 'Stone Wings', stars: 1,
-    rule: 'No Arrow towers, and creeps have 10% more HP.',
-    modifiers: { families: ['cannon', 'frost', 'arcane', 'poison', 'totem'], hp: 1.1 },
+    rule: 'No Arrow towers, and creeps have 8% more HP.',
+    modifiers: { families: ['cannon', 'frost', 'arcane', 'poison', 'totem'], hp: 1.08 },
   },
   {
     stage: 11, id: 'three-hordes', name: 'Three Hordes', stars: 1,
@@ -74,8 +74,8 @@ export const CHALLENGES: readonly ChallengeSpec[] = [
   },
   {
     stage: 12, id: 'last-stand', name: 'The Last Stand', stars: 1,
-    rule: 'Start with 13 lives.',
-    modifiers: { lives: 13 },
+    rule: 'Start with 11 lives.',
+    modifiers: { lives: 11 },
   },
 ];
 
