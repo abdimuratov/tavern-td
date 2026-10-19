@@ -15,7 +15,7 @@ Every number here is a starting point. It comes from the baseline in [PLAN §4](
 | Topic | Design |
 |---|---|
 | Shape | 12 Stages in 3 Regions of 4. Each Stage is one Run of 12–20 Waves, about 8–14 min at 1× |
-| Map | A fixed route, plus a straight air line for flying creeps. Towers stand only on Build Spots |
+| Map | A fixed route, plus a straight air line for flying creeps. A 2 × 2 tower goes on any Open ground beside the road (§17) |
 | Towers | 6 Tower Families. Each has Tiers 1, 2 and 3, then 2 Specialisations: 30 towers |
 | Inside a Run | Gold buys towers and Tiers. Towers gain Tower Levels 1–10 from kills, with a Perk at 5 and at 10 |
 | Across Runs | Stars (1–3 per Stage, and 1 for each Challenge won) buy Talents, one tree per family, refunded for free |
@@ -42,8 +42,8 @@ Every number here is a starting point. It comes from the baseline in [PLAN §4](
 ## 3. How a Stage plays
 
 - **Before the Run.** You set Talents on the Stage-select screen. They are fixed for the Run.
-- **Start.** The Run opens with the Stage's starting gold and every Build Spot empty. Wave 1 waits until you press Send now.
-- **Building.** Tap an empty Build Spot and a ring shows the unlocked families with their prices. Tap one for its Ghost and range, then tap again to build. Building is instant.
+- **Start.** The Run opens with the Stage's starting gold and no towers. Wave 1 waits until you press Send now.
+- **Building.** A tower is 2 × 2 and goes on any Open ground off the road (§17). Tap the ground and a ring shows the unlocked families with their prices. Tap one for its Ghost and range, then tap again to build. Building is instant.
 - **A built tower.** Tap it for Upgrade (the next Tier), the two Specialisations once it is Tier 3, targeting and Sell. On the Mac, hotkeys follow the ring's order.
 - **Targeting.** Each attacking tower aims at First (default), Last, Strong or Close. Changing it is free at any time.
 - **Waves.** Ground creeps walk the route; on Stages with two or three spawns, each group walks its own route. Flying creeps follow the air line.
@@ -99,7 +99,7 @@ Ten creeps and three bosses. HP is a multiple of a Ghoul's HP at the Wave's Thre
 | Ghoul | — | Anything |
 | Hound | Slow shots (Cannon, Thunder Mortar) and towers placed late on the route | Frost, Arrow |
 | Crawler | Single-target towers (Mage line, Deadeye, Arcane Lance, Widow's Fang) | Cannon, Ranger Lodge, Prism, Plague Cauldron, Blizzard |
-| Bloodbat | Cannon and Poison, which can't hit air, and Spots far from the air line | Arrow, Frost, Arcane, Flak Battery, Storm Totem |
+| Bloodbat | Cannon and Poison, which can't hit air, and towers far from the air line | Arrow, Frost, Arcane, Flak Battery, Storm Totem |
 | Revenant | Arrow (50%), and Cannon a little (75%) | Arcane, Poison, Deadeye, War Totem |
 | Cultist | Frost, Arcane and Storm Totem (50%) | Arrow, Cannon, Poison |
 | Flesh Golem | Poison and chip damage, which its regeneration out-heals | Burst: Arcane, Deadeye, Arcane Lance; the Antivenom Talent |
@@ -181,7 +181,7 @@ Ground only. Poison prefers creeps that aren't poisoned yet, so one tower keeps 
 
 ### Totem
 
-Totems don't attack, except Storm Totem. Their auras reach towers within 256, about two Build Spots. Two Totems' auras of the same kind don't stack.
+Totems don't attack, except Storm Totem. Their auras reach towers within 256, about two towers away. Two Totems' auras of the same kind don't stack.
 
 | Tower | Step | Total | Aura | Notes |
 |---|---|---|---|---|
@@ -263,7 +263,7 @@ One new tool per Stage until all six families are out, while each Stage also bri
 | Tower prices | Single-target Tier 1 at 0.10 DPS per gold; splash about half that per creep; each step about 1.5× the last | Same |
 | Difficulty | Creep HP × 0.75 / 1 / 1.3 / 1.6 | Same |
 
-**Why no interest.** Build Spots make space the limit, not gold (research §3). The early call is the Original's greed lever, and interest would pull the other way, towards waiting and banking. Overlapping Waves also blur when a Wave "ends". The end-of-Wave bonus keeps §4's income slope.
+**Why no interest.** The early call is the Original's greed lever, and interest would pull the other way, towards waiting and banking. Overlapping Waves also blur when a Wave "ends". The end-of-Wave bonus keeps §4's income slope. Build Spots used to make space the limit (research §3). Since free placement (§17) gold is the limit, which makes the early call matter more, so no interest still holds.
 
 **Wave recipes.** The design started from a normal Wave of 10 Ghouls' worth of HP, a new creep's first Wave alone at 0.8× followed by a Wave that mixes it in, late Waves at 1.2–1.5×, a boss Wave of the boss plus a few escorts, and each Stage's last Wave its hardest. The bots kept the shape and changed the sizes (§15):
 - **A Stage ramps.** Its opening Waves are light, 7–10 Ghouls' worth, so the starting gold carries them even on Insane. Its last third is 1.5–3× the old recipe. A Stage is decided at its end, not in its opening.
@@ -286,7 +286,7 @@ The bots overruled this model (§15): it assumed too much firing time on a route
 
 ## 11. The 12 Stages
 
-Every Map is 32 × 18 cells (§12). The length assumes about 40 s per Wave at 1× without early calls.
+Every Map is 32 × 18 cells (§12). The length assumes about 40 s per Wave at 1× without early calls. The Spots column, and the Spots in the Map ideas, were the plan until 2026-10-19. Free placement replaced them (§17), and each Stage's Scenery is listed there.
 
 | # | Stage | Region | Map idea | Spots | Waves | Threat | Gold | New creep | New for you | Length |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -303,20 +303,20 @@ Every Map is 32 × 18 cells (§12). The length assumes about 40 s per Wave at 1�
 | 11 | Three Gates | Rift | Three spawns that merge in two steps | 14 | 20 | 13–32 | 660 | — (everything mixed) | Three routes | 13 min |
 | 12 | Riftmaw | Rift | A ring round the Rift itself, then up to the Riftlord; the longest route | 14 | 20 | 14–33 | 700 | Riftlord on the last Wave | — | 14 min |
 
-- **Spots grow from 8 to 14.** By a Stage's end, a good Run has filled most Spots and specialised a few, which matches Goal Defense's "60–70% full" target (research §6).
+- **Spots grow from 8 to 14** was the original plan: by a Stage's end, a good Run filled most Spots and specialised a few, which matched Goal Defense's "60–70% full" target (research §6). Since 2026-10-19 towers go on any Open ground and gold is the limit (§17). The old Spot lists stay in the tests, because Scenery must leave them open for older saves.
 - **Each Region ends on a boss** that tests what that Region taught: the Gravelord tests focus fire, the Plague Mother tests splash plus burst, and the Riftlord tests everything.
 - **Region 3 brings no new towers.** Its new creeps (Shieldbearer, Gargoyle) push you into Specialisations and Talents.
 
 **As built** (2026-10-18; `pnpm balance maps` prints each Map). Spots, Waves, Threat and gold are as in the table.
 - **Routes:** Stage 1 is 5,376 long; Stage 2, 5,504; Stage 3, 4,544; Stage 4, 5,120; Stage 5, 5,888; Stage 6, 6,016. Stage 7's two routes are 2,816 each, 1,536 of it before they join at the middle of the Map. Stage 8 is 5,120; Stage 9, 6,272; Stage 10, 5,760, with a 2,048 air line straight across the chasm. Stage 11's three routes are 4,224, 4,032 and 4,224: the north and west roads join first, the south road joins them next, and the last 2,944 is shared. Stage 12 is the longest at 7,744; its last leg crosses its own outer ring on the way north.
-- **Air lines** run 2–3 points from each spawn to the exit, and pass near some Spots.
-- **The river, the hill, the chasm and the pit** are in the Stage lines and the Map shapes only. The terrain is still road, Spot or ground.
+- **Air lines** run 2–3 points from each spawn to the exit, and passed near some of the old Spots.
+- **The river, the hill, the chasm and the pit** were in the Stage lines and the Map shapes only, on terrain of road, Spot or ground. §17's Scenery draws them on the Map.
 
 ## 12. Maps
 
-- **Size.** 32 × 18 cells of 64 units, or 2,048 × 1,152 world units. At 390 pt of landscape height a cell is about 21.7 pt, so a 2 × 2 Build Spot is about 43 pt. That is a tap target without pinching, unlike Gem's and Element's Maps.
+- **Size.** 32 × 18 cells of 64 units, or 2,048 × 1,152 world units. At 390 pt of landscape height a cell is about 21.7 pt, so a 2 × 2 tower is about 43 pt. That is a tap target without pinching, unlike Gem's and Element's Maps.
 - **Route.** A polyline, two cells wide, walked through its centre, reusing `src/sim/path/route.ts` (built for Element). A creep leaks at the end.
-- **Build Spots.** A list of 2 × 2 cells beside the route, never on it, so towers never Block.
+- **Where towers go.** Changed on 2026-10-19, at your request: a 2 × 2 tower goes on any Open ground, the cells that are neither road nor Scenery, so towers still never Block (§17). Until then, towers stood only on Build Spots, a list of 2 × 2 places beside the route.
 - **Air line.** A polyline of 2–4 points from the spawn to the exit, drawn faintly. Flying creeps follow it at their own speed.
 - **Several spawns.** Stages 7 and 11 have 2 and 3 routes. Each Wave group names its route.
 
@@ -324,7 +324,7 @@ Every Map is 32 × 18 cells (§12). The length assumes about 40 s per Wave at 1�
 
 The engine already has splash, slows that don't stack, poison, armor debuffs, stuns, crits, multishot, auras (attack speed, damage, range; armor, slow and poison on creeps), damage tables and one fixed route. New work:
 
-- **Map:** several routes per Map, Build Spots, and an air line that flying creeps follow.
+- **Map:** several routes per Map, Build Spots, and an air line that flying creeps follow. Free placement replaced the Build Spots on 2026-10-19 (§17).
 - **Creeps:** Shield (flat block per hit), splitting on death, boss spawns and enrage, slows at half strength and stun immunity for bosses.
 - **Towers:** Tier upgrades and the Specialisation choice; targeting modes; poison that prefers unpoisoned creeps, and stacking poison; the ramping beam; the cloud; the bouncing bolt; freeze; Armored treated as Unarmored.
 - **Tower Levels:** XP with Assists and Totem shares, Level bonuses, the 12 Perks.
@@ -339,7 +339,7 @@ The engine already has splash, slows that don't stack, poison, armor debuffs, st
 The rules session (2026-10-18) built §13 as written. Where this doc left a gap, it took the choice below and marked it `assumed` in the code. The bots and the play-test can overturn any of them.
 
 **Map and Waves**
-- A Map lists its routes, and a route carries its own air line, so Stages 7 and 11 give each spawn its own. Stages declare only routes and Build Spots; the terrain is painted from them.
+- A Map lists its routes, and a route carries its own air line, so Stages 7 and 11 give each spawn its own. Stages declared only routes and Build Spots, and the terrain was painted from them. Since §17 they declare routes and Scenery.
 - A Wave's groups follow one another, each starting one gap after the last spawn of the group before, unless the group sets its own start.
 - Creeps that another creep drops (a Bloater's Crawlers, the Plague Mother's brood, the Riftlord's Hounds) appear just behind it on its route. They belong to its Wave, pay no bounty, and still give XP.
 - Stage 1's Waves follow the §10 recipe: 10 Ghouls' worth at first, 11 Hounds alone at Wave 5, then 1.0–1.5× mixes, and 1.63× for Wave 12.
@@ -365,7 +365,7 @@ The rules session (2026-10-18) built §13 as written. Where this doc left a gap,
 - A Run takes Stages finished as a Run setting, which sets its unlocks: the Stage before it by default. Talents are checked for shape only (known ids, one per row, rows in order); the Stage-select screen checks Stars and open trees.
 
 **Stages 2–12** (the Stages session, 2026-10-18)
-- A Spot counts as beside the road within two cells of it, so Gallows Hill's hilltop Spots stand two rows from both legs. Every Spot sees at least 448 of road from a Tier 1 tower's 320 range.
+- Build Spots, until §17: a Spot counted as beside the road within two cells of it, so Gallows Hill's hilltop Spots stood two rows from both legs. Every Spot saw at least 448 of road from a Tier 1 tower's 320 range.
 - The boss lines and Region intros live with the UI (`src/ui/modes/original/text.ts`); the Stages carry only their select-screen line.
 - Each new creep arrives alone a third to halfway into its Stage: Wave 4 or 5.
 - Waves that name no route walk route 0. On the multi-route Stages, groups spread over every route, and a group that should start with another sets `at: 0`.
@@ -373,6 +373,8 @@ The rules session (2026-10-18) built §13 as written. Where this doc left a gap,
 ## 15. Balance (2026-10-18)
 
 `pnpm balance` (`tools/balance/`) plays every Stage with scripted bots over many seeds and every Difficulty. Each bot uses the unlocks the Campaign has by then (Stages finished = Stage − 1) and the Talents a decent player would hold. It reports win rate, Wave reached, lives and Stars, then checks PLAN §4's targets. `pnpm test` runs a small sample on every push.
+
+These bots and results are from Build Spots. §17 says how the bots choose places under free placement, and step 2 retunes against it.
 
 **The bots.**
 - **Balanced** is the competent player. It judges each purchase by the lives it would save against the creep groups of the next five Waves (later ones count for less): their armor types, Shields, flyers, spacing, regeneration and overkill. It counts slows and Totem auras, picks Specialisations the same way, and builds around Arrow, adding another family's tower when it is worth 10% more. With every Spot full it may replace a Tier 1 tower. Seeds give it small quirks (Spot order, ±15% noise in its judgement, calling Waves early or not), so each seed plays like a different competent player.
@@ -437,7 +439,8 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 | Modifier | Effect | Applied |
 |---|---|---|
 | `families` | Only these Tower Families can be built, of those the Campaign has opened. The build ring offers only them | The Run's unlocks |
-| `spots` | Only these Build Spots stand (by index in the Stage's list); the others turn back to ground on the Run's Map | Setup |
+| `burnt` | Burnt ground: these rectangles of Open ground turn to Scenery of kind burnt on the Run's Map, with a name for the chip and the Ghost's words. It replaced `spots` (the Build Spots kept) on 2026-10-19 (§17) | Setup |
+| `maxTowers` | The Tower cap: at most this many towers stand at once. Building one more is refused, selling one frees room, and towers already standing stay | Each build |
 | `lives` | Lives at the start, instead of 20 | Setup |
 | `gold` | Starting gold, instead of the Stage's | Setup |
 | `hp` | Creep HP times this, on top of Difficulty: every Wave, Shields and dropped creeps | Each Wave |
@@ -450,7 +453,7 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 
 | # | Challenge | Rule | Why | Bot wins, seeds 1–5 | 20 seeds | Stage |
 |---|---|---|---|---|---|---|
-| 1 | The Burnt Mill | Fire took the lower bend: only the upper bend's 4 Build Spots stand. | Hold the road from one bend | 40% | 40% | 75% |
+| 1 | The Burnt Mill | Fire took the lower bend: build above the middle road only, 4 towers at most. | Hold the road from one bend | to be retuned in step 2 (40% on Build Spots) | to be retuned in step 2 (40%) | 75% |
 | 2 | Cold Water | Cannon and Frost towers only, and creeps have 30% more HP. | The swarm answered with splash and slows | 20% | 40% | 80% |
 | 3 | Short Rope | Towers stop at Tier 2. | Gallows Hill brings Tier 3; this holds it back | 40% | 40% | 60% |
 | 4 | The Gravelord's Host | Creeps have 15% more HP. | Armor and the boss, tougher | 40% | 30% | 55% |
@@ -458,11 +461,12 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 | 6 | The Old Rites | No Specialisations, and you start with 350 gold. | The chapel brings Specialisations; this holds them back | 40% | 35% | 50% |
 | 7 | No Rest at the Fords | Breaks last 8 s. | Two columns, and no time between Waves | 40% | 35% | 70% |
 | 8 | Short Supply | Start with 450 gold, and Send now pays no gold. | The Region's exam on a thin purse | 40% | 25% | 65% |
-| 9 | Glass Slope | The middle row burned to glass: 8 Build Spots stand. | The Spots that face two legs are gone | 40% | 25% | 65% |
+| 9 | Glass Slope | The middle row burned to glass: nothing stands on it, and 8 towers at most. | The middle strip, which faces two legs, is gone | to be retuned in step 2 (40% on Build Spots) | to be retuned in step 2 (25%) | 65% |
 | 10 | Stone Wings | No Arrow towers, and creeps have 10% more HP. | Gargoyles shrug off Arrows: answer them otherwise | 40% | 30% | 60% |
 | 11 | Three Hordes | Breaks last 18 s: the hordes don't wait for each other. | Three roads meet, with less time to build between Waves | 20% | 30% | 75% |
 | 12 | The Last Stand | Start with 13 lives. | The Riftlord, with little to spare | 60% | 35% | 65% |
 
+- **The Stage column and the other ten Challenges' numbers are from Build Spots** too. Step 2 retunes them all under free placement (§17).
 - **Met:** every Challenge 20–60% over seeds 1–5 (`pnpm balance --challenges --seeds 5 --threads 2`, 120 Runs in about 20 s; `--first-seed 6` plays a second sample), and 25–40% over 20 seeds, 33% on average, against 50–80% for the Stages: each Challenge is won less often than its Stage.
 - **The bot is noisy and not monotone.** Closing weak Build Spots can raise its win rate (it stops spending on them), Cold Water's two families beat its Arrow-centred build on Greyriver, and a few lives or 10% of HP can swing a Challenge from 50% to nearly 0%. So every number above was checked on 10–20 seeds before it was kept. Rules the bots threw out: Fort Harrow without Arrows (0%), the Blight Pit or Riftmaw on 10 lives (0–10%), Black Cliffs without Talents (0%), only Gallows Hill's 5 hill Spots (0%), and Three Gates with 15–16 s Breaks (0–10%) or 20 s (80% on seeds 1–5).
 - **Why The Gravelord's Host is still a plain HP rule.** A Gravelord with 50% more HP, or double, was the themed rule to try. It changes nothing for the bot: over 10 seeds the bot never kills him, even at his usual HP, leaks him for 5 lives with 3–6 Revenants, and still wins 10 out of 10. A boss-only rule alone is therefore 100% for the bot, and paired with fewer lives ("he must not get through") it is 0–10%. So the bots can't tune it, and Fort Harrow keeps +15% creep HP until a player shows whether focus fire on him is within reach.
@@ -485,3 +489,107 @@ Each Stage has a **Challenge**: the same Stage played again under one named rule
 - **Its name elsewhere:** Play again, Continue and an imported save code call it "Challenge: The Burnt Mill · The Mill Road".
 - **Records:** the heading reads "n of 48 Stars earned · k of 12 Challenges won".
 - **How to play** has a short "Challenges" paragraph.
+
+## 17. Free placement (2026-10-19)
+
+You asked on 2026-10-19 to place towers anywhere beside the creep line. Build Spots go: a 2 × 2 tower may stand on any **Open ground** off the road. The road stays fixed, so a tower still never Blocks. This replaces PLAN §3 Phase 3's "Build Spots only". Step 2 builds the rules, saves, bots and the retune; step 3 builds the UI.
+
+**Where towers go**
+- Every cell of a Stage's Map is road, Scenery or Open ground. The road is each route's two-cell width, painted as now. Scenery is a few named pieces per Stage (below). Every other cell is Open ground, the Map's edges included.
+- A tower covers 2 × 2 cells of Open ground that no other tower holds. Any Open cell can be its top-left: there is no even-cell alignment, as in Element and Maul.
+- There is no tower cap outside two Challenges (below). Gold is the limit.
+- A tower far from the road is allowed, only wasted. Building stays instant, at any time, mid-Wave too.
+
+**Scenery**
+- A piece has a kind, a name, the words the Ghost shows, and a few rectangles of cells, each [col, row, width, height]. The kinds are water, building, cliff and pit; Challenges add burnt.
+- `stageMap` paints the road first and Scenery after. A rectangle may cross the road, and the road stays road: a bridge, a ford.
+- The terrain keeps its three characters: `,` road, `.` Open ground, `#` Scenery. The Map lists its pieces, so the board can draw each kind and the Ghost can name it. Gem, Element, Maul and Line Wars keep their terrain as it is.
+- Creeps never cross Scenery, because they walk the road. Flyers fly over it.
+- **Scenery never covers a cell of a Build Spot the Stage had.** So every older save's towers stand on Open ground. Greyriver's island Spots become islands in the river, and Black Cliffs' edge Spot a ledge over the chasm. A test holds the old Spot lists and checks it.
+- One or two pieces a Stage, for the look and to shape where towers go. Every Stage keeps 278–422 Open cells, against 32–56 cells of Build Spots before.
+
+| # | Stage | Scenery: kind, name, cells as [col, row, w, h] | What it shapes |
+|---|---|---|---|
+| 1 | The Mill Road | Building, the mill: [13, 4, 4, 4]. Water, the millpond: [17, 10, 4, 4] | The middle of each bend's inside, so towers crowd its corners and ends |
+| 2 | Greyriver Crossing | Water, the Greyriver: cols 9–12 the whole height, less the two bridges and the two islands (cols 10–11, rows 3–4 and 13–14) | Splits the west bank from the east; each island holds one tower by its bridge |
+| 3 | Gallows Hill | Building, the gallows: [12, 7, 3, 4] | Takes the hilltop's west shoulder; the crest that sees both legs stays open |
+| 4 | Fort Harrow | Building, the fort: its wall either side of the gate, [0, 16, 15, 2] and [17, 16, 15, 2], and its keep, [22, 10, 10, 6] | The road runs in at the gate; the keep holds the south-east |
+| 5 | Drowned Causeway | Water, the marsh: [7, 10, 4, 4], [13, 4, 4, 4], [19, 10, 4, 4] and [25, 4, 4, 4] | Drowns the inside of every turn, so towers stand mid-strip, as the pairs did |
+| 6 | Sunken Chapel | Building, the chapel: [7, 8, 4, 2], at the road's end. Water, the black water: [26, 10, 6, 8] and [0, 16, 26, 2] | Nothing below the outer ring or beside the lower east leg |
+| 7 | Plague Fords | Water, the river: [13, 0, 2, 18], forded by both roads | Splits the ground between the fords |
+| 8 | The Blight Pit | Pit, the plague pit: [20, 10, 2, 4] and [22, 10, 4, 2], inside the south-east loop | The loop keeps its four old Spots and room for two towers more |
+| 9 | The Scar | Cliff, the crags: [0, 0, 9, 5]. Cliff, the cliff edge: [29, 0, 3, 18] | Nothing west of the exit leg, and only a two-cell strip outside the east legs |
+| 10 | Black Cliffs | Pit, the chasm: [15, 0, 4, 12], [13, 0, 2, 4] and [13, 6, 2, 6] | The air line crosses it, and it splits the loop's inside down to the chasm's foot |
+| 11 | Three Gates | Building, the broken wall: [0, 0, 5, 6] and [0, 10, 5, 8] | Nothing beside the gates, so towers go to the joins |
+| 12 | Riftmaw | Pit, the Rift: [11, 8, 3, 3], [14, 10, 2, 1] and [16, 8, 3, 3], inside the inner ring | The old Spots at the Rift's edge stand on its rim; only the inner ring's west end stays open |
+
+The Ghost's words: "on the mill", "in the millpond", "in the river", "on the gallows", "on the fort", "in the marsh", "on the chapel", "in the black water", "in the plague pit", "on the crags", "on the cliff edge", "in the chasm", "on the broken wall", "in the Rift".
+
+**The command**
+- `original.build` takes the top-left cell and the tower: `{ type: 'original.build', col, row, spec }`, as Element's and Maul's builds do.
+- The old `spot` form is gone, and a command carrying only `spot` is refused ("build needs col, row and a tower"). No save holds a command: autosaves and save codes are snapshots of the state. No replay outside the tests names a Spot, and the tests' replays move to cells.
+- Refusals, checked in this order, in words the Ghost shows:
+  - "off the Map": a 2 × 2 that runs past the edge.
+  - "on the road".
+  - the Scenery's own words, such as "in the river" or "on burnt ground".
+  - "a tower stands there".
+  - a Challenge's Tower cap: "4 towers stand: the most in this Challenge".
+  - then as now: a family not unlocked, a family, Tier or Specialisation the Challenge leaves out, and gold ("needs 70 gold").
+- The `original.built` event carries `col` and `row` instead of `spot`.
+
+**Old saves and codes**
+- A save is a snapshot of the whole state, and it carries its own Map. An older Original save's Map still lists its Build Spots, and its towers stand on them.
+- On load, a save whose Map lists Build Spots takes its Run's current Map: its Stage's, or its Challenge's, from `stage` and `challenge` in its state. Every tower stays on the cells it stands on, with its XP, Tower Level, targeting and gold spent. The roads are unchanged, so creeps on them walk on.
+- The load then checks that every tower's cells are Open ground on that Map and match the grid. A save that fails is refused: "This saved Run's towers don't fit the Stage's Map any more, so it can't be loaded." The Scenery rule above means no real save fails.
+- A save made after the change keeps the Map it carries, as every save does today.
+- `SAVE_VERSION` stays 2. It covers every Game Mode, and bumping it would refuse all their saves. Autosave with Continue, and save codes, load through the same check.
+- An older save of The Burnt Mill or Glass Slope loads onto its Challenge's new Map. Its towers stand on the Spots it kept, which burnt ground never covers, and no more of them than the Tower cap.
+- From then on such a Run plays the current Waves, as any loaded Run does. Step 2's retune may change Waves, never roads.
+- Stored Campaigns, Stars, Talents, and Stage and Challenge Records are stored apart from Runs and load unchanged. The Challenges keep their ids.
+
+**The two Challenges.** `spots` (the Build Spots kept) is retired. Two modifiers replace it in §16's table: `burnt` (Burnt ground, applied at setup) and `maxTowers` (the Tower cap, checked on each build). Burnt ground paints Open ground only: road and the Stage's own Scenery stay as they are.
+
+| # | Challenge | New rule | Modifiers | HUD chips |
+|---|---|---|---|---|
+| 1 | The Burnt Mill | Fire took the lower bend: build above the middle road only, 4 towers at most. | `burnt`: every cell south of the middle road, [0, 10, 32, 8], and west of the second bend, [0, 4, 5, 6], "on burnt ground". `maxTowers`: 4 | Lower bend burnt · 4 towers at most |
+| 9 | Glass Slope | The middle row burned to glass: nothing stands on it, and 8 towers at most. | `burnt`: the strip between the two middle legs, [7, 9, 20, 2], "on the glass". `maxTowers`: 8 | Middle row burnt · 8 towers at most |
+
+- Each keeps its name, id and theme. The burnt ground carries the theme and keeps towers off the lower bend and the middle row. The cap does most of the squeezing.
+- The caps start at the Spots each kept, 4 and 8. Free places make each tower worth more, so the caps may need to fall. These numbers, and the burnt areas, are first guesses: step 2 tunes them with the bot to 25–40% over 20 seeds.
+- Burnt ground never covers a Spot the Challenge kept (The Burnt Mill's 0–3, Glass Slope's 0–3 and 8–11), so their older saves load.
+
+**Bots.** Before Wave 1, each bot lays out its own places. It scores every open 2 × 2 by the road within 340 of its centre, summed over the routes, so the inside of a corner and a strip between two legs score highest. Its seed adds ±20% noise to each score. It takes the best place, then the best that overlaps none taken, and so on, until it holds 32 places or the next scores under 40% of the best. The 4 best places by air line seen join them, if they aren't there already, so a Stage with flyers has places by the air line. These places stand in for Spots from then on. Balanced, greedy and single value each family's Tier 1 tower on each free place, at that family's range, as they valued Spots. The rotation bot fills them in order. A Totem's value already counts the towers within its aura, so Totems land among the towers. With every place taken, or a Challenge's Tower cap reached, a Tier 1 tower may make way for another family's, as now. The planner knows towers by their top-left cell, not a Spot index. That is two to four times today's work per decision, which the balance runner can afford.
+
+**Balance**
+- Free placement makes the player stronger: the best corners, as many towers as gold buys, and Totems ringed by towers. Expect every Stage's win rate to rise.
+- The targets stay: the balanced bot wins Easy ~95%, Normal ~60% (50–80% per Stage) and Insane under 10% over 20 seeds, and each Challenge 25–40%, below its Stage.
+- Levers, in this order:
+  1. Each Stage's Waves: the sizes and HP of its last third, keeping §10's shape (light openings, the last Wave the heaviest). This is the lever §15 used.
+  2. Each Stage's starting gold.
+  3. A Stage that still runs away: more Scenery on its best ground, never over an old Spot.
+  4. Only then the numbers every Stage shares: the bounty pool, the end-of-Wave bonus and tower prices. They move every Stage and Challenge at once.
+- **Watch:** with space no longer the limit, Tier 1 towers wall to wall may beat upgrading, since each Tier buys 5–10% less DPS per gold (§6). If the balanced bot stops upgrading, flatten that step in the Tier prices rather than cap towers.
+- **Watch:** one-family wins (§15) and Hard (~0% on Build Spots) may both rise.
+- **No interest still holds.** Space is no longer the limit; gold is. That makes the early call, the Original's greed lever, matter more, and interest would still pull the other way, towards waiting and banking. Overlapping Waves still blur when a Wave ends.
+
+**The UI** (step 3 builds it)
+- **The ground at fit zoom.** Open ground is the Region's ground colour, with a light rim where it meets road or Scenery (Element's `plotRim`). Scenery is drawn by kind in the Region's palette: water, building, cliff, pit and burnt. The Build Spot pads (`spotRim`) go. A cell is about 21.7 pt on a phone in landscape, so a tower is about 43 pt and placing needs no pinch.
+- **Where the ring opens.** A tap on Open ground opens the build ring round a 2 × 2 there. Of the four 2 × 2s that cover the tapped cell, it takes the open one nearest the tap, as Element's Ghost snaps. If none is open, it takes the one centred nearest the tap and shows the reason. The ring sits round it as it sat round a Spot.
+- **Building.** Tap a family for its Ghost and range on that 2 × 2, then tap the family again, or the Ghost, to build. The ring closes after a build.
+- **Another tap while the ring is up.** On Open ground, the ring and its Ghost move there and keep the family picked. On a tower, it selects the tower and the ring closes. On the road or Scenery, the ring closes and the hint says why ("Not on the road", "Nothing stands in the river").
+- **No tap slop.** A tap on the Ghost's own four cells builds, and a tap a cell away moves it.
+- **The Ghost** snaps to the grid, shows its range, and turns red with the reason on road, Scenery, another tower, the Map's edge, the Tower cap or gold.
+- **Mac.** A click opens, moves and closes the ring as a tap does, and Q W E R T Y pick the ring's families in order. With no family picked, hovering over Open ground outlines the 2 × 2 a click would take. Once a family is picked, the Ghost follows the pointer over the board, snapped and red where it can't go, and a click on Open ground, or the same key again, builds where the Ghost stands. Off the board, or over the ring, the Ghost goes back to the ring's 2 × 2. Esc and right-click close the ring.
+- **Words.** The hints become "Tap the ground beside the road to build" and "Pick a tower family for this place". How to play's "Build Spots" paragraph becomes "Building", and its controls lines say the ground instead of a Build Spot. At a Tower cap the ring's buttons dim with the cap's reason.
+
+**My calls, open to change:**
+- Scenery is `#` plus a named list on the Map, not new terrain characters, so no other Game Mode's terrain changes.
+- One or two pieces of Scenery a Stage, none over an old Spot, chosen as in the table.
+- No even-cell alignment, and no tower cap outside the two Challenges.
+- An older save takes its Stage's current Map; a newer save keeps the Map it carries. `SAVE_VERSION` stays 2.
+- The `spot` form of `original.build` is dropped, not kept beside `col` and `row`.
+- The two Challenges keep their Spot counts as Tower caps to start, with burnt ground for the theme.
+- On a phone the Ghost stays on the ring's 2 × 2 until another tap moves it; on the Mac it follows the pointer once a family is picked.
+- The ring closes after each build, as before, rather than staying up for a row of one tower.
+- No interest.
+- The old Spot lists leave the Stage files for the tests, where they guard older saves.

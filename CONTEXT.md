@@ -179,20 +179,36 @@ A reward of 1–3 for finishing a Stage, or 1 for the first win of a Challenge, 
 _Avoid_: point, medal, crown
 
 **Challenge**:
-A Stage played again under one named rule of one or two modifiers (fewer Build Spots, some Tower Families only, fewer lives, tougher creeps and so on), which opens once the Stage is won. It always plays Normal with the Talents held, and its first win pays one Star. It keeps its own Record and never touches the Stage's.
+A Stage played again under one named rule of one or two modifiers (Burnt ground, a Tower cap, some Tower Families only, fewer lives, tougher creeps and so on), which opens once the Stage is won. It always plays Normal with the Talents held, and its first win pays one Star. It keeps its own Record and never touches the Stage's.
 _Avoid_: challenge mode, heroic, trial, Difficulty (a Challenge isn't one)
 
 **Tower Level**:
 How experienced a single tower is within the current Run, from 1 to 10; towers gain XP from kills and lose it when the Run ends. "Level" means only this.
 _Avoid_: rank, veterancy, tier
 
+**Open ground**:
+In the Original, every cell of a Stage's Map that is neither road nor Scenery. A 2 × 2 tower may stand on any four of its cells that no tower holds, so it never touches the road and never Blocks.
+_Avoid_: plot (Element's word), free ground, buildable (fine in code), grass
+
+**Scenery**:
+A named piece of a Stage's Map that nothing is built on: water, a building, a cliff or a pit, such as the Greyriver, the mill or the Rift. It gives the Stage its look and shapes where towers go. Creeps keep to the road, and flyers fly over it.
+_Avoid_: obstacle, doodad, rock (Gem's word), terrain (the whole grid)
+
 **Build Spot**:
-A fixed place on a Stage's Map where one tower can stand; the Original has no free placement.
+Retired on 2026-10-19. A fixed 2 × 2 place on a Stage's Map where one tower could stand, before the Original moved to Open ground. Older saves were built on them and the docs' history uses the word, so don't reuse it for anything else.
 _Avoid_: plot, pad, slot, tile
 
 **Build ring**:
-The ring of unlocked Tower Families, each with its price, that opens around an empty Build Spot when it is tapped. Tapping a family shows its Ghost; tapping it again builds.
+The ring of unlocked Tower Families, each with its price, that opens around the 2 × 2 of Open ground a tap lands on. Tapping a family shows its Ghost there; tapping it again, or the Ghost, builds. A tap on other Open ground moves the ring there.
 _Avoid_: radial menu, build menu (Element's word), wheel
+
+**Burnt ground**:
+Open ground a Challenge takes away: Scenery its Map adds, such as The Burnt Mill's lower bend or Glass Slope's middle row, where nothing is built.
+_Avoid_: no-build zone, blocked area, scorched
+
+**Tower cap**:
+The most towers a Challenge lets stand at once, such as 4 in The Burnt Mill. Selling a tower frees room under it. Outside those Challenges there is none, and gold is the limit.
+_Avoid_: tower limit, supply, food, Stock (Line Wars' word)
 
 **War map**:
 The Original's Stage-select screen: the map spread on the last tavern's table, with the road north through the Regions and a pin per Stage.

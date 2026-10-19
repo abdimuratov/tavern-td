@@ -61,6 +61,10 @@ Phase 3 progress (2026-10-18):
 - My calls on Challenges, open to change: 1 Star each, paid once; Normal only; your Talents and current unlocks apply; any lives left wins; the bots judge each Challenge at the least you can hold when it opens; Fort Harrow keeps "+15% HP" because the bot never kills the Gravelord; the HUD marks a Challenge with the map's diamond, not the word; on a phone the Stage panel puts the Difficulties in one row, keeps the Region intro until the Stage is won (its locked Challenge shrinks to two short lines), and gives that room to the Challenge's rule and Play Challenge once it is won.
 - Watch in play-testing: the bots go from ~60% on Normal to ~0% on Hard, so Hard may be too steep a step. Waves reach 30–70 creeps by Region 2.
 - Watch in play-testing, Challenges: whether The Gravelord's Host, a plain +15% HP, feels like a Challenge or should target the boss; whether the tightest, Three Hordes' 18 s Breaks and Short Supply, feel fair to a person; and whether 48 Stars filling every tree takes the choice out of Talents too early.
+
+Free placement (2026-10-19), at your request: a 2 × 2 tower goes on any Open ground beside the road, not only on a Build Spot ([original-design.md §17](original-design.md#17-free-placement-2026-10-19)).
+- Done: the design. Every cell is road, Scenery or Open ground. Each Stage gets one or two pieces of Scenery (the mill and its pond, the Greyriver, the Rift and so on), none over an old Build Spot, so older saves keep their towers. `original.build` takes a cell instead of a Spot. The Burnt Mill and Glass Slope trade their kept Spots for Burnt ground and a Tower cap of 4 and 8. No interest still holds.
+- Next: the rules, saves, bots and the retune of all 12 Stages and Challenges; then the UI.
 - Left: a play-test of the whole Campaign on the Mac, the iPhone and the S24.
 
 Phase 4 started on 2026-10-18, alongside Phase 3's last steps and without waiting for any play-test.
@@ -294,7 +298,7 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 1. **Design doc first** ([original-design.md](original-design.md), done 2026-10-18): the world and its 3 regions, the creep roster (about 12 types: armoured, magic-resistant, fast, swarm, flying, regenerating, splitting, shielded, bosses), the 30 towers, Talent trees and a rough plan for each of the 12 Stages.
 2. **Rules:**
    - **Towers:** 6 Tower Families (Arrow, Cannon, Frost, Arcane, Poison, Totem). Each goes through Tiers 1–3, then picks one of 2 Specialisations, about 30 towers in all. Not every family can hit air.
-   - **Maps:** Build Spots only, with no free placement.
+   - **Maps:** free placement on open ground beside the fixed road (changed from Build Spots only on 2026-10-19, at your request; [original-design.md §17](original-design.md#17-free-placement-2026-10-19)).
    - **Tower Level:** gain XP from kills, up to level 10, with stats every level and a Perk at levels 5 and 10. XP resets every Run.
    - **Stars:** 3 if you keep 18 or more of 20 lives, 2 if you keep 6 or more, 1 otherwise.
    - **Talents:** a Talent tree per family, bought with Stars and reset for free.
