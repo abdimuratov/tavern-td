@@ -10,16 +10,22 @@ export interface RunSetup {
   readonly seed?: number;
   readonly difficulty?: Difficulty;
   readonly stage?: number;
+  /** A Challenge to play on the Stage, by id; its own Stage when `stage` is unset. */
+  readonly challenge?: string;
   readonly talents?: readonly string[];
   /** Stages finished; everything unlocked (12) by default, so tests can use every tower. */
   readonly cleared?: number;
   readonly waves?: readonly OriginalWave[];
+  readonly gold?: number;
   readonly map?: MapSpec;
 }
 
 export function newRun(o: RunSetup = {}): OriginalRun {
-  const options: Record<string, unknown> = { stage: o.stage ?? 1, talents: [...(o.talents ?? [])], cleared: o.cleared ?? 12 };
+  const options: Record<string, unknown> = { talents: [...(o.talents ?? [])], cleared: o.cleared ?? 12 };
+  if (o.stage !== undefined || o.challenge === undefined) options['stage'] = o.stage ?? 1;
+  if (o.challenge !== undefined) options['challenge'] = o.challenge;
   if (o.waves) options['waves'] = JSON.parse(JSON.stringify(o.waves));
+  if (o.gold !== undefined) options['gold'] = o.gold;
   return createRun({
     mode: 'original', seed: o.seed ?? 1, difficulty: o.difficulty ?? 'normal',
     options: options as never, ...(o.map ? { map: o.map } : {}),

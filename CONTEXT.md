@@ -27,11 +27,11 @@ One playthrough of a Game Mode on a Map, from its start to victory or defeat.
 _Avoid_: match, game, session
 
 **Difficulty**:
-The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty. Versus has none: it always plays Normal, so neither Side's income is scaled.
-_Avoid_: level, challenge
+The Easy, Normal, Hard or Insane setting chosen when starting a Run, which scales creep strength. In a Game Mode that recreates a Classic, Normal plays with the Classic's own numbers. In Line Wars it sets the Rival instead: its income and how well its AI plays; creeps are the same on every Difficulty. Versus has none: it always plays Normal, so neither Side's income is scaled. Nor does a Challenge: it always plays Normal, and its rule is what makes it harder.
+_Avoid_: level, challenge (a Challenge is a Stage under its own rule, not a Difficulty)
 
 **Record**:
-The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win. Line Wars keeps Runs, wins, fastest win, best score and best steal: the most lives taken in a Run. Versus keeps its own Line Wars board, which each device fills from its own Side.
+The best result kept on the device for a Game Mode and Difficulty: best Wave reached, score, and fastest win. Element keeps Full and Express Records apart, because their scores don't compare. The Original keeps one per Stage instead: its best Stars, the hardest Difficulty won and the fastest win; and apart from it, one per Challenge once it is won, with its fastest win. Line Wars keeps Runs, wins, fastest win, best score and best steal: the most lives taken in a Run. Versus keeps its own Line Wars board, which each device fills from its own Side.
 _Avoid_: high score, achievement, stats
 
 **Save code**:
@@ -163,7 +163,7 @@ _Avoid_: level 51, final boss, dummy
 ### Progression (Original only)
 
 **Campaign**:
-The ordered sequence of Stages that makes up the Original, and the progress through it kept on the device: Stage Records, Stars and Talents. It is stored apart from Runs, so a Save code holds a Run and never the Campaign.
+The ordered sequence of Stages that makes up the Original, and the progress through it kept on the device: Stage and Challenge Records, Stars and Talents. It is stored apart from Runs, so a Save code holds a Run and never the Campaign.
 _Avoid_: story, world, adventure
 
 **Region**:
@@ -171,12 +171,16 @@ One of the Campaign's three groups of four Stages (Ashfield, Blightfen, Rift), e
 _Avoid_: world, chapter, act, zone
 
 **Stage**:
-One hand-made Map with its own Waves in the Campaign; finishing a Stage unlocks the next.
+One hand-made Map with its own Waves in the Campaign; finishing a Stage unlocks the next and opens its Challenge.
 _Avoid_: level, mission, map
 
 **Star**:
-A reward of 1–3 for finishing a Stage, spent on permanent upgrades that carry across Runs.
+A reward of 1–3 for finishing a Stage, or 1 for the first win of a Challenge, spent on Talents that carry across Runs. The Stages pay 36 and the Challenges 12.
 _Avoid_: point, medal, crown
+
+**Challenge**:
+A Stage played again under one named rule of one or two modifiers (fewer Build Spots, some Tower Families only, fewer lives, tougher creeps and so on), which opens once the Stage is won. It always plays Normal with the Talents held, and its first win pays one Star. It keeps its own Record and never touches the Stage's.
+_Avoid_: challenge mode, heroic, trial, Difficulty (a Challenge isn't one)
 
 **Tower Level**:
 How experienced a single tower is within the current Run, from 1 to 10; towers gain XP from kills and lose it when the Run ends. "Level" means only this.

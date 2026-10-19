@@ -18,7 +18,7 @@ Every number here is a starting point. It comes from the baseline in [PLAN §4](
 | Map | A fixed route, plus a straight air line for flying creeps. Towers stand only on Build Spots |
 | Towers | 6 Tower Families. Each has Tiers 1, 2 and 3, then 2 Specialisations: 30 towers |
 | Inside a Run | Gold buys towers and Tiers. Towers gain Tower Levels 1–10 from kills, with a Perk at 5 and at 10 |
-| Across Runs | Stars (1–3 per Stage) buy Talents, one tree per family, refunded for free |
+| Across Runs | Stars (1–3 per Stage, and 1 for each Challenge won) buy Talents, one tree per family, refunded for free |
 | Lives | 20. Stars: 3 for 18 or more left, 2 for 6 or more, 1 otherwise |
 | Pace | Each Break is 30 s and starts when a Wave's last creep spawns, so Waves can overlap. Send now pays gold |
 | Left out | Hero, interest, random towers, mazing |
@@ -216,10 +216,10 @@ A busy front-line tower reaches Level 5 about halfway through a Stage, and Level
 
 ## 8. Stars and Talents
 
-- **Stars.** A Stage pays 1–3 Stars by lives left. Replaying pays only the difference over your best. The Campaign holds 36.
+- **Stars.** A Stage pays 1–3 Stars by lives left. Replaying pays only the difference over your best. The Stages hold 36, and each Challenge's first win pays 1 more (§16): 48 in all.
 - **Trees.** Each family has its own Talent tree. It opens when the family unlocks, and buying opens once you have Stars, after Stage 1.
 - **Rows.** Each tree has 4 rows, bought in order. Rows 1–3 offer two Talents and you hold one of them; row 4 is a single capstone.
-- **Cost.** Rows cost 1, 2, 2 and 3 Stars, so 8 Stars fill a tree and 48 fill all six. The Campaign's 36 fill four and a half, so you choose a focus. Challenge Stages (Phase 3, step 4) will top this up.
+- **Cost.** Rows cost 1, 2, 2 and 3 Stars, so 8 Stars fill a tree and 48 fill all six. The Stages' 36 fill four and a half, so you choose a focus. The 12 Challenges pay one Star each (§16), so a player who wins them all fills every tree.
 - **Reset.** Free at any time on the Stage-select screen. Talents are fixed during a Run.
 
 | Family | Row 1 (1★) | Row 2 (2★) | Row 3 (2★) | Capstone (3★) |
@@ -332,7 +332,7 @@ The engine already has splash, slows that don't stack, poison, armor debuffs, st
 - **Pacing:** Breaks that start at a Wave's last spawn, early-call gold, the end-of-Wave bonus on clear, and Threat.
 - **Bots:** greedy-DPS, single-family and balanced bots per Stage, to check that no single family clears a Stage from Stage 5 on (research §3) and to tune HP, gold and prices.
 
-**Later:** challenge versions of Stages that pay extra Stars (Phase 3, step 4), and maybe a hero tower.
+**Later:** maybe a hero tower. The Challenges (Phase 3, step 4) are built: §16.
 
 ## 14. Filled in by the rules
 
@@ -416,3 +416,62 @@ The rules session (2026-10-18) built §13 as written. Where this doc left a gap,
   - Tried and dropped: a shorter Deadeye reach, Deadeye without its armor exemption, and more armored and warded creeps. Each moved one family down and another up; dropping the exemption also sank the balanced bot on Stages 11 and 12.
   - **Recommendation:** keep the soft counters you chose, accept one-family wins on Normal for now (on Hard and Insane nothing clears, mixed or not), and decide after the play-test whether one-family builds feel degenerate. Enforcing the rule means hard counters below 50% or taking away those in-family answers, which reverses the soft-counter decision.
 - **Watch in play-testing:** the bots' win rate falls from ~60% on Normal to almost 0% on Hard. A human plays better than the bot, but Hard may be too steep a step.
+
+## 16. Challenges (2026-10-19)
+
+Each Stage has a **Challenge**: the same Stage played again under one named rule, for one extra Star. The rule withholds or squeezes something the Stage leans on or brings in, so it tests what the Stage teaches. The content is `CHALLENGES` in `src/content/original/challenges.ts`; the rules read it through `src/sim/modes/original/challenge.ts`.
+
+**My calls, open to change:**
+- **One Challenge per Stage**, 12 in all, each with a name and a rule of one or two modifiers that fits one line on the Stage panel.
+- **One Star each, paid once,** on the first win. The Stages' 36 and the Challenges' 12 make 48, exactly all six Talent trees. Winning a Challenge again pays nothing and can only lower its fastest win.
+- **It opens once its Stage is won,** on any Difficulty.
+- **Always Normal.** There is no Difficulty choice; the rules refuse a Challenge Run on any other.
+- **Your Talents apply, and so do the Campaign's unlocks as they stand,** as in any Run. A Challenge you come back to later in the Campaign is easier; the bots check the least you can hold when it opens (below).
+- **A win is clearing the last Wave with any lives left.** The lives left don't change the Star.
+- **It keeps its own Record:** whether it is won, and its fastest win (from Wave 1, like a Stage's). It never touches the Stage's Record (best Stars, hardest Difficulty, fastest win).
+- **A Challenge Run is a Run like any other:** autosave, Continue, save codes and Retry carry it. The Run names its Challenge, and setup rebuilds everything else from the Challenge's id.
+- **Rules only withhold or squeeze;** none gives anything. A family rule lists the families allowed: a "No Arrow towers" rule lists every other family, Totem included, so Totem joins once the Campaign has opened it, while an "only" rule stays as written.
+
+**The modifiers** (`ChallengeModifiers`; a Challenge uses one or two):
+
+| Modifier | Effect | Applied |
+|---|---|---|
+| `families` | Only these Tower Families can be built, of those the Campaign has opened. The build ring offers only them | The Run's unlocks |
+| `spots` | Only these Build Spots stand (by index in the Stage's list); the others turn back to ground on the Run's Map | Setup |
+| `lives` | Lives at the start, instead of 20 | Setup |
+| `gold` | Starting gold, instead of the Stage's | Setup |
+| `hp` | Creep HP times this, on top of Difficulty: every Wave, Shields and dropped creeps | Each Wave |
+| `noEarlyCall` | Send now still ends a Break, but pays no gold | Each early call |
+| `breakSeconds` | Each Break lasts this long, instead of 30 s | Each Break |
+| `maxTier` | Towers stop at Tier 2 | The Run's unlocks |
+| `noSpecialisations` | No tower takes a Specialisation | The Run's unlocks |
+
+**The 12 Challenges.** Bot wins are the balanced bot on Normal, with the least a player holds when the Challenge opens: Stages finished = its Stage, and a decent player's Talents from the Stages' Stars alone (2.5 a Stage, rounded down), none from other Challenges. "Stage" is the Stage on Normal from §15, 20 seeds.
+
+| # | Challenge | Rule | Why | Bot wins, seeds 1–5 | 20 seeds | Stage |
+|---|---|---|---|---|---|---|
+| 1 | The Burnt Mill | Fire took the lower bend: only the upper bend's 4 Build Spots stand. | Hold the road from one bend | 40% | 40% | 75% |
+| 2 | Cold Water | Cannon and Frost towers only, and creeps have 30% more HP. | The swarm answered with splash and slows | 20% | 40% | 80% |
+| 3 | Short Rope | Towers stop at Tier 2. | Gallows Hill brings Tier 3; this holds it back | 40% | 40% | 60% |
+| 4 | The Gravelord's Host | Creeps have 15% more HP. | Armor and the boss, tougher | 40% | 30% | 55% |
+| 5 | Wardbreakers | No Frost or Arcane towers, and you start with 15 lives. | Cultists cut Magic: answer them without it | 20% | 25% | 55% |
+| 6 | The Old Rites | No Specialisations, and you start with 350 gold. | The chapel brings Specialisations; this holds them back | 40% | 35% | 50% |
+| 7 | No Rest at the Fords | Breaks last 8 s. | Two columns, and no time between Waves | 40% | 35% | 70% |
+| 8 | Short Supply | Start with 450 gold, and Send now pays no gold. | The Region's exam on a thin purse | 40% | 25% | 65% |
+| 9 | Glass Slope | The middle row burned to glass: 8 Build Spots stand. | The Spots that face two legs are gone | 40% | 25% | 65% |
+| 10 | Stone Wings | No Arrow towers, and creeps have 10% more HP. | Gargoyles shrug off Arrows: answer them otherwise | 40% | 30% | 60% |
+| 11 | Three Hordes | Breaks last 18 s: the hordes don't wait for each other. | Three roads meet, with less time to build between Waves | 20% | 30% | 75% |
+| 12 | The Last Stand | Start with 13 lives. | The Riftlord, with little to spare | 60% | 35% | 65% |
+
+- **Met:** every Challenge 20–60% over seeds 1–5 (`pnpm balance --challenges --seeds 5 --threads 2`, 120 Runs in about 20 s; `--first-seed 6` plays a second sample), and 25–40% over 20 seeds, 33% on average, against 50–80% for the Stages: each Challenge is won less often than its Stage.
+- **The bot is noisy and not monotone.** Closing weak Build Spots can raise its win rate (it stops spending on them), Cold Water's two families beat its Arrow-centred build on Greyriver, and a few lives or 10% of HP can swing a Challenge from 50% to nearly 0%. So every number above was checked on 10–20 seeds before it was kept. Rules the bots threw out: Fort Harrow without Arrows (0%), the Blight Pit or Riftmaw on 10 lives (0–10%), Black Cliffs without Talents (0%), only Gallows Hill's 5 hill Spots (0%), and Three Gates with 15–16 s Breaks (0–10%) or 20 s (80% on seeds 1–5).
+- **Why The Gravelord's Host is still a plain HP rule.** A Gravelord with 50% more HP, or double, was the themed rule to try. It changes nothing for the bot: over 10 seeds the bot never kills him, even at his usual HP, leaks him for 5 lives with 3–6 Revenants, and still wins 10 out of 10. A boss-only rule alone is therefore 100% for the bot, and paired with fewer lives ("he must not get through") it is 0–10%. So the bots can't tune it, and Fort Harrow keeps +15% creep HP until a player shows whether focus fire on him is within reach.
+- **For the bot, a Challenge without early-call gold waits its Breaks out,** as a competent player would.
+- **A human plays better than the bot,** so the Challenges will likely feel easier than these numbers. The play-test decides whether any rule needs a second modifier.
+
+**How it shows** (the UI builds this):
+- **War map:** the pin of a won Stage carries a small Challenge mark: hollow while its Challenge is open, gold once it is won.
+- **Stage panel:** under the Difficulty buttons, a Challenge block with its name, its rule line, "1 Star · Normal" (or "Won · fastest 8:42") and Play Challenge. Before the Stage is won, the block shows the name and rule dimmed with "Win this Stage to open it".
+- **In a Run:** "Challenge: name" with the rule as short lines (`challengeLines`); the Stars shown are the Challenge's Star rather than Stars by lives, and Send now shows no gold in Short Supply.
+- **End card:** "Challenge won", its Star ("+1 to the Campaign" on the first win, "Already won" after), the Campaign's Stars out of 48, and the time with New best. A Stage's first win lists its Challenge under Opened.
+- **Records:** a Challenge column in the Original's table, with the fastest Challenge win or a dash, and "n of 48 Stars · n of 12 Challenges".

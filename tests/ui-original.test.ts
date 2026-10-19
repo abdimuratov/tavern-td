@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { ORIGINAL_TOWERS } from '../src/content/original';
+import { readCode, writeCode, type SaveRules } from '../src/app/saves';
+import { challengeOfStage, ORIGINAL_TOWERS } from '../src/content/original';
 import type { CampaignProgress } from '../src/platform/storage';
-import { snapshot, type Command, type GameState, type Point } from '../src/sim';
+import { hashState, original, snapshot, step, type Command, type GameState, type Point } from '../src/sim';
 import type { RunView } from '../src/ui/mode-ui';
 import { ORIGINAL_UI, validOriginalSave } from '../src/ui/modes/original';
 import {
-  campaign, describeOutcome, opened, runTalents, stageOpen, stagesCleared, starsEarned, starsFree, withResult,
+  campaign, challengeLines, challengeOpen, challengeRecord, challengesWon, challengeStarsEarned, challengeWon, describeOutcome,
+  MOST_STARS, opened, runTalents, stageOpen, stagesCleared, starsEarned, starsFree, withChallengeResult, withResult, withRun,
 } from '../src/ui/modes/original/campaign';
 import { ORIGINAL_LOOK, REGION_TERRAIN } from '../src/ui/modes/original/look';
 import { ring, spotCentre } from '../src/ui/modes/original/ring';
@@ -35,11 +37,11 @@ function spotPoint(spot: number): Point {
 }
 
 const won = (stars: number, seconds = 400) => ({ won: true, stars, difficulty: 'normal' as const, seconds });
-const EMPTY: CampaignProgress = { stages: {}, talents: [] };
+const EMPTY: CampaignProgress = { stages: {}, challenges: {}, talents: [] };
 
 afterEach(() => {
   ring.value = null;
-  campaign.value = { stages: {}, talents: [] };
+  campaign.value = { stages: {}, challenges: {}, talents: [] };
 });
 
 describe('the build ring', () => {
@@ -110,7 +112,7 @@ describe('the Original play screen', () => {
   });
 
   it('takes the Stage chosen with the Campaign\'s Talents and Stages finished', () => {
-    campaign.value = { stages: { 1: { stars: 3, hardest: 'normal', fastest: 300 } }, talents: ['fletching'] };
+    campaign.value = { stages: { 1: { stars: 3, hardest: 'normal', fastest: 300 } }, challenges: {}, talents: ['fletching'] };
     expect(ORIGINAL_UI.runSettings!({ stage: '1' })).toEqual({ stage: 1, talents: ['fletching'], cleared: 1 });
     expect(ORIGINAL_UI.optionsText!({ stage: '1' })).toBe('The Mill Road');
     expect(ORIGINAL_UI.optionsOf!(newRun({ stage: 1 }))).toEqual({ stage: '1' });
@@ -155,6 +157,16 @@ describe('the Original play screen', () => {
     expect(validOriginalSave({ ...saved, mode: { ...(saved.mode as object), towers } })).toBe(false);
   });
 
+  it('accepts a Challenge\'s saves and refuses one naming a Challenge it can\'t play', () => {
+    const saved = JSON.parse(snapshot(newRun({ challenge: 'cold-water', cleared: 2 }))) as GameState;
+    const mode = saved.mode as Record<string, unknown>;
+    expect(validOriginalSave(saved)).toBe(true);
+    expect(validOriginalSave({ ...saved, mode: { ...mode, challenge: 'made-up' } })).toBe(false);
+    expect(validOriginalSave({ ...saved, mode: { ...mode, challenge: 'short-rope' } })).toBe(false);
+    expect(validOriginalSave({ ...saved, mode: { ...mode, challenge: 3 } })).toBe(false);
+    expect(validOriginalSave({ ...saved, difficulty: 'hard' })).toBe(false);
+  });
+
   it('says how the Run ended, in the Stage\'s words', () => {
     const state = newRun({ cleared: 0 });
     state.phase = 'lost';
@@ -191,15 +203,111 @@ describe('the Campaign', () => {
   });
 
   it('names what a first win opens: Frost, Talents and the next Stage', () => {
-    expect(opened(EMPTY, withResult(EMPTY, 1, won(3)))).toEqual(['Frost towers', 'Talents', 'Stage 2, Greyriver Crossing']);
+    expect(opened(EMPTY, withResult(EMPTY, 1, won(3)))).toEqual([
+      'Frost towers', 'Talents', 'Stage 2, Greyriver Crossing', 'Challenge: The Burnt Mill',
+    ]);
     const two = { ...EMPTY, stages: { 1: { stars: 3, hardest: 'normal' as const, fastest: 1 } } };
     expect(opened(two, withResult(two, 2, won(1)))).toContain('Tier 3');
   });
 
   it('spends Stars on Talents and hands a Run only Talents that read right', () => {
-    const c: CampaignProgress = { stages: { 1: { stars: 3, hardest: 'hard', fastest: 300 } }, talents: ['fletching', 'quick-nock'] };
+    const c: CampaignProgress = { stages: { 1: { stars: 3, hardest: 'hard', fastest: 300 } }, challenges: {}, talents: ['fletching', 'quick-nock'] };
     expect(starsFree(c)).toBe(0);
     expect(runTalents(c)).toEqual(['fletching', 'quick-nock']);
     expect(runTalents({ ...c, talents: ['quick-nock'] })).toEqual([]);
+  });
+});
+
+describe('Challenges in the Campaign', () => {
+  const one: CampaignProgress = withResult(EMPTY, 1, won(2, 500));
+  const challengeWin = (seconds: number) => ({ won: true, stars: 1, difficulty: 'normal' as const, seconds });
+  const challengeLoss = { won: false, stars: 0, difficulty: 'normal' as const, seconds: null };
+
+  it('opens a Stage\'s Challenge once the Stage is won', () => {
+    expect(challengeOpen(EMPTY, 1)).toBe(false);
+    expect(challengeOpen(one, 1)).toBe(true);
+    expect(challengeOpen(one, 2)).toBe(false);
+    expect(challengeWon(one, 1)).toBe(false);
+    expect(challengeRecord(one, 1)).toBeNull();
+  });
+
+  it('pays a Challenge\'s Star once, into the Talent budget, and leaves the Stage\'s Record alone', () => {
+    const a = withChallengeResult(one, 1, challengeWin(600));
+    expect(a.stages).toBe(one.stages);
+    expect(challengeRecord(a, 1)).toEqual({ fastest: 600 });
+    expect([challengeWon(a, 1), challengesWon(a), challengeStarsEarned(a)]).toEqual([true, 1, 1]);
+    expect(starsEarned(a)).toBe(3);
+    expect(starsFree({ ...a, talents: ['fletching', 'quick-nock'] })).toBe(0);
+    // Winning again, faster: no more Stars, a faster Record.
+    const b = withChallengeResult(a, 1, challengeWin(450));
+    expect(starsEarned(b)).toBe(3);
+    expect(challengeRecord(b, 1)).toEqual({ fastest: 450 });
+    expect(withChallengeResult(b, 1, challengeWin(800))).toEqual(b);
+    // A loss changes nothing.
+    expect(withChallengeResult(b, 1, challengeLoss)).toBe(b);
+    expect(withChallengeResult(one, 1, challengeLoss)).toBe(one);
+  });
+
+  it('routes a finished Run by whether it was a Challenge', () => {
+    const viaChallenge = withRun(one, { ...challengeWin(300), stage: 1, challenge: 'burnt-mill' });
+    expect(viaChallenge.stages).toEqual(one.stages);
+    expect(challengeWon(viaChallenge, 1)).toBe(true);
+    const viaStage = withRun(one, { ...won(3, 300), stage: 1, challenge: null });
+    expect(viaStage.challenges).toEqual({});
+    expect(viaStage.stages['1']).toEqual({ stars: 3, hardest: 'normal', fastest: 300 });
+  });
+
+  it('describes a Challenge\'s end: its Star on the first win only, its fastest win, nothing opened', () => {
+    const first = withChallengeResult(one, 1, challengeWin(600));
+    expect(describeOutcome(one, first, 1, challengeWin(600), true, 'burnt-mill')).toEqual({
+      stage: 1, challenge: 'burnt-mill', won: true, stars: 1, gained: 1, total: 3,
+      record: null, challengeRecord: { fastest: 600 },
+      newBest: { stars: true, hardest: false, fastest: true }, opened: [], saved: true,
+    });
+    const again = withChallengeResult(first, 1, challengeWin(700));
+    expect(describeOutcome(first, again, 1, challengeWin(700), true, 'burnt-mill')).toMatchObject({
+      gained: 0, total: 3, newBest: { stars: false, hardest: false, fastest: false },
+    });
+    expect(describeOutcome(one, one, 1, challengeLoss, true, 'burnt-mill')).toMatchObject({ won: false, gained: 0, challengeRecord: null });
+  });
+
+  it('counts 48 Stars in all, and gives each rule as short lines', () => {
+    expect(MOST_STARS).toBe(48);
+    expect(challengeLines(challengeOfStage(2)!)).toEqual(['Cannon and Frost only', '+30% creep HP']);
+    expect(challengeLines(challengeOfStage(10)!)).toEqual(['Cannon, Frost, Arcane, Poison and Totem only', '+10% creep HP']);
+    expect(challengeLines(challengeOfStage(1)!)).toEqual(['4 Build Spots']);
+    expect(challengeLines(challengeOfStage(3)!)).toEqual(['Tiers 1–2']);
+    expect(challengeLines(challengeOfStage(6)!)).toEqual(['No Specialisations', '350 gold to start']);
+    expect(challengeLines(challengeOfStage(7)!)).toEqual(['8 s Breaks']);
+    expect(challengeLines(challengeOfStage(11)!)).toEqual(['18 s Breaks']);
+    expect(challengeLines(challengeOfStage(8)!)).toEqual(['450 gold to start', 'Send now pays no gold']);
+    expect(challengeLines(challengeOfStage(12)!)).toEqual(['13 lives']);
+  });
+});
+
+describe('save codes with Challenges', () => {
+  const RULES: SaveRules = { playable: (id) => id === 'original', validState: validOriginalSave };
+
+  it('carry a Challenge Run, which plays on as it would have', async () => {
+    const s = newRun({ challenge: 'no-rest' });
+    step(s, [{ type: 'original.sendNow' }]);
+    for (let i = 0; i < 200; i++) step(s, []);
+    const loaded = await readCode(await writeCode(s), RULES);
+    expect((loaded.mode as original.OriginalState).challenge).toBe('no-rest');
+    for (let i = 0; i < 400; i++) {
+      step(s, []);
+      step(loaded, []);
+    }
+    expect(original.originalStatus(loaded).break?.totalTicks).toBe(8 * 30);
+    expect(hashState(loaded)).toBe(hashState(s));
+  });
+
+  it('load a code from before Challenges as the Stage\'s own Run', async () => {
+    // A Stage's Run has no `challenge`, as no save written before Challenges did.
+    const s = newRun({ stage: 7, cleared: 6 });
+    step(s, [{ type: 'original.sendNow' }]);
+    const loaded = await readCode(await writeCode(s), RULES);
+    expect(Object.hasOwn(loaded.mode as object, 'challenge')).toBe(false);
+    expect(original.originalStatus(loaded)).toMatchObject({ challenge: null, lives: 20 });
   });
 });

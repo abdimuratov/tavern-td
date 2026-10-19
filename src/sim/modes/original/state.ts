@@ -66,6 +66,11 @@ export interface Cloud {
 export interface OriginalState {
   /** The Stage's number (1–12). */
   stage: number;
+  /**
+   * The Challenge played on the Stage, by id; only on a Challenge's Run, so a
+   * Stage's own Run (and every save from before Challenges) serializes as before.
+   */
+  challenge?: string;
   /** Threat of Wave 1. */
   threat: number;
   /** The Talents held for this Run, by id. Fixed for the Run. */

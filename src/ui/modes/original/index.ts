@@ -77,6 +77,8 @@ export function validOriginalSave(state: GameState): boolean {
   const m = state.mode as unknown;
   if (!isObj(m)) return false;
   if (!isInt(m.stage) || !stageByNumber(m.stage as number)) return false;
+  // Saves from before Challenges have no `challenge` and load as the Stage's own Run.
+  if (m.challenge !== undefined && original.challengeProblem(m.challenge, m.stage as number, state.difficulty) !== null) return false;
   if (!Array.isArray(m.talents) || original.talentsProblem(m.talents) !== null) return false;
   if (!isInt(m.cleared) || (m.cleared as number) < 0) return false;
   if (m.waves !== null && !Array.isArray(m.waves)) return false;

@@ -2,16 +2,15 @@ import {
   FAMILY_BASE, LEVEL_XP, MAX_LEVEL, ORIGINAL_CREEPS, PERKS,
   type Family, type PerkSpec, type Targeting,
 } from '../../../content/original';
-import { difficultyHp } from '../../combat/creeps';
 import { TICK_RATE } from '../../core/constants';
 import type { Difficulty, GameState } from '../../core/state';
-import { getMode } from '../registry';
 import { attackRange, auraRadius } from './auras';
 import { buildError, priceOf, runUnlocks, sellValue, spotError, towerById, towerOnSpot, upgradeError } from './build';
+import { runChallenge } from './challenge';
 import { starsFor, type StageResult, type Unlocks } from './progression';
 import { sendNowError } from './rules';
 import { orState, peekTower, threatOf, towerInfo, towerSpec } from './state';
-import { earlyCallGold, ghoulHp, groupStarts, runWaves, waveBonus, waveSpec } from './waves';
+import { earlyCallGold, ghoulHp, groupStarts, runHpScale, runWaves, waveBonus, waveSpec } from './waves';
 
 // Pure questions the UI and the bots ask about an Original Run. None of them change the state.
 
@@ -21,6 +20,8 @@ export type OriginalStep = 'ready' | 'wave' | 'break' | 'over';
 export interface OriginalStatus {
   readonly step: OriginalStep;
   readonly stage: number;
+  /** The Challenge played on the Stage, by id, or null for the Stage itself. */
+  readonly challenge: string | null;
   readonly difficulty: Difficulty;
   readonly gold: number;
   readonly lives: number;
@@ -32,11 +33,11 @@ export interface OriginalStatus {
   readonly threat: number;
   /** The Break before `wave`: ticks left and its length; null when none is running. */
   readonly break: { readonly wave: number; readonly ticksLeft: number; readonly totalTicks: number } | null;
-  /** Gold Send now would pay right now (0 outside a Break). */
+  /** Gold Send now would pay right now (0 outside a Break, and always in a Challenge without early-call gold). */
   readonly earlyCall: number;
   /** Why Send now is refused, or null. */
   readonly sendNowBlocked: string | null;
-  /** Stars the Run has won, or would win with the lives left. */
+  /** Stars the Run has won, or would win with the lives left; a Challenge's Stars while it isn't lost. */
   readonly stars: number;
   readonly unlocks: Unlocks;
   readonly talents: readonly string[];
@@ -48,9 +49,11 @@ export function originalStatus(state: GameState): OriginalStatus {
   const next = Math.min(state.wave.number + 1, state.wave.total);
   const inBreak = !over && es.breakUntil >= 0;
   const ticksLeft = inBreak ? Math.max(0, es.breakUntil - state.tick) : 0;
+  const challenge = runChallenge(state);
   return {
     step: over ? 'over' : inBreak ? 'break' : state.wave.number === 0 ? 'ready' : 'wave',
     stage: es.stage,
+    challenge: challenge?.id ?? null,
     difficulty: state.difficulty,
     gold: state.gold,
     lives: state.lives,
@@ -59,9 +62,9 @@ export function originalStatus(state: GameState): OriginalStatus {
     completed: es.completed,
     threat: threatOf(state, next),
     break: inBreak ? { wave: state.wave.number + 1, ticksLeft, totalTicks: es.breakTicks } : null,
-    earlyCall: inBreak ? earlyCallGold(threatOf(state, state.wave.number + 1), ticksLeft / TICK_RATE) : 0,
+    earlyCall: inBreak && !challenge?.modifiers.noEarlyCall ? earlyCallGold(threatOf(state, state.wave.number + 1), ticksLeft / TICK_RATE) : 0,
     sendNowBlocked: sendNowError(state),
-    stars: state.phase === 'lost' ? 0 : starsFor(state.lives),
+    stars: state.phase === 'lost' ? 0 : challenge ? challenge.stars : starsFor(state.lives),
     unlocks: runUnlocks(state),
     talents: [...es.talents],
   };
@@ -157,7 +160,7 @@ export function towerActions(state: GameState, id: number): TowerActions | null 
 export interface WavePreview {
   readonly wave: number;
   readonly threat: number;
-  /** A Ghoul's HP at this Threat, Difficulty included. */
+  /** A Ghoul's HP at this Threat, Difficulty and a Challenge's HP included. */
   readonly ghoulHp: number;
   readonly bonus: number;
   readonly groups: readonly {
@@ -179,7 +182,7 @@ export function wavePreview(state: GameState, wave: number): WavePreview | null 
   const source = runWaves(state)[wave - 1];
   if (!spec || !source) return null;
   const threat = threatOf(state, wave);
-  const diff = difficultyHp(getMode(state.modeId), state.difficulty);
+  const diff = runHpScale(state);
   const starts = groupStarts(source);
   return {
     wave,
@@ -199,16 +202,23 @@ export function wavePreview(state: GameState, wave: number): WavePreview | null 
   };
 }
 
-/** How the Run ended, for the Stage's Record and the Campaign's Stars; `won` false while it runs. */
-export function originalResult(state: GameState): StageResult & { readonly lives: number; readonly stage: number } {
+/**
+ * How the Run ended, for the Campaign; `won` false while it runs. A Stage's
+ * own Run goes to its Record and pays Stars by lives left. A Challenge's
+ * (`challenge` set) goes to its Challenge Record and pays the Challenge's
+ * Stars for any win, whatever the lives.
+ */
+export function originalResult(state: GameState): StageResult & { readonly lives: number; readonly stage: number; readonly challenge: string | null } {
   const es = orState(state);
   const won = state.phase === 'won';
+  const challenge = runChallenge(state);
   return {
     won,
-    stars: won ? starsFor(state.lives) : 0,
+    stars: !won ? 0 : challenge ? challenge.stars : starsFor(state.lives),
     difficulty: state.difficulty,
     seconds: won && es.startTick >= 0 && es.endTick >= 0 ? (es.endTick - es.startTick) / TICK_RATE : null,
     lives: state.lives,
     stage: es.stage,
+    challenge: challenge?.id ?? null,
   };
 }

@@ -201,10 +201,10 @@ describe('the Original\'s Campaign', () => {
   it('starts empty and keeps what a change writes, apart from Run saves', async () => {
     const kv = memoryStore();
     const { storage } = setup(kv);
-    expect(await storage.loadCampaign()).toEqual({ stages: {}, talents: [] });
+    expect(await storage.loadCampaign()).toEqual({ stages: {}, challenges: {}, talents: [] });
     const update = await storage.updateCampaign((c) => ({ ...c, stages: { 1: { stars: 2, hardest: 'normal', fastest: 412.5 } } }));
     expect(update).toMatchObject({ before: { stages: {} }, after: { stages: { 1: { stars: 2 } } }, saved: true });
-    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 2, hardest: 'normal', fastest: 412.5 } }, talents: [] });
+    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 2, hardest: 'normal', fastest: 412.5 } }, challenges: {}, talents: [] });
     expect(await storage.hasRun('original')).toBe(false);
     expect([...kv.data.keys()]).toEqual(['campaign/original']);
   });
@@ -215,7 +215,7 @@ describe('the Original\'s Campaign', () => {
       storage.updateCampaign((c) => ({ ...c, stages: { ...c.stages, 1: { stars: 3, hardest: 'easy', fastest: null } } })),
       storage.updateCampaign((c) => ({ ...c, talents: ['fletching'] })),
     ]);
-    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 3, hardest: 'easy', fastest: null } }, talents: ['fletching'] });
+    expect(await storage.loadCampaign()).toEqual({ stages: { 1: { stars: 3, hardest: 'easy', fastest: null } }, challenges: {}, talents: ['fletching'] });
   });
 
   it('drops damaged Stage Records one by one, and Talents nobody could hold all at once', async () => {
@@ -232,9 +232,35 @@ describe('the Original\'s Campaign', () => {
     const { storage } = setup(kv);
     expect(await storage.loadCampaign()).toEqual({
       stages: { 1: { stars: 3, hardest: 'insane', fastest: 300 }, 3: { stars: 1, hardest: null, fastest: null } },
+      challenges: {},
       talents: [],
     });
     kv.data.set('campaign/original', 'garbage');
-    expect(await storage.loadCampaign()).toEqual({ stages: {}, talents: [] });
+    expect(await storage.loadCampaign()).toEqual({ stages: {}, challenges: {}, talents: [] });
+  });
+
+  it('loads a Campaign stored before Challenges with none won, and keeps its Records and Talents', async () => {
+    const kv = memoryStore();
+    kv.data.set('campaign/original', { stages: { 1: { stars: 3, hardest: 'normal', fastest: 400 } }, talents: ['fletching'] });
+    const { storage } = setup(kv);
+    expect(await storage.loadCampaign()).toEqual({
+      stages: { 1: { stars: 3, hardest: 'normal', fastest: 400 } }, challenges: {}, talents: ['fletching'],
+    });
+    // The first change writes the new shape.
+    await storage.updateCampaign((c) => ({ ...c, challenges: { 1: { fastest: 512 } } }));
+    expect(kv.data.get('campaign/original')).toMatchObject({ challenges: { 1: { fastest: 512 } }, talents: ['fletching'] });
+  });
+
+  it('keeps Challenge Records that read right, by Stage number, and repairs a bad fastest win', async () => {
+    const kv = memoryStore();
+    kv.data.set('campaign/original', {
+      stages: {},
+      challenges: { 1: { fastest: 300 }, 2: { fastest: -1 }, 3: {}, x: { fastest: 9 }, 4: 'won', 5: null },
+      talents: [],
+    });
+    const { storage } = setup(kv);
+    expect((await storage.loadCampaign()).challenges).toEqual({ 1: { fastest: 300 }, 2: { fastest: null }, 3: { fastest: null } });
+    kv.data.set('campaign/original', { stages: {}, challenges: 'garbage', talents: [] });
+    expect((await storage.loadCampaign()).challenges).toEqual({});
   });
 });

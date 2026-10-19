@@ -73,16 +73,22 @@ export const EMPTY_RECORD: Readonly<ModeRecord> = {
 /**
  * The Original's Campaign, kept apart from Run saves: a save code holds a
  * Run, never the Campaign. Stars earned, Stages finished and the unlocks all
- * follow from the Stage Records.
+ * follow from the Stage and Challenge Records.
  */
 export interface CampaignProgress {
   /** Stage Records by Stage number. A Stage has one once it is won. */
   stages: Record<string, original.StageRecord>;
+  /**
+   * Challenge Records by the number of the Stage they're played on. A
+   * Challenge has one once it is won, which is when its Stars were paid, once.
+   * Campaigns stored before Challenges load with none.
+   */
+  challenges: Record<string, original.ChallengeRecord>;
   /** The Talents held, chosen on the Stage-select screen. */
   talents: string[];
 }
 
-export const EMPTY_CAMPAIGN: Readonly<CampaignProgress> = { stages: {}, talents: [] };
+export const EMPTY_CAMPAIGN: Readonly<CampaignProgress> = { stages: {}, challenges: {}, talents: [] };
 
 export interface CampaignUpdate {
   readonly before: CampaignProgress;
@@ -364,23 +370,37 @@ function toStageRecord(value: unknown): original.StageRecord | null {
   };
 }
 
+/** A won Challenge's Record: any object, with its fastest win kept if it reads right. */
+function toChallengeRecord(value: unknown): original.ChallengeRecord | null {
+  if (!isObject(value)) return null;
+  const fastest = value.fastest;
+  return { fastest: typeof fastest === 'number' && Number.isFinite(fastest) && fastest > 0 ? fastest : null };
+}
+
+/** The Records in `value` that read right, by a whole Stage number. */
+function recordsOf<R>(value: unknown, read: (raw: unknown) => R | null): Record<string, R> {
+  const out: Record<string, R> = {};
+  if (!isObject(value)) return out;
+  for (const [key, raw] of Object.entries(value)) {
+    const record = /^[1-9]\d*$/.test(key) ? read(raw) : null;
+    if (record) out[key] = record;
+  }
+  return out;
+}
+
 /**
- * Keeps each Stage Record that reads right, by a whole Stage number. Talents
- * a player couldn't hold (an unknown id, two from one row) are all dropped,
- * which refunds their Stars: a reset is free anyway.
+ * Keeps each Stage and Challenge Record that reads right, by a whole Stage
+ * number; a Campaign from before Challenges has none. Talents a player
+ * couldn't hold (an unknown id, two from one row) are all dropped, which
+ * refunds their Stars: a reset is free anyway.
  */
 function toCampaign(value: unknown): CampaignProgress {
   const c = isObject(value) ? value : {};
-  const stages: Record<string, original.StageRecord> = {};
-  if (isObject(c.stages)) {
-    for (const [key, raw] of Object.entries(c.stages)) {
-      const record = /^[1-9]\d*$/.test(key) ? toStageRecord(raw) : null;
-      if (record) stages[key] = record;
-    }
-  }
+  const stages = recordsOf(c.stages, toStageRecord);
+  const challenges = recordsOf(c.challenges, toChallengeRecord);
   const held = Array.isArray(c.talents) ? c.talents : [];
   const talents = original.talentsProblem(held) === null ? (held as string[]).slice() : [];
-  return { stages, talents };
+  return { stages, challenges, talents };
 }
 
 const storage = createStorage(indexedDbStore());

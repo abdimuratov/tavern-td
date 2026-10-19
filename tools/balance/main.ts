@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
-import { STAGES, type Family } from '../../src/content/original';
+import { STAGES, challengeOfStage, type Family } from '../../src/content/original';
 import { DIFFICULTIES, original, type Difficulty } from '../../src/sim';
 import type { Strategy } from './bot';
 import type { Job, Outcome } from './jobs';
@@ -22,6 +22,9 @@ import { drawStage } from './maps';
 //   pnpm balance --stages 7 --scale 0.8  every group 20% smaller, to find a Stage's level
 //   pnpm balance --stages 7 --scale 0.8:1.4   80% in Wave 1, rising to 140% in the last
 //   pnpm balance --threads 8             more worker threads (4 by default)
+//   pnpm balance --challenges            each Stage's Challenge beside the Stage on Normal (§16)
+//   pnpm balance --challenges --stages 8 --seeds 5 --threads 2
+//   pnpm balance --challenges --stages 8 --seeds 5 --first-seed 6   seeds 6–10, a second sample
 //   pnpm balance maps                    each Stage's Map as text
 //   pnpm balance linewars                Line Wars instead (tools/balance/linewars.ts), in this one process
 
@@ -35,6 +38,10 @@ interface Args {
   readonly scale: readonly [number, number];
   /** Worker threads; a few by default, so a laptop stays cool. */
   readonly threads: number;
+  /** Plays each Stage's Challenge beside the Stage on Normal, instead of the Difficulty table. */
+  readonly challenges: boolean;
+  /** The first seed of each cell: seeds run from it, `seeds` of them. */
+  readonly firstSeed: number;
 }
 
 function parseRange(text: string): number[] {
@@ -61,11 +68,74 @@ function parseArgs(argv: readonly string[]): Args {
     stages: parseRange(value('--stages') ?? `1-${STAGES.length}`),
     seeds: Number(value('--seeds') ?? 20),
     difficulties: (value('--difficulties')?.split(',') ?? DIFFICULTIES) as Difficulty[],
-    strategies: (value('--strategies')?.split(',') ?? ['balanced', 'greedy', 'single']) as Strategy[],
+    strategies: (value('--strategies')?.split(',') ?? (argv.includes('--challenges') ? ['balanced'] : ['balanced', 'greedy', 'single'])) as Strategy[],
     json: value('--json') ?? null,
     scale: parseScale(value('--scale') ?? '1'),
     threads: Math.max(1, Math.min(availableParallelism(), Number(value('--threads') ?? 4))),
+    challenges: argv.includes('--challenges'),
+    firstSeed: Number(value('--first-seed') ?? 1),
   };
+}
+
+/**
+ * The Challenge Runs: for each Stage with a Challenge, the Stage on Normal and
+ * its Challenge (always Normal), each over the seeds with the balanced bot
+ * unless --strategies names others.
+ */
+function challengeJobs(args: Args): Job[] {
+  const jobs: Job[] = [];
+  const strategies = args.strategies.filter((s) => s !== 'single');
+  for (const stage of args.stages) {
+    if (!challengeOfStage(stage)) continue;
+    for (const strategy of strategies) {
+      for (const challenge of [false, true]) {
+        for (let seed = args.firstSeed; seed < args.firstSeed + args.seeds; seed++) {
+          jobs.push({ id: jobs.length, stage, difficulty: 'normal', strategy, seed, scale: args.scale, ...(challenge ? { challenge } : {}) });
+        }
+      }
+    }
+  }
+  return jobs;
+}
+
+/**
+ * Each Challenge's win rate beside its Stage's on Normal, and the targets:
+ * every Challenge 20–60% for the competent bot, and no more often than its
+ * Stage on the same seeds (a few seeds can tie by chance; §16 has 20 seeds).
+ */
+function challengeReport(args: Args, jobs: readonly Job[], outcomes: readonly Outcome[]): { lines: string[]; ok: boolean } {
+  const lines: string[] = [];
+  const cell = (stage: number, strategy: Strategy, challenge: boolean): Cell =>
+    summarise(jobs.filter((j) => j.stage === stage && j.strategy === strategy && !!j.challenge === challenge).map((j) => outcomes[j.id]!));
+  const strategies = [...new Set(jobs.map((j) => j.strategy))];
+  const seeds = args.firstSeed === 1 ? `${args.seeds} seeds` : `seeds ${args.firstSeed}–${args.firstSeed + args.seeds - 1}`;
+  lines.push(`The Original's Challenges: ${seeds} a cell, on Normal. Each cell: win rate, mean Wave reached, then the wins' mean lives.`);
+  lines.push('A Challenge plays with its Stage finished (cleared = Stage) and a decent player\'s Talents from the Stages\' Stars alone.');
+  let ok = true;
+  const misses: string[] = [];
+  for (const stage of args.stages) {
+    const c = challengeOfStage(stage);
+    if (!c) continue;
+    const spec = STAGES[stage - 1]!;
+    lines.push('');
+    lines.push(`Stage ${stage}, ${spec.name}: Challenge "${c.name}": ${c.rule}`);
+    for (const strategy of strategies) {
+      const plain = cell(stage, strategy, false);
+      const hard = cell(stage, strategy, true);
+      const text = (x: Cell): string => `${pct(x.winRate)} W${x.reached.toFixed(1).padStart(4)}${x.winRate > 0 ? ` L${x.lives.toFixed(0).padStart(2)}` : ''}`;
+      lines.push(`  ${strategy.padEnd(10)} Stage ${text(plain).padEnd(18)} Challenge ${text(hard)}`);
+      if (strategy !== 'balanced') continue;
+      const inRange = hard.winRate >= 0.2 && hard.winRate <= 0.6;
+      if (!inRange || hard.winRate > plain.winRate) {
+        ok = false;
+        misses.push(`Stage ${stage} "${c.name}": ${pct(hard.winRate).trim()} against the Stage's ${pct(plain.winRate).trim()}`);
+      }
+    }
+  }
+  lines.push('');
+  lines.push('Targets');
+  lines.push(`  ${ok ? 'ok  ' : 'MISS'} the balanced bot wins every Challenge 20–60%, and no more often than its Stage on Normal${misses.length ? `: ${misses.join('; ')}` : ''}`);
+  return { lines, ok };
 }
 
 /** The Runs to play. Single-family Runs play Normal only, one per family the Stage has unlocked. */
@@ -78,7 +148,7 @@ function jobsFor(args: Args): Job[] {
       const difficulties = strategy === 'single' ? args.difficulties.filter((d) => d === 'normal') : args.difficulties;
       for (const family of variants) {
         for (const difficulty of difficulties) {
-          for (let seed = 1; seed <= args.seeds; seed++) {
+          for (let seed = args.firstSeed; seed < args.firstSeed + args.seeds; seed++) {
             jobs.push({ id: jobs.length, stage, difficulty, strategy, ...(family ? { family } : {}), seed, scale: args.scale });
           }
         }
@@ -221,10 +291,10 @@ async function main(): Promise<void> {
     return;
   }
   const args = parseArgs(argv);
-  const jobs = jobsFor(args);
+  const jobs = args.challenges ? challengeJobs(args) : jobsFor(args);
   const t0 = performance.now();
   const outcomes = await runAll(jobs, args.threads);
-  const { lines, ok } = report(args, jobs, outcomes);
+  const { lines, ok } = args.challenges ? challengeReport(args, jobs, outcomes) : report(args, jobs, outcomes);
   console.log(lines.join('\n'));
   console.log(`\n${jobs.length} Runs in ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
   if (args.json) writeFileSync(args.json, JSON.stringify(jobs.map((j) => ({ ...j, ...outcomes[j.id] })), null, 1));

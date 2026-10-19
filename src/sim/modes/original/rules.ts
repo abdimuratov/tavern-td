@@ -1,5 +1,5 @@
 import {
-  BREAK_SECONDS, ORIGINAL_CREEPS, ORIGINAL_TOWERS, START_LIVES, stageByNumber,
+  BREAK_SECONDS, ORIGINAL_CREEPS, ORIGINAL_TOWERS, START_LIVES, challengeById, stageByNumber,
   type OriginalWave,
 } from '../../../content/original';
 import { intArg, reject, stringArg, type Command } from '../../core/commands';
@@ -15,6 +15,7 @@ import { runAuras, runTimedPerks, towerBonus } from './auras';
 import {
   build, buildError, isTargeting, sell, setTargeting, spotError, targetingError, towerById, upgrade, upgradeError,
 } from './build';
+import { challengeMap, challengeProblem, runModifiers } from './challenge';
 import { initCreep, pruneCreeps, runCreepBehaviour } from './creeps';
 import { talentsProblem } from './progression';
 import { ORIGINAL_MODE_ID, creepSpec, makeSim, modeEvent, orState, threatOf, ticks, type OriginalState } from './state';
@@ -43,11 +44,16 @@ export const ORIGINAL_COMMANDS: readonly OriginalCommand['type'][] = [
 
 /** The Original's Run settings, in RunOptions.options. */
 export interface OriginalOptions {
-  /** The Stage played, 1–12. */
+  /** The Stage played, 1–12; the Challenge's own Stage by default when a Challenge is named. */
   readonly stage: number;
+  /** The Challenge played on the Stage, by id, or null for the Stage itself. A Challenge plays on Normal. */
+  readonly challenge: string | null;
   /** The Talents held for the Run, by id. */
   readonly talents: readonly string[];
-  /** Stages finished in the Campaign, which sets the unlocks; the Stage before this one by default. */
+  /**
+   * Stages finished in the Campaign, which sets the unlocks: by default the
+   * Stage before this one, or this one for a Challenge (it opens once its Stage is won).
+   */
   readonly cleared: number;
   /** Waves to play instead of the Stage's own (tests and tools). */
   readonly waves: readonly OriginalWave[] | null;
@@ -58,24 +64,34 @@ export interface OriginalOptions {
 /** The Run settings with defaults filled in; throws on settings it can't play. */
 export function originalOptions(opts: RunOptions): OriginalOptions {
   const o = opts.options ?? {};
-  const stage = o['stage'] ?? 1;
+  const challenge = o['challenge'] ?? null;
+  const own = typeof challenge === 'string' ? challengeById(challenge)?.stage : undefined;
+  const stage = o['stage'] ?? own ?? 1;
   if (typeof stage !== 'number' || !stageByNumber(stage)) throw new Error(`The Original has no Stage ${String(stage)}`);
+  if (challenge !== null) {
+    const refused = challengeProblem(challenge, stage, opts.difficulty);
+    if (refused) throw new Error(`Original: ${refused}`);
+  }
   const talents = o['talents'] ?? [];
   if (!Array.isArray(talents)) throw new Error('Original: talents must be a list of Talent ids');
   const problem = talentsProblem(talents);
   if (problem) throw new Error(`Original: ${problem}`);
-  const cleared = o['cleared'] ?? stage - 1;
+  const cleared = o['cleared'] ?? (challenge === null ? stage - 1 : stage);
   if (typeof cleared !== 'number' || !Number.isInteger(cleared) || cleared < 0) throw new Error('Original: cleared must be a whole number of Stages');
   const waves = o['waves'] ?? null;
   if (waves !== null && !Array.isArray(waves)) throw new Error('Original: waves must be a list of Waves');
   const gold = o['gold'] ?? null;
   if (gold !== null && (typeof gold !== 'number' || !Number.isInteger(gold) || gold < 0)) throw new Error('Original: gold must be a whole number');
-  return { stage, talents: talents as string[], cleared, waves: waves as unknown as OriginalWave[] | null, gold };
+  return {
+    stage, challenge: challenge as string | null, talents: talents as string[], cleared, waves: waves as unknown as OriginalWave[] | null, gold,
+  };
 }
 
 function newState(options: OriginalOptions, threat: number): OriginalState {
   return {
     stage: options.stage,
+    // Only a Challenge's Run carries the key, so a Stage's own Run serializes as before.
+    ...(options.challenge === null ? {} : { challenge: options.challenge }),
     threat,
     talents: [...options.talents],
     cleared: options.cleared,
@@ -158,7 +174,7 @@ function startBreak(state: State, wave: number, events: SimEvent[]): void {
   es.breakAfter = wave;
   es.breaks++;
   if (wave >= state.wave.total) return;
-  es.breakTicks = ticks(BREAK_SECONDS);
+  es.breakTicks = ticks(runModifiers(state).breakSeconds ?? BREAK_SECONDS);
   es.breakUntil = state.tick + es.breakTicks;
   modeEvent(events, 'original.break', { wave: wave + 1, ticks: es.breakTicks, until: es.breakUntil });
 }
@@ -178,9 +194,11 @@ export const ORIGINAL_RULES: GameModeRules<OriginalState> = {
   setup(state, opts) {
     const options = originalOptions(opts);
     const stage = stageByNumber(options.stage)!;
-    setMap(state, typeof opts.map === 'object' ? opts.map : stage.map);
-    state.gold = options.gold ?? stage.gold;
-    state.lives = START_LIVES;
+    const challenge = options.challenge === null ? null : challengeById(options.challenge)!;
+    const mods = challenge?.modifiers ?? {};
+    setMap(state, typeof opts.map === 'object' ? opts.map : challenge ? challengeMap(challenge) : stage.map);
+    state.gold = options.gold ?? mods.gold ?? stage.gold;
+    state.lives = mods.lives ?? START_LIVES;
     state.mode = newState(options, stage.threat);
     state.wave.total = (options.waves ?? stage.waves).length;
   },
@@ -205,7 +223,7 @@ export const ORIGINAL_RULES: GameModeRules<OriginalState> = {
     const es = state.mode;
     // An early call: the seconds of Break skipped pay gold at the called Wave's Threat.
     if (es.breakUntil >= 0 && state.tick < es.breakUntil) {
-      const gold = earlyCallGold(threatOf(state, wave), (es.breakUntil - state.tick) / TICK_RATE);
+      const gold = runModifiers(state).noEarlyCall ? 0 : earlyCallGold(threatOf(state, wave), (es.breakUntil - state.tick) / TICK_RATE);
       earnGold(state, gold, events);
       es.earlyGold += gold;
       modeEvent(events, 'original.earlyCall', { wave, gold });

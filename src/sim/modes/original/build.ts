@@ -5,7 +5,8 @@ import type { SimEvent } from '../../core/events';
 import type { GameState, Tower } from '../../core/state';
 import { canAfford, earnGold, spendGold } from '../../economy';
 import { buildSpotCells } from '../../path/grid';
-import { unlocksFor } from './progression';
+import { challengeUnlocks, runModifiers } from './challenge';
+import { unlocksFor, type Unlocks } from './progression';
 import { familyTalents } from './talents';
 import { modeEvent, newTowerState, orState, peekTower, towerInfo, towerSpec, type OriginalTowerState } from './state';
 
@@ -13,9 +14,9 @@ import { modeEvent, newTowerState, orState, peekTower, towerInfo, towerSpec, typ
 // (docs/original-design.md §3, §6, §10). Towers stand only on Build Spots, so
 // nothing can Block. Building and upgrading are instant, at any time.
 
-/** The Run's unlocks, from the Campaign progress it was started with. */
-export function runUnlocks(state: GameState) {
-  return unlocksFor(orState(state).cleared);
+/** The Run's unlocks: the Campaign progress it was started with, narrowed by its Challenge. */
+export function runUnlocks(state: GameState): Unlocks {
+  return challengeUnlocks(orState(state).cleared, runModifiers(state));
 }
 
 /** What `spec` costs in this Run: its step's price less the family's cost Talents, rounded. */
@@ -25,14 +26,18 @@ export function priceOf(state: GameState, spec: string): number {
   return Math.round(info.price * (1 - familyTalents(state, info.family).cost));
 }
 
-/** Why the family can't be built or climbed into `spec` at all in this Run (locked), or null. */
+/** Why the family can't be built or climbed into `spec` at all in this Run (locked, or not in its Challenge), or null. */
 function lockError(state: GameState, spec: string): string | null {
   const info = towerInfo(spec);
   if (!info) return 'no such tower';
-  const unlocks = runUnlocks(state);
-  if (!unlocks.families.includes(info.family)) return `the ${info.family} family isn't unlocked yet`;
-  if (info.tier === 3 && unlocks.maxTier < 3) return 'Tier 3 unlocks after Stage 2';
-  if (info.tier === 4 && !unlocks.specialisations) return 'Specialisations unlock after Stage 5';
+  const open = unlocksFor(orState(state).cleared);
+  if (!open.families.includes(info.family)) return `the ${info.family} family isn't unlocked yet`;
+  if (info.tier === 3 && open.maxTier < 3) return 'Tier 3 unlocks after Stage 2';
+  if (info.tier === 4 && !open.specialisations) return 'Specialisations unlock after Stage 5';
+  const run = runUnlocks(state);
+  if (!run.families.includes(info.family)) return `no ${info.family} towers in this Challenge`;
+  if (info.tier === 3 && run.maxTier < 3) return 'no Tier 3 in this Challenge';
+  if (info.tier === 4 && !run.specialisations) return 'no Specialisations in this Challenge';
   return null;
 }
 

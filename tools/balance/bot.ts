@@ -1,4 +1,4 @@
-import { stageByNumber, type Family, type OriginalWave } from '../../src/content/original';
+import type { Family, OriginalWave } from '../../src/content/original';
 import {
   createRun, original, routeCount, step,
   type Command, type Difficulty, type ReplayEntry, type SimEvent,
@@ -28,6 +28,8 @@ export type Strategy = 'rotation' | 'greedy' | 'balanced' | 'single';
 
 export interface BotOptions {
   readonly stage?: number;
+  /** The Challenge to play on the Stage, by id; it plays on Normal. */
+  readonly challenge?: string;
   readonly talents?: readonly string[];
   readonly cleared?: number;
   /** Waves instead of the Stage's own. */
@@ -256,17 +258,21 @@ export function playStage(seed: number, difficulty: Difficulty, o: BotOptions = 
   const stage = o.stage ?? 1;
   const strategy = o.strategy ?? 'rotation';
   const options: Record<string, unknown> = { stage, talents: [...(o.talents ?? [])] };
+  if (o.challenge !== undefined) options['challenge'] = o.challenge;
   if (o.cleared !== undefined) options['cleared'] = o.cleared;
   if (o.waves !== undefined) options['waves'] = JSON.parse(JSON.stringify(o.waves));
   if (o.gold !== undefined) options['gold'] = o.gold;
   const state = createRun({ mode: 'original', seed, difficulty, options: options as never }) as original.OriginalGameState;
-  const view = mapView(stageByNumber(stage)!.map);
+  // The Run's own Map: a Challenge may keep only some of the Stage's Build Spots.
+  const view = mapView(state.map);
   const style = strategy === 'rotation'
-    ? { noise: 0, rand: () => 0.5, callsEarly: o.greedy ?? false, spots: rankedSpots(stageByNumber(stage)!.map) }
+    ? { noise: 0, rand: () => 0.5, callsEarly: o.greedy ?? false, spots: rankedSpots(state.map) }
     : makeStyle(o.style ?? 0, view, o.greedy);
   const unlocked = original.runUnlocks(state).families;
   const families = strategy === 'rotation' ? [] : unlocked.filter((f) => (strategy === 'single' ? (o.families ?? []).includes(f) : !o.families || o.families.includes(f)));
   const routes = routeCount(state.map);
+  // A Challenge whose Send now pays nothing: a competent player waits the Breaks out.
+  const callsEarly = style.callsEarly && !original.runModifiers(state).noEarlyCall;
   const built = { n: 0 };
   const rejected: string[] = [];
   const maxTicks = o.maxTicks ?? 30 * 60 * 40;
@@ -297,7 +303,7 @@ export function playStage(seed: number, difficulty: Difficulty, o: BotOptions = 
       if (state.tick % 15 === 0) {
         const status = original.originalStatus(state);
         const clear = !state.creeps.some((c) => c.hp > 0);
-        if (status.sendNowBlocked === null && (status.step === 'ready' || (style.callsEarly && clear && status.step === 'break'))) {
+        if (status.sendNowBlocked === null && (status.step === 'ready' || (callsEarly && clear && status.step === 'break'))) {
           commands.push({ type: 'original.sendNow' });
         }
         const c = rotationPick(state, style.spots, o, built);
@@ -320,7 +326,7 @@ export function playStage(seed: number, difficulty: Difficulty, o: BotOptions = 
       else {
         const status = original.originalStatus(state);
         const clear = !state.creeps.some((cr) => cr.hp > 0);
-        if (status.sendNowBlocked === null && (status.step === 'ready' || (style.callsEarly && clear && status.step === 'break'))) {
+        if (status.sendNowBlocked === null && (status.step === 'ready' || (callsEarly && clear && status.step === 'break'))) {
           commands.push({ type: 'original.sendNow' });
         }
       }

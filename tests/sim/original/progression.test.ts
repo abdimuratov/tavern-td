@@ -28,7 +28,9 @@ describe('Stars', () => {
     expect(original.starsGained(0, 2)).toBe(2);
     expect(original.starsGained(2, 3)).toBe(1);
     expect(original.starsGained(3, 1)).toBe(0);
-    expect(original.maxStars()).toBe(36);
+    // The Stages hold 36; the Challenges add 12 (challenges.test.ts).
+    expect(original.maxStageStars()).toBe(36);
+    expect(original.maxStars()).toBe(48);
   });
 
   it('keeps each Stage\'s best Stars, hardest Difficulty won and fastest win', () => {

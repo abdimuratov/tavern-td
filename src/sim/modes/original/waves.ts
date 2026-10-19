@@ -7,6 +7,7 @@ import { powDet } from '../../core/math';
 import type { WaveGroup, WaveSpec } from '../../core/specs';
 import type { GameState } from '../../core/state';
 import { getMode } from '../registry';
+import { runModifiers } from './challenge';
 import { orState, threatOf } from './state';
 
 // Threat and the curves it drives (docs/original-design.md §10). A Wave's
@@ -18,9 +19,16 @@ export function ghoulHp(threat: number): number {
   return GHOUL_HP.base * powDet(GHOUL_HP.growth, Math.max(0, threat - 1));
 }
 
-/** A Ghoul's HP at Threat T in this Run: Difficulty included. Shields and dropped creeps scale with it. */
+/** A Ghoul's HP at Threat T in this Run: Difficulty and a Challenge's HP included. Shields and dropped creeps scale with it. */
 export function runGhoulHp(state: GameState, threat: number): number {
-  return ghoulHp(threat) * difficultyHp(getMode(state.modeId), state.difficulty);
+  return ghoulHp(threat) * runHpScale(state);
+}
+
+/** What this Run multiplies creep HP by: its Difficulty, times its Challenge's HP if it has one. */
+export function runHpScale(state: GameState): number {
+  const diff = difficultyHp(getMode(state.modeId), state.difficulty);
+  const hp = runModifiers(state).hp;
+  return hp === undefined ? diff : diff * hp;
 }
 
 /** The gold a Wave's creeps carry between them: 10 × (1 + ⌊T/4⌋). */
@@ -86,5 +94,7 @@ export function waveSpec(state: GameState, index: number): WaveSpec | undefined 
     const group: WaveGroup = { creep: g.creep, count: g.count, interval: gap, delay: starts[i]!, hp: ghoul * mult, bounty };
     return g.route === undefined ? group : { ...group, route: g.route };
   });
-  return { groups };
+  // A Challenge's tougher creeps; the core multiplies it in with the Difficulty.
+  const hp = runModifiers(state).hp;
+  return hp === undefined ? { groups } : { groups, hpMult: hp };
 }

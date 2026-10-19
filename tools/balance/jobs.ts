@@ -1,4 +1,4 @@
-import { ORIGINAL_CREEPS, STAGES, type Family, type OriginalWave } from '../../src/content/original';
+import { ORIGINAL_CREEPS, STAGES, challengeOfStage, type Family, type OriginalWave } from '../../src/content/original';
 import type { Difficulty } from '../../src/sim';
 import { decentTalents, playStage, type Strategy } from './bot';
 
@@ -11,6 +11,8 @@ export interface Job {
   readonly strategy: Strategy;
   /** The family of a single-family Run. */
   readonly family?: Family;
+  /** Plays the Stage's Challenge instead of the Stage: on Normal, with what the Campaign holds when it opens. */
+  readonly challenge?: boolean;
   readonly seed: number;
   /** Scales every group's count, bosses aside, from the first Wave's share to the last's: a tuning aid. [1, 1] plays the Stage as it is. */
   readonly scale: readonly [number, number];
@@ -34,9 +36,22 @@ export interface Outcome {
  * families it leans on, one tree at a time: a single-family player its own
  * family's, the others Arrow, then Arcane, then the rest.
  */
-export function talentsFor(job: Pick<Job, 'stage' | 'strategy' | 'family'>): string[] {
-  if (job.strategy === 'single' && job.family) return decentTalents(job.stage, { order: [job.family], focus: true });
-  return decentTalents(job.stage, { focus: true });
+export function talentsFor(job: Pick<Job, 'stage' | 'strategy' | 'family' | 'challenge'>): string[] {
+  // A Challenge opens once its Stage is won: the Talents of a player about to play the next Stage.
+  const stage = job.challenge ? job.stage + 1 : job.stage;
+  if (job.strategy === 'single' && job.family) return decentTalents(stage, { order: [job.family], focus: true });
+  return decentTalents(stage, { focus: true });
+}
+
+/**
+ * What a Challenge's Run takes, at the least a player can hold when it opens:
+ * the unlocks from finishing its Stage (cleared = Stage), and the Talents a
+ * decent player holds with the Stars the Stages up to it paid, none from
+ * other Challenges. Undefined when the Stage has no Challenge.
+ */
+export function challengeSetup(stage: number): { readonly challenge: string; readonly cleared: number } | undefined {
+  const c = challengeOfStage(stage);
+  return c ? { challenge: c.id, cleared: stage } : undefined;
 }
 
 /**
@@ -65,6 +80,7 @@ export function playJob(job: Job): Outcome {
     stage: job.stage,
     ...(job.scale[0] !== 1 || job.scale[1] !== 1 ? { waves: scaledWaves(job.stage, job.scale) } : {}),
     cleared: job.stage - 1,
+    ...(job.challenge ? challengeSetup(job.stage) : {}),
     strategy: job.strategy,
     ...(job.family ? { families: [job.family] } : {}),
     talents: talentsFor(job),

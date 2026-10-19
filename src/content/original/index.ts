@@ -8,3 +8,4 @@ export * from './economy';
 export * from './talents';
 export * from './maps';
 export * from './stages';
+export * from './challenges';

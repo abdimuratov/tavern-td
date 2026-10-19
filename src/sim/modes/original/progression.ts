@@ -1,13 +1,14 @@
 import {
-  CAMPAIGN_LENGTH, ROW_COST, STAR_LIVES, TALENTS, TALENT_ROWS, UNLOCKS,
+  CAMPAIGN_LENGTH, CHALLENGES, ROW_COST, STAR_LIVES, TALENTS, TALENT_ROWS, UNLOCKS,
   type Family, type TalentSpec,
 } from '../../../content/original';
 import { DIFFICULTIES, type Difficulty } from '../../core/state';
 
-// The Campaign's progression as pure logic (docs/original-design.md §8–9):
-// unlocks, Stars, Talent purchases and Stage Records. Nothing here touches a
-// Run's state; the Stage-select screen and storage call these, and a Run only
-// receives the result as Run settings (Talents and Stages finished).
+// The Campaign's progression as pure logic (docs/original-design.md §8–9,
+// §16): unlocks, Stars, Talent purchases, Stage Records and Challenge
+// Records. Nothing here touches a Run's state; the Stage-select screen and
+// storage call these, and a Run only receives the result as Run settings
+// (Talents, Stages finished and the Challenge played).
 
 /** What the Campaign has opened. */
 export interface Unlocks {
@@ -47,9 +48,21 @@ export function starsGained(best: number, stars: number): number {
   return Math.max(0, stars - best);
 }
 
-/** Most Stars the Campaign holds. */
-export function maxStars(): number {
+/** Most Stars the Stages pay: 3 each, 36 in all. */
+export function maxStageStars(): number {
   return CAMPAIGN_LENGTH * (STAR_LIVES[0]?.stars ?? 3);
+}
+
+/** Most Stars the Challenges pay: each one's Stars, once, 12 in all. */
+export function maxChallengeStars(): number {
+  let total = 0;
+  for (const c of CHALLENGES) total += c.stars;
+  return total;
+}
+
+/** Most Stars the Campaign holds: the Stages' and the Challenges', 48, which fill all six Talent trees. */
+export function maxStars(): number {
+  return maxStageStars() + maxChallengeStars();
 }
 
 export function talentCost(row: number): number {
@@ -143,6 +156,27 @@ export interface StageRecord {
   readonly stars: number;
   readonly hardest: Difficulty | null;
   readonly fastest: number | null;
+}
+
+/**
+ * A Challenge's Record, kept once it is won: its fastest win. Its Stars are
+ * paid with the first win and never again, so the Record itself is the proof.
+ */
+export interface ChallengeRecord {
+  readonly fastest: number | null;
+}
+
+/** The Challenge Record after a Run of it; a loss changes nothing, and a first win creates it. */
+export function mergeChallengeRecord(record: ChallengeRecord | null, result: StageResult): ChallengeRecord | null {
+  if (!result.won) return record;
+  const old = record?.fastest ?? null;
+  const faster = result.seconds !== null && (old === null || result.seconds < old);
+  return { fastest: faster ? result.seconds : old };
+}
+
+/** Stars a Challenge Run adds to the Campaign: the Challenge's on its first win, nothing after. */
+export function challengeStarsGained(record: ChallengeRecord | null, result: StageResult, stars: number): number {
+  return result.won && record === null ? stars : 0;
 }
 
 /** The Record after a Run; a loss changes nothing. */

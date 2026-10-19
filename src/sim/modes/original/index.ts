@@ -24,10 +24,11 @@ export { towerBonus, attackRange, auraRadius, perkOf } from './auras';
 export { pickTarget, remaining } from './targeting';
 export { foldTalents, runTalents, type FamilyTalents, type RunTalents } from './talents';
 export {
-  unlocksFor, starsFor, starsGained, maxStars, talentCost, starsSpent, talentsProblem, talentError, buyTalent, resetTalents,
-  treeRows, mergeStageRecord,
-  type Unlocks, type StageResult, type StageRecord,
+  unlocksFor, starsFor, starsGained, maxStars, maxStageStars, maxChallengeStars, talentCost, starsSpent, talentsProblem, talentError,
+  buyTalent, resetTalents, treeRows, mergeStageRecord, mergeChallengeRecord, challengeStarsGained,
+  type Unlocks, type StageResult, type StageRecord, type ChallengeRecord,
 } from './progression';
+export { runChallenge, runModifiers, challengeProblem, challengeUnlocks, challengeMap } from './challenge';
 export {
   originalStatus, spotInfo, towerActions, wavePreview, originalResult,
   type OriginalStep, type OriginalStatus, type BuildOption, type SpotInfo, type UpgradeOption, type TowerActions, type WavePreview,

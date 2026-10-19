@@ -156,6 +156,44 @@ export interface StageSpec {
   readonly waves: readonly OriginalWave[];
 }
 
+/**
+ * What a Challenge changes about its Stage's Run (docs/original-design.md §16).
+ * Every field is optional: what a Challenge leaves out plays as the Stage does.
+ */
+export interface ChallengeModifiers {
+  /** The only Tower Families that may be built, of those the Campaign has opened. */
+  readonly families?: readonly Family[];
+  /** The Build Spots that stand, by index in the Stage's list; the rest are gone from the Map. */
+  readonly spots?: readonly number[];
+  /** Lives at the start, instead of 20. */
+  readonly lives?: number;
+  /** Starting gold, instead of the Stage's. */
+  readonly gold?: number;
+  /** Creep HP times this, on top of Difficulty; Shields and dropped creeps scale with it. */
+  readonly hp?: number;
+  /** Send now still ends a Break, but pays no early-call gold. */
+  readonly noEarlyCall?: boolean;
+  /** Seconds of each Break, instead of 30. */
+  readonly breakSeconds?: number;
+  /** Towers stop at Tier 2, though the Campaign has opened Tier 3. */
+  readonly maxTier?: 2;
+  /** No tower may take a Specialisation. */
+  readonly noSpecialisations?: boolean;
+}
+
+/** A Challenge: a Stage played again under its own named rule, for extra Stars (§16). */
+export interface ChallengeSpec {
+  /** The Stage it is played on, 1–12; each Stage has one Challenge. */
+  readonly stage: number;
+  readonly id: string;
+  readonly name: string;
+  /** The rule in one line, for the Stage panel. */
+  readonly rule: string;
+  readonly modifiers: ChallengeModifiers;
+  /** Stars its first win pays; it pays them once. */
+  readonly stars: number;
+}
+
 /** What a Talent does. Family-wide numbers are fractions unless named otherwise. */
 export type TalentEffect =
   | { readonly kind: 'damage'; readonly value: number }
