@@ -174,6 +174,8 @@ Phase 5 progress (2026-10-18):
   - The end card reads Victory, Defeat or Draw from the viewer's Side, without "on Normal". A Concede or claimed win comes from the session and records through `recordVersus`. Rematch replaces Play again while connected, and Menu leaves. A restarted Guest app rejoins from the Host's rejoin link ("Rejoin the Host's Run").
   - The "new version, reload" toast waits while a Versus Run is on, and How to play has a Versus paragraph. `window.tavern` adds `viewer` and, in Versus, `versus.status()` (the session, the lockstep and its last agreed hash).
 - Tested: 21 unit tests in `tests/ui-versus.test.ts` cover link parsing, the link's address from the web app and the APK, device names, code ages and timeouts, the HUD line, board banners, the pause and lost sheets, the end text and pending marks. `e2e/versus.spec.ts` runs two browser contexts over loopback WebRTC on desktop Chrome. The Host's link opens Join on the Guest's page, the Answer goes back, and both pick, Ready and Go. Both build and send through the HUD; the Guest's tower is drawn right of the middle and its gold is its own. A Guest pause stops both on the same tick with the same agreed hash, Ready resumes both, and the Guest concedes; the Host's end card and Versus Record show the win and the Guest's the loss. A second test refuses a damaged code, an Answer code and another version's code in Join. The Line Wars e2e passes as before, and the debug APK builds with Gradle. The WebKit projects first check that two pages can open a DataChannel over loopback, and skip with the reason if Playwright's WebKit can't. On CI the Chromium projects (desktop Chrome and the Android emulation) pass it and both WebKit projects skip it. On the live Pages build, two tabs with the public STUN servers connected by link and Answer code, started a Run with the Guest's board mirrored, and agreed on 15 hash checks.
+- Built on 2026-10-20, waiting on your Cloudflare setup: the Relay, a TURN fallback for Versus ([ADR-0005](adr/0005-a-turn-relay-for-versus.md); [versus-design.md §11](versus-design.md#11-filled-in-by-the-build) lists what it fills in). Cloudflare Realtime TURN carries a connection the two devices can't make directly, with 6-hour credentials from a small Cloudflare Worker (`workers/turn/worker.js`) whose API token stays a Worker secret. Opening Host or Join fetches them ahead, every code then holds a relay candidate, and ICE still prefers a direct pair. The Lobby shows Direct or Relayed beside the ping, the HUD adds "· relayed", a code made without the Relay says "Relay unavailable: only direct connections will work", and "Couldn't reach the Rival" says whether the Relay was in the codes. A code with one host, one server-reflexive and one relay is 153 characters. `RELAY_URL` is empty until you make the Worker ([relay-setup.md](relay-setup.md)), and until then Versus behaves as before.
+  - Tested: unit tests for fetching the credentials, the Worker with Cloudflare mocked, the gathering rule, Direct or Relayed from Chrome-, Safari- and Firefox-shaped stats, a relay candidate in a code, and the screens' words. In e2e on desktop Chrome, a Relay whose TURN server never answers and one that can't be fetched both still connect Direct, and gathering stops at its 5 s cap. A real-Relay test, `e2e/relay.spec.ts`, waits for your Worker.
 - Left: a two-device play-test of Versus. Untested: real phones; Safari taking a rebuilt code (WebKit parses descriptions with the same libwebrtc as Chrome, so it should); carrier and symmetric NAT; Wi-Fi that isolates clients; the S24's WebView (WebRTC, mDNS host candidates, the share sheet); the iPhone's share sheet and Safari suspending the page in the background; Reconnect, rejoin, Claim the win and a real Desync between two devices (each covered only by the net layer's Node tests).
 - Watch in play-testing:
   - Whether the S24's APK and the iPhone connect on one Wi-Fi. Then the iPhone on mobile data against the Mac, and both phones on mobile data, where §3's message may be the answer.
@@ -181,7 +183,7 @@ Phase 5 progress (2026-10-18):
   - How 200–500 ms of Input Delay feels with the click and the faint marks, and whether "Waiting for the Rival…" shows up on a good connection.
   - Each phone sent to the background mid-Run (both stop, then Ready), and a Reconnect after Wi-Fi drops.
   - The Lobby and Host screen on a phone in landscape: the QR is 132 px there, and the Host's page scrolls.
-- Next: the two-device play-test of Versus, then Phase 5's exit bar.
+- Next: your Cloudflare setup for the Relay ([relay-setup.md](relay-setup.md)), then the two-device play-test of Versus, then Phase 5's exit bar.
 
 Performance (2026-10-19), on the dev Mac (M5 Pro). A phone core is taken as 3× slower, so a tick must stay under about 1.3 ms here to meet §2's 4 ms. Node ticks are whole bot Runs replayed, each tick the least of three plays; "worst" leaves out GC pauses. Frames are Chromium at the iphone and android projects' landscape sizes with the CPU slowed 4×, on the Mac's GPU, during each mode's busiest moment of a bot's Run (`TAVERN_PERF=1`, see `e2e/perf.spec.ts`).
 
@@ -380,10 +382,11 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 - **S24:** turn on Developer options and USB debugging, then connect it by cable when installing the APK.
 - **iPhone:** open the Pages URL in Safari, then Share → Add to Home Screen.
 - **GitHub:** approve creating the public `tavern-td` repo and turning on Pages. I'll ask before each step.
+- **Cloudflare:** make the account, the TURN key and the Worker for Versus' Relay ([relay-setup.md](relay-setup.md)), and send me only the Worker's URL.
 - **Play-test** at the end of each phase and tell me what feels off.
 
 ## 7. Parked for later
 
-- Versus: a TURN relay, a handicap, and keeping a Versus Run on disk.
+- Versus: a TURN relay (built, waiting on your Cloudflare setup in §6; it leaves this list once two pages connect through it), a handicap, and keeping a Versus Run on disk.
 - Music and more Races.
 - A Remix mode (Gem's Draft plus Element's picks).

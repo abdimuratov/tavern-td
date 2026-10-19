@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import type { RaceId } from '../../content/maul';
-import type { Role, SessionStatus } from '../../net';
+import type { RelayUse, Role, SessionStatus } from '../../net';
 
 // What the Versus screens show and ask of the app (src/app/versus.ts writes
 // these, the screens in this folder read them). Null while no Versus session
@@ -32,6 +32,10 @@ export interface CodeSwap {
   readonly prefill: string;
   /** A Reconnect during a Run or the lobby, rather than the first connection. */
   readonly reconnect: boolean;
+  /** How the Relay stood for this device's code: `unavailable` shows a note under it, and §3's message depends on it. */
+  readonly relay: RelayUse;
+  /** The Rival's code holds a relay candidate (the Host learns it from the Answer code). */
+  readonly rivalRelay: boolean;
 }
 
 export interface VersusState {

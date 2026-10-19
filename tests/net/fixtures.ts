@@ -126,3 +126,37 @@ export const FIREFOX_OFFER = crlf([
   'a=sctp-port:5000',
   'a=max-message-size:1073741823',
 ]);
+
+/**
+ * Chrome's offer with the Relay's two TURN servers: an mDNS host, an IPv4
+ * server-reflexive, then a relay candidate from each allocation, UDP's first
+ * (type preference 2) and TLS's (0). A relay candidate's protocol is UDP
+ * however the allocation was reached, and its related address is the mapped one.
+ */
+export const CHROME_RELAY_OFFER = crlf([
+  'v=0',
+  'o=- 2876325413409162711 2 IN IP4 127.0.0.1',
+  's=-',
+  't=0 0',
+  'a=group:BUNDLE 0',
+  'a=extmap-allow-mixed',
+  'a=msid-semantic: WMS',
+  'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+  'c=IN IP4 0.0.0.0',
+  'a=candidate:2999745851 1 udp 2122260223 8c7a3f5e-2b1d-4e6f-9a0b-1c2d3e4f5a6b.local 54400 typ host generation 0 network-id 1 network-cost 10',
+  'a=candidate:842163049 1 udp 1686052607 203.0.113.45 54400 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-id 1 network-cost 10',
+  'a=candidate:1510613869 1 tcp 1518280447 8c7a3f5e-2b1d-4e6f-9a0b-1c2d3e4f5a6b.local 9 typ host tcptype active generation 0 network-id 1 network-cost 10',
+  'a=candidate:3561839427 1 udp 41885439 192.0.2.77 61432 typ relay raddr 203.0.113.45 rport 54400 generation 0 network-id 1 network-cost 10',
+  'a=candidate:2451089871 1 udp 8331263 192.0.2.77 52011 typ relay raddr 203.0.113.45 rport 54402 generation 0 network-id 1 network-cost 10',
+  'a=ice-ufrag:Rl4y',
+  'a=ice-pwd:k2Lm4Np6Qr8St0Uv2Wx4Yz6A',
+  'a=ice-options:trickle',
+  'a=fingerprint:sha-256 7B:21:E9:4C:A0:53:D8:16:F2:6E:9B:37:C4:08:5A:E1:2D:B6:73:0F:C8:95:4A:E2:1B:D7:60:3C:F9:84:2E:5B',
+  'a=setup:actpass',
+  'a=mid:0',
+  'a=sctp-port:5000',
+  'a=max-message-size:262144',
+]);
+
+/** The same relay candidate as an icecandidate event gives it, for a page that saw it after the description was read. */
+export const CHROME_RELAY_CANDIDATE = 'candidate:3561839427 1 udp 41885439 192.0.2.77 61432 typ relay raddr 203.0.113.45 rport 54400 generation 0 ufrag Rl4y network-id 1 network-cost 10';

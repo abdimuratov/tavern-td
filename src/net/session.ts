@@ -11,7 +11,7 @@ import {
   type Codec, type NetMessage, type SnapPayload, type StartMessage,
 } from './protocol';
 import { encodeReport } from './report';
-import { canSend, type Transport, type TransportState } from './transport';
+import { canSend, type Route, type Transport, type TransportState } from './transport';
 
 // A Versus session (docs/versus-design.md §4.6, §5): Hello and the version
 // check, the lobby's picks and Ready, the pings that set the Input Delay,
@@ -91,6 +91,8 @@ export interface SessionStatus {
   readonly role: Role;
   readonly side: SideId;
   readonly link: LinkState;
+  /** How the connection runs, Direct or through the Relay, as the transport says; null until known, or where it can't tell. */
+  readonly route: Route | null;
   /** Ms since the Rival's last message; null before any. */
   readonly lastHeardMs: number | null;
   /** The median round trip of the last pings, in ms; null before any. */
@@ -555,7 +557,7 @@ export function createSession(opts: SessionOptions): Session {
       const now = clock.now();
       const median_ = median();
       return {
-        phase, role, side, link: link(), lastHeardMs: lastHeard === null ? null : now - lastHeard, ping: median_,
+        phase, role, side, link: link(), route: transport?.route ?? null, lastHeardMs: lastHeard === null ? null : now - lastHeard, ping: median_,
         delay: run?.lockstep.delay ?? inputDelay(rtts), slow: p90() > SLOW_RTT_MS, lobby: lobby(), mismatch, outcome,
         canClaim: canClaim(), rivalAway, rivalBuild, rivalBrowser, session: run?.session ?? null, run: run?.lockstep.status() ?? null,
       };

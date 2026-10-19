@@ -1,5 +1,7 @@
 import type { RaceId } from '../../content/maul';
-import { CONNECT_TIMEOUT_MS, type LobbyStatus, type Mismatch, type Outcome, type PauseStatus, type SessionStatus, type SideId } from '../../net';
+import {
+  CONNECT_TIMEOUT_MS, type LobbyStatus, type Mismatch, type Outcome, type PauseStatus, type Route, type SessionStatus, type SideId,
+} from '../../net';
 import { linewars, type GameState } from '../../sim';
 import { raceName } from '../modes/maul/text';
 import type { RunEnd } from '../state';
@@ -40,8 +42,29 @@ export function swapTimedOut(swap: CodeSwap, now: number): boolean {
 }
 
 export const FAIL_TITLE = "Couldn't reach the Rival.";
+/** §3's words with no Relay set up, as before there was one. */
 export const FAIL_TEXT = 'Some networks, often mobile data, block direct connections between two devices, and Tavern TD has no relay server. '
   + "Put both devices on the same Wi-Fi, or on one phone's hotspot, then make a new code.";
+/** A Relay is set up, but neither code got a relay candidate: its credentials didn't come, or it couldn't be reached. */
+export const FAIL_TEXT_NO_RELAY = "Some networks, often mobile data, block direct connections between two devices, and the relay couldn't be reached this time. "
+  + "Put both devices on the same Wi-Fi, or on one phone's hotspot, then make a new code.";
+/** A code held a relay candidate, and still nothing connected. */
+export const FAIL_TEXT_RELAYED = "Even the relay couldn't link you: a network may block it too, or a code went stale. "
+  + "Make a new code and try again, or put both devices on the same Wi-Fi, or on one phone's hotspot.";
+
+/** §3's message for this swap: whether the relay was in either code, and if not, whether one is set up. */
+export function failText(swap: Pick<CodeSwap, 'relay' | 'rivalRelay'>): string {
+  if (swap.relay === 'offered' || swap.rivalRelay) return FAIL_TEXT_RELAYED;
+  return swap.relay === 'none' ? FAIL_TEXT : FAIL_TEXT_NO_RELAY;
+}
+
+/** Under a code made without the Relay, though one is set up (§2). */
+export const RELAY_NOTE = 'Relay unavailable: only direct connections will work.';
+
+/** The Lobby's word for how the connection runs. */
+export function routeText(route: Route): string {
+  return route === 'relayed' ? 'Relayed' : 'Direct';
+}
 
 /** What the Guest's Join box says on an iPhone: a link opens Safari, whose Records aren't the Home Screen app's (§2). */
 export function iosJoinNote(standalone: boolean): string {
@@ -69,17 +92,18 @@ export function mismatchText(m: Mismatch): { readonly title: string; readonly te
 
 export type Tone = 'ok' | 'warn' | 'error';
 
-/** The HUD's small connection line: the ping, or what's wrong (§5.3). */
+/** The HUD's small connection line: the ping, or what's wrong (§5.3), with "· relayed" while the Relay carries the connection. */
 export function connectionLine(st: SessionStatus): { readonly text: string; readonly tone: Tone } {
   if (st.link === 'lost') return { text: 'Connection lost', tone: 'error' };
   if (st.link === 'connecting') return { text: 'Reconnecting…', tone: 'error' };
-  if (st.link === 'unstable') return { text: 'Connection unstable…', tone: 'warn' };
+  const via = st.route === 'relayed' ? ' · relayed' : '';
+  if (st.link === 'unstable') return { text: `Connection unstable…${via}`, tone: 'warn' };
   const run = st.run;
   if (run && !run.pause && run.waitingMs >= WAITING_MS) {
-    return { text: st.rivalAway ? "The Rival's app is in the background" : 'Waiting for the Rival…', tone: 'warn' };
+    return { text: st.rivalAway ? "The Rival's app is in the background" : `Waiting for the Rival…${via}`, tone: 'warn' };
   }
-  if (st.ping === null) return { text: 'Ping –', tone: 'ok' };
-  return { text: `Ping ${Math.round(st.ping)} ms`, tone: st.ping > SLOW_PING_MS ? 'warn' : 'ok' };
+  if (st.ping === null) return { text: `Ping –${via}`, tone: 'ok' };
+  return { text: `Ping ${Math.round(st.ping)} ms${via}`, tone: st.ping > SLOW_PING_MS ? 'warn' : 'ok' };
 }
 
 /** The banner over the board while nothing else says it: a Desync being repaired, a pause on its way, a wait (§4.7, §5). */

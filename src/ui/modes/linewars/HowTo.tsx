@@ -34,7 +34,7 @@ export function LwHowTo() {
       </section>
       <section class="versus-help" data-testid="howto-versus">
         <h3>Versus</h3>
-        <p>Play a friend on another device, with no server between you. The Host taps Versus · Host and sends the link it makes; the Rival opens it (on an iPhone, copies it and pastes it into Join) and sends back the Answer code it shows. Put both devices on one Wi-Fi if they can't reach each other.</p>
+        <p>Play a friend on another device. The Host taps Versus · Host and sends the link it makes; the Rival opens it (on an iPhone, copies it and pastes it into Join) and sends back the Answer code it shows. The Lobby says whether you're connected Direct or Relayed, through a relay when your networks can't reach each other. If nothing connects, put both devices on one Wi-Fi.</p>
         <p>You each pick a Race and press Ready. Each of you sees your own Field on the right. A tap lands a moment later on both devices, and a build shows faintly until then. Pause stops you both, and play goes on once you both press Ready; going to the background pauses too. Versus plays at 1× on Normal, keeps no save, and has its own row in Records. Concede counts as a loss, and if the Rival is gone 2 minutes while you stay, you may claim the win.</p>
       </section>
       <section class="controls-help">

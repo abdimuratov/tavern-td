@@ -5,12 +5,13 @@ import { canShare } from '../../platform/share';
 import { JoinQr } from './Qr';
 import type { CodeSwap, VersusActions, VersusState } from './state';
 import { CONNECT_TIMEOUT_MS } from '../../net';
-import { ageText, ANDROID_JOIN_NOTE, FAIL_TEXT, FAIL_TITLE, iosJoinNote, swapStale } from './text';
+import { ageText, ANDROID_JOIN_NOTE, failText, FAIL_TITLE, iosJoinNote, RELAY_NOTE, swapStale } from './text';
 
 // The code swap (docs/versus-design.md §2–§3), as the first connection and a
 // Reconnect both show it. The Host's side: its Join link with Share, Copy and
 // a QR, how long it has waited, and a box for the Answer code. The Guest's: a
 // box for the Join code or link, then its Answer code with Share and Copy.
+// Either notes a code made without the Relay, when one is set up.
 
 /** A code to copy by hand: read-only, and selected whole on focus (select() alone doesn't on iOS). */
 function CodeBox({ value, testid, rows = 3 }: { value: string; testid: string; rows?: number }) {
@@ -47,12 +48,17 @@ function ShareCopy({ text, kind, a }: { text: string; kind: 'link' | 'code'; a: 
   );
 }
 
+/** "Relay unavailable" under a code, when a Relay is set up but the code holds no relay candidate (§2). */
+function RelayNote({ swap }: { swap: CodeSwap }) {
+  return swap.relay === 'unavailable' ? <p class="note" data-testid="relay-note">{RELAY_NOTE}</p> : null;
+}
+
 /** §3: no connection 20 s after both codes were in hand, or the connection failed outright. */
 function Failed({ swap, a, onBack }: { swap: CodeSwap; a: VersusActions; onBack?: () => void }) {
   return (
     <div class="vs-failed" data-testid="swap-failed">
       <h2>{FAIL_TITLE}</h2>
-      <p>{FAIL_TEXT}</p>
+      <p data-testid="fail-text">{failText(swap)}</p>
       {swap.error && <p class="error">{swap.error}</p>}
       <div class="buttons">
         <button type="button" class="btn primary" data-testid="new-code" onClick={a.newCode}>
@@ -83,6 +89,7 @@ function HostSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: V
             Made {ageText(v.now - (swap.madeAt ?? v.now))} ago
             {stale && <span class="warn"> · Over 2 minutes old, so it may not connect</span>}
           </p>
+          <RelayNote swap={swap} />
           {stale && !connecting && (
             <button type="button" class="btn" data-testid="new-code" onClick={a.newCode}>New code</button>
           )}
@@ -171,13 +178,14 @@ function GuestSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: 
       <p class="vs-step">Send this back to the Host.</p>
       <CodeBox value={swap.code} testid="answer-code" rows={2} />
       <ShareCopy text={swap.code} kind="code" a={a} />
+      <RelayNote swap={swap} />
       <p class="vs-wait" data-testid="connecting">Connecting… {ageText(waited)}</p>
       {stale && <p class="note warn">This code is over 2 minutes old. If it doesn't connect, ask the Host for a new one.</p>}
       {slow && (
         <div class="vs-failed" data-testid="swap-slow">
           <p class="muted">No connection yet. If the Host has already pasted your code:</p>
           <h2>{FAIL_TITLE}</h2>
-          <p>{FAIL_TEXT}</p>
+          <p data-testid="fail-text">{failText(swap)}</p>
         </div>
       )}
       <div class="buttons">

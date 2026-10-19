@@ -21,6 +21,18 @@ describe('a Versus session', () => {
     expect(world.guest.session.status().mismatch).toEqual({ why: 'version', mine: 'e4f5a6b', rival: 'aaaaaaa' });
   });
 
+  it('says how the connection runs, as its transport says, and nothing where the transport can\'t tell', async () => {
+    const world = new World(NET);
+    await world.run(500);
+    expect(world.host.session.status().route).toBeNull();
+    let route: 'direct' | 'relayed' = 'relayed';
+    Object.defineProperty(world.pipe.ends[0], 'route', { get: () => route });
+    expect(world.host.session.status().route).toBe('relayed');
+    route = 'direct';
+    expect(world.host.session.status().route).toBe('direct');
+    expect(world.guest.session.status().route).toBeNull();
+  });
+
   it('ends the connection on a message it refuses', async () => {
     const world = new World(NET);
     await world.run(500);

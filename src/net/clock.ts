@@ -16,3 +16,6 @@ export const browserClock: Clock = {
     return () => clearInterval(handle);
   },
 };
+
+/** The time of day in ms since 1970, for what expires at one: the Relay's credentials (relay.ts). */
+export const wallClock = (): number => Date.now();

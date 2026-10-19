@@ -8,8 +8,8 @@ import { lwEndText } from '../src/ui/modes/linewars/text';
 import type { CodeSwap } from '../src/ui/versus/state';
 import { linkDown, versusRunOn, type VersusState } from '../src/ui/versus/state';
 import {
-  ageText, boardBanner, connectionLine, countdownSeconds, lostText, mismatchText, pauseView, raceChoices, rivalLobbyText,
-  sessionEndText, sessionRunEnd, STALE_MS, swapStale, swapTimedOut,
+  ageText, boardBanner, connectionLine, countdownSeconds, FAIL_TEXT, FAIL_TEXT_NO_RELAY, FAIL_TEXT_RELAYED, failText, lostText, mismatchText,
+  pauseView, raceChoices, RELAY_NOTE, rivalLobbyText, routeText, sessionEndText, sessionRunEnd, STALE_MS, swapStale, swapTimedOut,
 } from '../src/ui/versus/text';
 import { newRun } from './sim/linewars/helpers';
 
@@ -26,7 +26,7 @@ const LOCKSTEP: LockstepStatus = {
 
 function status(o: Partial<SessionStatus> = {}, run: Partial<LockstepStatus> | null = {}): SessionStatus {
   return {
-    phase: 'playing', role: 'host', side: 0, link: 'open', lastHeardMs: 20, ping: 42, delay: 3, slow: false,
+    phase: 'playing', role: 'host', side: 0, link: 'open', route: null, lastHeardMs: 20, ping: 42, delay: 3, slow: false,
     lobby: { mine: { race: 'ironclad', random: false, ready: false }, rival: { race: 'rimeborn', ready: false, here: true } },
     mismatch: null, outcome: null, canClaim: false, rivalAway: false, rivalBuild: 'bbbbbbb', rivalBrowser: 'Safari 26 · iOS',
     session: '0123456789abcdef', run: run === null ? null : { ...LOCKSTEP, ...run }, ...o,
@@ -38,7 +38,7 @@ function pause(o: Partial<PauseStatus> = {}): PauseStatus {
 }
 
 const swap = (o: Partial<CodeSwap>): CodeSwap => ({
-  role: 'host', step: 'offer', code: 'link', madeAt: 0, connectingAt: null, error: null, prefill: '', reconnect: false, ...o,
+  role: 'host', step: 'offer', code: 'link', madeAt: 0, connectingAt: null, error: null, prefill: '', reconnect: false, relay: 'none', rivalRelay: false, ...o,
 });
 
 describe('Versus links', () => {
@@ -111,6 +111,21 @@ describe('the code swap', () => {
     expect(swapTimedOut(swap({ step: 'offer' }), 10 * CONNECT_TIMEOUT_MS)).toBe(false);
   });
 
+  it('says why it couldn\'t connect: even the relay, the relay unreachable, or no relay at all (§3)', () => {
+    // A relay candidate in either code: the Relay was tried.
+    expect(failText(swap({ relay: 'offered' }))).toBe(FAIL_TEXT_RELAYED);
+    expect(failText(swap({ relay: 'unavailable', rivalRelay: true }))).toBe(FAIL_TEXT_RELAYED);
+    expect(failText(swap({ relay: 'none', rivalRelay: true }))).toBe(FAIL_TEXT_RELAYED);
+    expect(FAIL_TEXT_RELAYED).toMatch(/^Even the relay couldn't link you/);
+    // A Relay set up but in neither code, and no Relay at all, as before.
+    expect(failText(swap({ relay: 'unavailable' }))).toBe(FAIL_TEXT_NO_RELAY);
+    expect(failText(swap({ relay: 'unneeded' }))).toBe(FAIL_TEXT_NO_RELAY);
+    expect(FAIL_TEXT_NO_RELAY).toContain("the relay couldn't be reached");
+    expect(failText(swap({}))).toBe(FAIL_TEXT);
+    expect(FAIL_TEXT).toContain('Tavern TD has no relay server');
+    expect(RELAY_NOTE).toBe('Relay unavailable: only direct connections will work.');
+  });
+
   it('says what differs when the versions don\'t match, and when the Host\'s Run is gone', () => {
     expect(mismatchText({ why: 'version', mine: 'a1b2c3d', rival: 'e4f5a6b' }).text).toBe(
       "You have different versions of Tavern TD (yours a1b2c3d, the Rival's e4f5a6b). Update both: reload the web app, or reinstall the Android app.",
@@ -132,6 +147,11 @@ describe('the Lobby', () => {
     expect(rivalLobbyText({ ...lobby, rival: { race: null, ready: false, here: true } })).toBe('Picking…');
     expect(rivalLobbyText({ ...lobby, rival: { race: 'rimeborn', ready: false, here: false } })).toBe('Still on the end card');
   });
+
+  it('names the route beside the ping', () => {
+    expect(routeText('direct')).toBe('Direct');
+    expect(routeText('relayed')).toBe('Relayed');
+  });
 });
 
 describe('in a Run', () => {
@@ -146,6 +166,19 @@ describe('in a Run', () => {
     expect(connectionLine(status({ link: 'lost' }))).toEqual({ text: 'Connection lost', tone: 'error' });
     // Held at a pause is no wait.
     expect(connectionLine(status({}, { waitingMs: 3000, pause: pause() })).text).toBe('Ping 42 ms');
+  });
+
+  it('adds "· relayed" to the HUD\'s line while the Relay carries the connection, and nothing while it\'s Direct', () => {
+    const relayed = { route: 'relayed' } as const;
+    expect(connectionLine(status(relayed))).toEqual({ text: 'Ping 42 ms · relayed', tone: 'ok' });
+    expect(connectionLine(status({ ...relayed, ping: null })).text).toBe('Ping – · relayed');
+    expect(connectionLine(status(relayed, { waitingMs: 1000 })).text).toBe('Waiting for the Rival… · relayed');
+    expect(connectionLine(status({ ...relayed, link: 'unstable' })).text).toBe('Connection unstable… · relayed');
+    // Not where the line is about the Rival's app, or the connection is down.
+    expect(connectionLine(status({ ...relayed, rivalAway: true }, { waitingMs: 1500 })).text).toBe("The Rival's app is in the background");
+    expect(connectionLine(status({ ...relayed, link: 'lost' })).text).toBe('Connection lost');
+    expect(connectionLine(status({ ...relayed, link: 'connecting' })).text).toBe('Reconnecting…');
+    expect(connectionLine(status({ route: 'direct' })).text).toBe('Ping 42 ms');
   });
 
   it('puts a banner over the board for a repair, a pause on its way or a wait, and none while a sheet says it', () => {

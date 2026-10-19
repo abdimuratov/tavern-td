@@ -3,7 +3,9 @@ import {
   CodeError, decodeCode, encodeCode, formatIpv6, joinLink, parseIpv6, readCode, sdpFields, sdpFromCode,
   type CodeContent, type CodeKind, type CodeProblem,
 } from '../../src/net/codes';
-import { ANDROID_ANSWER, CHROME_IPV6_OFFER, CHROME_OFFER, FIREFOX_OFFER, SAFARI_ANSWER } from './fixtures';
+import {
+  ANDROID_ANSWER, CHROME_IPV6_OFFER, CHROME_OFFER, CHROME_RELAY_CANDIDATE, CHROME_RELAY_OFFER, FIREFOX_OFFER, SAFARI_ANSWER,
+} from './fixtures';
 
 const SIM = 'abcd1234';
 const SESSION = '0123456789abcdef';
@@ -34,9 +36,9 @@ describe('Join and Answer codes', () => {
         { kind: 'srflx', family: 'ipv4', address: '203.0.113.45', port: 54400 },
       ],
     });
-    // TCP and component 2 are dropped; hosts and server-reflexives alternate.
-    expect(sdpFields(CHROME_IPV6_OFFER).candidates.map((c) => `${c.kind}/${c.family}`)).toEqual(['host/mdns', 'srflx/ipv4', 'host/mdns', 'srflx/ipv6']);
-    expect(sdpFields(CHROME_IPV6_OFFER).candidates[3]!.address).toBe('2001:db8:85a3::8a2e:370:7334');
+    // TCP and component 2 are dropped; one of each kind, then the second server-reflexive before the second host.
+    expect(sdpFields(CHROME_IPV6_OFFER).candidates.map((c) => `${c.kind}/${c.family}`)).toEqual(['host/mdns', 'srflx/ipv4', 'srflx/ipv6', 'host/mdns']);
+    expect(sdpFields(CHROME_IPV6_OFFER).candidates[2]!.address).toBe('2001:db8:85a3::8a2e:370:7334');
     const firefox = sdpFields(FIREFOX_OFFER);
     expect(firefox.ufrag).toBe('5a7c9e1b');
     expect(firefox.pwd).toHaveLength(32);
@@ -79,6 +81,32 @@ describe('Join and Answer codes', () => {
     expect(sdpFields(sdp)).toEqual(fields);
     // Firefox's description too, with its session-level fingerprint.
     expect(sdpFields(sdpFromCode(sdpFields(FIREFOX_OFFER)))).toEqual(sdpFields(FIREFOX_OFFER));
+  });
+
+  it('carry a relay candidate, whose rebuilt line a browser takes, at a reasonable length', () => {
+    const fields = sdpFields(CHROME_RELAY_OFFER);
+    // The host, the server-reflexive, then both relays: the UDP allocation's first, as Chrome listed it.
+    expect(fields.candidates).toEqual([
+      { kind: 'host', family: 'mdns', address: '8c7a3f5e-2b1d-4e6f-9a0b-1c2d3e4f5a6b.local', port: 54400 },
+      { kind: 'srflx', family: 'ipv4', address: '203.0.113.45', port: 54400 },
+      { kind: 'relay', family: 'ipv4', address: '192.0.2.77', port: 61432 },
+      { kind: 'relay', family: 'ipv4', address: '192.0.2.77', port: 52011 },
+    ]);
+    // A relay candidate gets in beside two hosts and two server-reflexives, in place of the second host.
+    const withIpv6 = sdpFields(CHROME_IPV6_OFFER, [CHROME_RELAY_CANDIDATE]);
+    expect(withIpv6.candidates.map((c) => `${c.kind}/${c.family}`)).toEqual(['host/mdns', 'srflx/ipv4', 'relay/ipv4', 'srflx/ipv6']);
+
+    // Its rebuilt line: the lowest type preference, a related address as Firefox wants, and the same fields read back.
+    const lines = sdpFromCode(fields).split('\r\n').filter((l) => l.startsWith('a=candidate:'));
+    expect(lines[2]).toBe('a=candidate:3 1 udp 16776703 192.0.2.77 61432 typ relay raddr 0.0.0.0 rport 0');
+    expect(sdpFields(sdpFromCode(fields))).toEqual(fields);
+    const { text } = code(CHROME_RELAY_OFFER, 'join');
+    expect(decodeCode(text, 'join', SIM).candidates).toEqual(fields.candidates);
+
+    // 7 bytes a relay candidate: 117 bytes and 162 characters with two; one host, one server-reflexive and one relay make 153.
+    expect(text).toHaveLength(162);
+    expect(encodeCode({ kind: 'join', sim: SIM, session: null, ...fields, candidates: fields.candidates.slice(0, 3) })).toHaveLength(153);
+    expect(code(CHROME_IPV6_OFFER.replace('a=ice-ufrag', `a=${CHROME_RELAY_CANDIDATE}\r\na=ice-ufrag`), 'join').text).toHaveLength(178);
   });
 
   it('take a whole link, spaces and invisible characters, and say what\'s wrong with anything else', () => {

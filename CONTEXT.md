@@ -341,7 +341,7 @@ _Avoid_: overtime, endgame, drain mode
 ### Versus (Line Wars on two devices)
 
 **Versus**:
-Line Wars between two people on two devices, connected directly over WebRTC with no server. Each device runs the whole sim in lockstep, and they send each other only commands.
+Line Wars between two people on two devices, connected over WebRTC with no server of our own: directly where their networks allow, else through the Relay. Each device runs the whole sim in lockstep, and they send each other only commands.
 _Avoid_: multiplayer, online, PvP, match, netplay
 
 **Host**:
@@ -363,6 +363,10 @@ _Avoid_: invite, room code, password, offer (fine in code)
 **Answer code**:
 The Guest's text that the Host pastes back to finish connecting.
 _Avoid_: reply, response, answer on its own (fine in code)
+
+**Relay**:
+The TURN server that carries a Versus connection when the two devices can't reach each other directly: Cloudflare's, with short-lived credentials from our small Worker. It sees the two addresses and how much they send, never the commands. The connection's status says Relayed through it, or Direct.
+_Avoid_: TURN server (in player text; fine in code), proxy, server
 
 **Turn**:
 In Versus, three ticks (100 ms) that step together. No tick of a Turn steps until both players' Batches for it are in.

@@ -4,7 +4,7 @@ import { Sheet } from '../menu/Sheet';
 import { raceName } from '../modes/maul/text';
 import { SwapPanel } from './Codes';
 import { linkDown, versus, versusActions, type VersusActions, type VersusState } from './state';
-import { lostText, mismatchText, raceChoices, rivalLobbyText } from './text';
+import { lostText, mismatchText, raceChoices, rivalLobbyText, routeText } from './text';
 
 // Versus before and between Runs (docs/versus-design.md §2, §4.6): the Host's
 // and the Guest's code swaps, the Lobby, and the version message. The play
@@ -51,6 +51,11 @@ function Lobby({ v, st, a }: { v: VersusState; st: SessionStatus; a: VersusActio
         <div class="vs-lobby-line">
           <span class="option-label">Ping</span>
           <span data-testid="lobby-ping">{st.ping === null ? '–' : `${Math.round(st.ping)} ms`}</span>
+          {st.route && (
+            <span class="muted" data-testid="lobby-route" title="Straight between the two devices, or through the relay">
+              {routeText(st.route)}
+            </span>
+          )}
           {st.slow && <span class="warn" data-testid="lobby-slow">Slow connection: expect waits</span>}
         </div>
         <div class="buttons">

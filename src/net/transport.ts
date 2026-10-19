@@ -10,6 +10,13 @@
  */
 export type TransportState = 'connecting' | 'open' | 'unstable' | 'closed';
 
+/**
+ * How an open connection runs: `direct` between the two devices, or
+ * `relayed` through the Relay (docs/versus-design.md §2). Local UI state,
+ * never a message.
+ */
+export type Route = 'direct' | 'relayed';
+
 export interface Transport {
   readonly state: TransportState;
   /** Sends one message. Dropped unless the state is `open` or `unstable`. */
@@ -20,6 +27,10 @@ export interface Transport {
   onState(listener: (state: TransportState) => void): () => void;
   /** Closes it for good; the state becomes `closed`. */
   close(): void;
+  /** Once open, how it runs; null until known. A transport that can't tell (the tests' fake) leaves both out. */
+  readonly route?: Route | null;
+  /** Every change of route. Returns the unsubscribe. */
+  onRoute?(listener: (route: Route) => void): () => void;
 }
 
 /** True when a message sent now would go out. */

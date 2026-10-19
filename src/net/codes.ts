@@ -63,6 +63,8 @@ const PREFIX: Readonly<Record<CodeKind, string>> = { join: 'TTDJ', answer: 'TTDA
 const KIND_BYTE: Readonly<Record<CodeKind, number>> = { join: 1, answer: 2 };
 const SETUPS: readonly SetupRole[] = ['actpass', 'active', 'passive'];
 const KINDS: readonly CandidateKind[] = ['host', 'srflx', 'prflx', 'relay'];
+/** The order pick() takes a second of each kind and on. */
+const LATER_KINDS: readonly CandidateKind[] = ['srflx', 'host', 'prflx', 'relay'];
 const FAMILIES: readonly AddressFamily[] = ['ipv4', 'ipv6', 'mdns'];
 const MAX_CANDIDATES = 4;
 const FLAG_SESSION = 1;
@@ -136,12 +138,19 @@ export function parseCandidate(line: string): CodeCandidate | null {
   return null;
 }
 
-/** Up to four, taking a host, a server-reflexive, a peer-reflexive and a relay in turn, each in the browser's order. */
+/**
+ * Up to four, each kind in the browser's order: first a host, a
+ * server-reflexive, a peer-reflexive and a relay, then more of each in turn,
+ * server-reflexives first. So a relay candidate always gets in, and beside it
+ * an IPv6 server-reflexive, which reaches past the LAN, beats a second mDNS
+ * host, which doesn't.
+ */
 function pick(found: readonly CodeCandidate[]): CodeCandidate[] {
-  const groups = KINDS.map((k) => found.filter((c) => c.kind === k));
-  const out: CodeCandidate[] = [];
-  for (let round = 0; out.length < MAX_CANDIDATES && groups.some((g) => g.length > round); round++) {
-    for (const g of groups) if (g[round] && out.length < MAX_CANDIDATES) out.push(g[round]!);
+  const of = (k: CandidateKind): CodeCandidate[] => found.filter((c) => c.kind === k);
+  const out = KINDS.flatMap((k) => of(k).slice(0, 1));
+  const later = LATER_KINDS.map(of);
+  for (let round = 1; out.length < MAX_CANDIDATES && later.some((g) => g.length > round); round++) {
+    for (const g of later) if (g[round] && out.length < MAX_CANDIDATES) out.push(g[round]!);
   }
   return out;
 }

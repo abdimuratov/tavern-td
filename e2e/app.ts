@@ -179,3 +179,31 @@ export async function buildInField(page: Page, action: string, col: number, row:
   await tapAt(page, p.x, p.y);
   await expect.poll(async () => (await fieldSpecs(page, 0)).length).toBe(before + 1);
 }
+
+/**
+ * Versus' swap of codes, as two players make it (docs/versus-design.md §2):
+ * the Host makes a Join code, the Guest opens its link and answers, and the
+ * Answer code goes back. `whileUp` runs while both codes are on screen.
+ * Resolves once both pages are in the Lobby, with how long each code took
+ * from its button.
+ */
+export async function connectByCodes(host: Page, guest: Page, whileUp?: () => Promise<void>): Promise<{ joinMs: number; answerMs: number }> {
+  await host.goto('./');
+  await host.getByTestId('mode-linewars').getByTestId('versus-host').click();
+  let at = Date.now();
+  const linkBox = host.getByTestId('join-link');
+  await expect(linkBox).toHaveValue(/#join=TTDJ1\./, { timeout: 15_000 });
+  const joinMs = Date.now() - at;
+  await guest.goto('about:blank');
+  await guest.goto(await linkBox.inputValue());
+  await guest.getByTestId('join-go').click();
+  at = Date.now();
+  const answerBox = guest.getByTestId('answer-code');
+  await expect(answerBox).toHaveValue(/^TTDA1\./, { timeout: 15_000 });
+  const answerMs = Date.now() - at;
+  await whileUp?.();
+  await host.getByTestId('answer-paste').fill(await answerBox.inputValue());
+  await host.getByTestId('answer-accept').click();
+  for (const p of [host, guest]) await expect(p.getByTestId('lobby')).toBeVisible({ timeout: 20_000 });
+  return { joinMs, answerMs };
+}

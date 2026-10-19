@@ -1,6 +1,7 @@
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Page, Route } from '@playwright/test';
+import { createSocket } from 'node:dgram';
 import { encodeCode, type SdpFields } from '../src/net/codes';
-import { buildInField, spotCorner, tapAt, touch, worldPoint } from './app';
+import { buildInField, connectByCodes, spotCorner, tapAt, touch, worldPoint } from './app';
 import { expect, silenceAudio, test } from './fixtures';
 
 // Versus as two players play it (docs/versus-design.md §9): two browser
@@ -11,6 +12,9 @@ import { expect, silenceAudio, test } from './fixtures';
 // together on one tick and resume, and the Guest concedes: the Host's end
 // card and Versus Record show the win. Game time runs in real time here, as
 // the lockstep holds a device that's ahead, so the Sends wait for 0:20.
+// Two more tests give both pages a Relay that Playwright answers: one whose
+// TURN server can't be reached, and one that can't be fetched at all. Both
+// still connect directly. e2e/relay.spec.ts tries the real one.
 
 test.describe.configure({ timeout: 150_000 });
 
@@ -31,12 +35,12 @@ async function player(browser: Browser): Promise<Player> {
   return { context, page: await context.newPage() };
 }
 
-/** The Run as a page sees it: its tick, Viewer Side, and the session's and lockstep's status. */
+/** The Run as a page sees it: its tick, Viewer Side, and the session's and lockstep's status, with the route and the Relay. */
 function versusRun(page: Page) {
   return page.evaluate(() => {
     const t = window.tavern!;
     const st = t.versus!.status();
-    return { tick: t.controller.state.tick, viewer: t.viewer, phase: st.phase, link: st.link, run: st.run! };
+    return { tick: t.controller.state.tick, viewer: t.viewer, phase: st.phase, link: st.link, route: st.route, relay: st.relay, run: st.run! };
   });
 }
 
@@ -107,6 +111,8 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
     await expect(linkBox).toHaveValue(/#join=TTDJ1\./, { timeout: 15_000 });
     await expect(host.page.getByTestId('join-qr')).toBeVisible();
     await expect(host.page.getByTestId('code-age')).toHaveText(/^Made 0:0\d ago/);
+    // No Relay is set up here, so the code says nothing of one.
+    await expect(host.page.getByTestId('relay-note')).toHaveCount(0);
     const link = await linkBox.inputValue();
     expect(link.startsWith(new URL('./', host.page.url()).href)).toBe(true);
 
@@ -121,10 +127,13 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
     await expect(answerBox).toHaveValue(/^TTDA1\./, { timeout: 15_000 });
     await expect(guest.page.getByTestId('connecting')).toBeVisible();
 
-    // The Answer code goes back into the Host's page, and both reach the Lobby.
+    // The Answer code goes back into the Host's page, and both reach the Lobby, connected directly.
     await host.page.getByTestId('answer-paste').fill(await answerBox.inputValue());
     await host.page.getByTestId('answer-accept').click();
-    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby')).toBeVisible({ timeout: 20_000 });
+    for (const p of [host.page, guest.page]) {
+      await expect(p.getByTestId('lobby')).toBeVisible({ timeout: 20_000 });
+      await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
+    }
 
     // Each picks, sees the other's pick and the ping, and presses Ready; the Host's app starts the Run.
     await host.page.getByTestId('lobby-race-ironclad').click();
@@ -143,6 +152,7 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
     }
     expect((await versusRun(host.page)).viewer).toBe(0);
     expect((await versusRun(guest.page)).viewer).toBe(1);
+    for (const p of [host.page, guest.page]) expect(await versusRun(p)).toMatchObject({ route: 'direct', relay: { use: 'none', why: null } });
     await expect(guest.page.getByTestId('speed-1')).toHaveCount(0);
     await expect(guest.page.getByTestId('versus-line')).toHaveText(/^Ping \d+ ms$/);
     await expect(host.page.getByTestId('rival')).toHaveText('Rimeborn · +10');
@@ -236,6 +246,89 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
       await expect(row.locator('td').nth(3)).toHaveText('1');
       await expect(row.locator('td').nth(4)).toHaveText(won);
     }
+  } finally {
+    await host.context.close();
+    await guest.context.close();
+  }
+});
+
+/** The Relay both players' pages fetch in the next two tests; Playwright answers it, so nothing leaves the machine. */
+const FAKE_RELAY = 'https://relay.test/ice';
+
+/**
+ * A player with no STUN whose Relay is FAKE_RELAY, answered by `answer`.
+ * Service workers are blocked, so the page's own fetch is the one routed.
+ */
+async function relayPlayer(browser: Browser, answer: (route: Route) => Promise<void>): Promise<Player & { asked(): number }> {
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  await context.addInitScript(silenceAudio);
+  await context.addInitScript((url) => {
+    globalThis.TAVERN_ICE_SERVERS = [];
+    globalThis.TAVERN_RELAY_URL = url;
+  }, FAKE_RELAY);
+  const page = await context.newPage();
+  let asked = 0;
+  await page.route(FAKE_RELAY, (route) => {
+    asked++;
+    return answer(route);
+  });
+  return { context, page, asked: () => asked };
+}
+
+const desktopChromeOnly = (): void => {
+  test.skip(test.info().project.name !== 'mac-chrome', 'The Relay\'s paths run on desktop Chrome');
+};
+
+test('with a Relay whose TURN server never answers, gathering stops at its cap and the two connect directly', async ({ browser }) => {
+  desktopChromeOnly();
+  // What the Worker would answer, but its TURN server is a socket that drops every request, so no
+  // allocation ever fails or succeeds, and only the 5 s cap ends the Host's gathering. (With one on
+  // port 9, gathering finished at once and the cap went untested.) The Guest's ends as soon as it
+  // reaches the Host over loopback, since Chrome stops gathering once it has a working pair.
+  const silent = createSocket('udp4');
+  await new Promise<void>((resolve) => silent.bind(0, '127.0.0.1', resolve));
+  silent.on('message', () => {});
+  const turn = `turn:127.0.0.1:${silent.address().port}?transport=udp`;
+  const servers = { iceServers: [{ urls: [turn], username: 'tavern', credential: 'dummy' }], expiresAt: Date.now() + 6 * 3_600_000 };
+  const answer = (route: Route): Promise<void> => route.fulfill({
+    status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' }, body: JSON.stringify(servers),
+  });
+  const host = await relayPlayer(browser, answer);
+  const guest = await relayPlayer(browser, answer);
+  try {
+    const took = await connectByCodes(host.page, guest.page, async () => {
+      // No relay candidate came, so the Host's code says only direct connections will work. The
+      // Guest had already reached the Host when its gathering ended, so its code needs no relay.
+      await expect(host.page.getByTestId('relay-note')).toHaveText('Relay unavailable: only direct connections will work.');
+      await expect(guest.page.getByTestId('guest-swap')).toBeVisible();
+      await expect(guest.page.getByTestId('relay-note')).toHaveCount(0);
+    });
+    // Each asked the Relay (opening Host or Join fetched ahead). The Host waited for a relay
+    // candidate, as it wouldn't with no TURN server, until the 5 s cap stopped it.
+    expect(host.asked()).toBeGreaterThanOrEqual(1);
+    expect(guest.asked()).toBeGreaterThanOrEqual(1);
+    test.info().annotations.push({ type: 'gathering', description: `Join code ${took.joinMs} ms, Answer code ${took.answerMs} ms` });
+    expect(took.joinMs).toBeGreaterThanOrEqual(4500);
+    expect(took.joinMs).toBeLessThan(7000);
+    expect(took.answerMs).toBeLessThan(7000);
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
+  } finally {
+    await host.context.close();
+    await guest.context.close();
+    silent.close();
+  }
+});
+
+test('with a Relay that can\'t be fetched, the code screens say so and the two still connect directly', async ({ browser }) => {
+  desktopChromeOnly();
+  const host = await relayPlayer(browser, (route) => route.abort('internetdisconnected'));
+  const guest = await relayPlayer(browser, (route) => route.abort('internetdisconnected'));
+  try {
+    await connectByCodes(host.page, guest.page, async () => {
+      for (const p of [host.page, guest.page]) await expect(p.getByTestId('relay-note')).toHaveText('Relay unavailable: only direct connections will work.');
+    });
+    expect(host.asked()).toBeGreaterThanOrEqual(1);
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
   } finally {
     await host.context.close();
     await guest.context.close();

@@ -1,7 +1,7 @@
 import type { RaceId } from '../content/maul';
 import {
-  BUILD, CodeError, SIM_HASH, answerJoinCode, browserClock, createSession, decodeCode, joinLink, makeJoinCode,
-  type GuestLink, type HostLink, type Outcome, type Role, type Session, type SessionEvent, type SessionStatus, type SideId,
+  BUILD, CodeError, SIM_HASH, answerJoinCode, browserClock, createSession, decodeCode, getRelay, joinLink, makeJoinCode,
+  type CodeRelay, type GuestLink, type HostLink, type Outcome, type Role, type Session, type SessionEvent, type SessionStatus, type SideId,
   type Transport, type VersusRun,
 } from '../net';
 import { onBackground, onForeground } from '../platform/lifecycle';
@@ -17,12 +17,25 @@ import { browserName, linkBase } from './versus-link';
 // the code swaps by hand that connect it (the first and every Reconnect), the
 // Lobby, and the play screen started with the lockstep as its tick source and
 // the device's Side as its Viewer Side. The screens in src/ui/versus read
-// what this writes to `versus` and call `versusActions`.
+// what this writes to `versus` and call `versusActions`. Opening Host or Join
+// fetches the Relay's credentials ahead, so they're in hand for the code.
+
+/** What window.tavern.versus.status() adds to the session's status. */
+export interface VersusDebugStatus extends SessionStatus {
+  /** How the Relay stood for this device's latest code; null before one. */
+  readonly relay: CodeRelay | null;
+  /** The Rival's code held a relay candidate. */
+  readonly rivalRelay: boolean;
+}
 
 /** What the e2e tests and the Safari inspector read of a Versus Run, beside window.tavern. */
 export interface VersusDebug {
-  /** The session as it stands: its phase, the link, the lockstep's status with the last hash check (`run.agreed`). */
-  status(): SessionStatus;
+  /**
+   * The session as it stands: its phase, the link and its route (Direct or
+   * Relayed), the lockstep's status with the last hash check (`run.agreed`),
+   * and how the Relay stood for the codes.
+   */
+  status(): VersusDebugStatus;
   /** This device's Side, which is also its Viewer Side. */
   readonly side: SideId;
 }
@@ -46,7 +59,7 @@ const POLL_MS = 250;
 const CONCEDE_FLUSH_MS = 300;
 
 const blankSwap = (role: Role, step: CodeSwap['step'], reconnect: boolean, prefill = ''): CodeSwap => ({
-  role, step, code: null, madeAt: null, connectingAt: null, error: null, prefill, reconnect,
+  role, step, code: null, madeAt: null, connectingAt: null, error: null, prefill, reconnect, relay: 'none', rivalRelay: false,
 });
 
 const isOpen = (t: Transport | undefined): boolean => t?.state === 'open' || t?.state === 'unstable';
@@ -117,10 +130,19 @@ export function createVersus(shell: VersusShell) {
     return s;
   }
 
-  /** Follows a swap's transport, so the screens move on the moment it opens or fails. */
+  /** Follows a swap's transport, so the screens move on the moment it opens or fails, and show its route once known. */
   function watch(t: Transport): void {
     offTransport?.();
-    offTransport = t.onState(() => publish());
+    const offs = [t.onState(() => publish()), t.onRoute?.(() => publish())];
+    offTransport = () => {
+      for (const off of offs) off?.();
+    };
+  }
+
+  /** The session's status for window.tavern, with how the Relay stood for the current connection's codes. */
+  function debugStatus(s: Session): VersusDebugStatus {
+    const link = role === 'host' ? hostLink : guestLink;
+    return { ...s.status(), relay: link?.relay ?? null, rivalRelay: link?.rivalRelay ?? false };
   }
 
   function onEvent(s: Session, e: SessionEvent): void {
@@ -154,7 +176,7 @@ export function createVersus(shell: VersusShell) {
         onPause: () => s.pause(),
         onQuit: () => leave(),
         inFlight: () => run.lockstep.inFlight().map((x) => x.command),
-      }, { status: () => s.status(), side: run.side }, () => my === runSeq && session === s);
+      }, { status: () => debugStatus(s), side: run.side }, () => my === runSeq && session === s);
       if (!p) return;
       play = p;
       // Resyncs, rejoins and reports go through the controller; a rejoin adopts the Host's state right here.
@@ -238,7 +260,7 @@ export function createVersus(shell: VersusShell) {
       watch(link.transport);
       // Attached now: Hello goes out the moment the channel opens. The old connection, if any, is closed.
       s.attach(link.transport);
-      swap = { ...blankSwap('host', 'offer', reconnect), code: joinLink(base, link.code), madeAt: performance.now() };
+      swap = { ...blankSwap('host', 'offer', reconnect), code: joinLink(base, link.code), madeAt: performance.now(), relay: link.relay.use };
     } catch (err) {
       console.error('[versus] could not make a Join code', err);
       if (my === swapSeq) swap = { ...blankSwap('host', 'failed', reconnect), error: errorText(err) };
@@ -253,7 +275,7 @@ export function createVersus(shell: VersusShell) {
     try {
       await link.accept(text);
       if (swap !== at) return;
-      swap = { ...at, step: 'connecting', connectingAt: performance.now(), error: null };
+      swap = { ...at, step: 'connecting', connectingAt: performance.now(), error: null, rivalRelay: link.rivalRelay };
     } catch (err) {
       if (swap !== at) return;
       swap = { ...at, error: err instanceof CodeError ? err.message : "That Answer code didn't work. Ask the Rival to make a new one." };
@@ -301,7 +323,9 @@ export function createVersus(shell: VersusShell) {
       watch(link.transport);
       s.attach(link.transport);
       const now = performance.now();
-      swap = { ...at, step: 'answer', code: link.code, madeAt: now, connectingAt: now, prefill: text, error: null };
+      swap = {
+        ...at, step: 'answer', code: link.code, madeAt: now, connectingAt: now, prefill: text, error: null, relay: link.relay.use, rivalRelay: link.rivalRelay,
+      };
     } catch (err) {
       console.error('[versus] could not answer the Join code', err);
       if (my === swapSeq) swap = { ...at, step: 'paste', prefill: text, error: errorText(err) };
@@ -313,6 +337,7 @@ export function createVersus(shell: VersusShell) {
 
   function host(): void {
     closeAll();
+    void getRelay();
     role = 'host';
     newSession('host');
     startPolling();
@@ -322,6 +347,8 @@ export function createVersus(shell: VersusShell) {
 
   /** The Join box: from the menu, or a link (boot, or a link opened while the app is up). */
   function openJoin(code = ''): void {
+    // Fetched ahead, so the credentials are usually in hand by the time the code is pasted.
+    void getRelay();
     // A Guest with a Lobby or a Run in memory takes the link as its Reconnect's code.
     if (session && role === 'guest' && session.status().phase !== 'connecting') {
       if (session.status().link !== 'lost') return;
@@ -397,6 +424,7 @@ export function createVersus(shell: VersusShell) {
       } else if (role === 'host') {
         void makeCode(true);
       } else {
+        void getRelay();
         swapSeq++;
         swap = blankSwap('guest', 'paste', true);
         rejoin = false;
