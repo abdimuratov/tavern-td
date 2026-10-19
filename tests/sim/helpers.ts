@@ -1,6 +1,6 @@
 import '../../src/sim/testing';
 import {
-  addTower, cellOf, createRun, spawnCreep, step,
+  addTower, cellOf, createRun, restore, spawnCreep, step,
   type Cell, type Command, type Creep, type GameState, type MapSpec, type RunOptions, type SimEvent, type Tower,
 } from '../../src/sim';
 import type { TestModeState } from '../../src/sim/testing';
@@ -54,4 +54,35 @@ export function creepAt(state: GameState, spec: string, x: number, y: number, hp
 
 export function towerAt(state: GameState, spec: string, col: number, row: number): Tower {
   return addTower(state, spec, cellOf(state.map, col, row), []);
+}
+
+/**
+ * Step times, in ms, for `ticks` ticks played from a snapshot, each the least
+ * over `passes` plays from a fresh copy: the steady cost of each tick, with
+ * GC pauses and other noise on a busy machine filtered out. `prepare` runs on
+ * each copy first (to build caches a running game would already hold), and
+ * `commands` gives each tick's commands. Also returns the last play's state.
+ */
+export function steadyTicks(
+  json: string, ticks: number, passes: number,
+  o: { prepare?(state: GameState): void; commands?(state: GameState): readonly Command[] } = {},
+): { times: number[]; state: GameState } {
+  const times = new Array<number>(ticks).fill(Infinity);
+  let state = restore(json);
+  for (let p = 0; p < passes; p++) {
+    state = restore(json);
+    o.prepare?.(state);
+    for (let i = 0; i < ticks; i++) {
+      const commands = o.commands?.(state) ?? [];
+      const t0 = performance.now();
+      step(state, commands);
+      const ms = performance.now() - t0;
+      if (ms < times[i]!) times[i] = ms;
+    }
+  }
+  return { times, state };
+}
+
+export function mean(xs: readonly number[]): number {
+  return xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 }

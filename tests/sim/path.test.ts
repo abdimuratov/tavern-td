@@ -4,6 +4,9 @@ import {
   removeTower, routeCells, spawnCount, validateMap, wouldBlock,
   type GameState, type MapSpec,
 } from '../../src/sim';
+import { GEM_MAP } from '../../src/content/gem';
+import { LW_MAP } from '../../src/content/linewars';
+import { MAUL_MAP } from '../../src/content/maul';
 import { TEST_MAP } from '../../src/sim/testing';
 import { creepAt, newRun, ofType, openMap, run, runUntil, towerAt } from './helpers';
 
@@ -88,6 +91,123 @@ describe('flow fields', () => {
     removeTower(s, tower.id, []);
     expect(s.pathVersion).toBe(version + 2);
     expect(pathDistance(s, 0, 0)).toBe(4);
+  });
+});
+
+/**
+ * The flow fields as first written, kept as the reference the fast build must
+ * match bit for bit: a binary heap that takes a cell again rather than
+ * lowering it, and every step checked on the spot. Open means walkable terrain
+ * with nothing on the grid.
+ */
+function referenceFields(s: GameState): { dist: Float64Array[]; next: Int32Array[] } {
+  const { cols, rows } = s.map;
+  const size = cols * rows;
+  const DC = [0, 1, 0, -1, 1, 1, -1, -1];
+  const DR = [-1, 0, 1, 0, -1, 1, 1, -1];
+  const STEP = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
+  const open = new Uint8Array(size);
+  for (let i = 0; i < size; i++) open[i] = s.map.terrain[Math.floor(i / cols)]![i % cols] !== '#' && s.grid[i] === 0 ? 1 : 0;
+  const canStep = (u: number, k: number): number => {
+    const c = u % cols;
+    const r = (u - c) / cols;
+    const nc = c + DC[k]!;
+    const nr = r + DR[k]!;
+    if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) return -1;
+    const n = nr * cols + nc;
+    if (open[n] !== 1) return -1;
+    if (k >= 4 && (open[r * cols + nc] !== 1 || open[nr * cols + c] !== 1)) return -1;
+    return n;
+  };
+  const dist: Float64Array[] = [];
+  const next: Int32Array[] = [];
+  for (const region of s.map.waypoints) {
+    const d = new Float64Array(size).fill(Infinity);
+    // A binary heap of [key, cell], least key first, then least cell.
+    const heap: [number, number][] = [];
+    const less = (a: [number, number], b: [number, number]): boolean => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+    const push = (item: [number, number]): void => {
+      let i = heap.push(item) - 1;
+      while (i > 0 && less(heap[i]!, heap[(i - 1) >> 1]!)) {
+        [heap[i], heap[(i - 1) >> 1]] = [heap[(i - 1) >> 1]!, heap[i]!];
+        i = (i - 1) >> 1;
+      }
+    };
+    const pop = (): [number, number] => {
+      const top = heap[0]!;
+      const last = heap.pop()!;
+      if (heap.length > 0) {
+        heap[0] = last;
+        for (let i = 0; ;) {
+          const l = 2 * i + 1;
+          const m = l + 1 < heap.length && less(heap[l + 1]!, heap[l]!) ? l + 1 : l;
+          if (l >= heap.length || !less(heap[m]!, heap[i]!)) break;
+          [heap[i], heap[m]] = [heap[m]!, heap[i]!];
+          i = m;
+        }
+      }
+      return top;
+    };
+    for (const [c, r] of region) {
+      const t = r * cols + c;
+      if (open[t] === 1 && d[t] !== 0) {
+        d[t] = 0;
+        push([0, t]);
+      }
+    }
+    while (heap.length > 0) {
+      const [key, u] = pop();
+      if (key > d[u]!) continue;
+      for (let k = 0; k < 8; k++) {
+        const v = canStep(u, k);
+        if (v < 0) continue;
+        const nd = key + STEP[k]!;
+        if (nd < d[v]!) {
+          d[v] = nd;
+          push([nd, v]);
+        }
+      }
+    }
+    const n = new Int32Array(size).fill(-1);
+    for (let u = 0; u < size; u++) {
+      if (open[u] !== 1 || d[u] === 0 || d[u] === Infinity) continue;
+      let bestLen = Infinity;
+      for (let k = 0; k < 8; k++) {
+        const v = canStep(u, k);
+        if (v < 0) continue;
+        if (d[v]! + STEP[k]! < bestLen - 1e-9) {
+          n[u] = v;
+          bestLen = d[v]! + STEP[k]!;
+        }
+      }
+    }
+    dist.push(d);
+    next.push(n);
+  }
+  return { dist, next };
+}
+
+describe('the flow field build', () => {
+  it('gives exactly the distances and steps of a plain Dijkstra, on every mazing Map with cells closed at random', () => {
+    let seed = 12345;
+    const random = (): number => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      return seed / 0x100000000;
+    };
+    for (const [name, map, share] of [['test', TEST_MAP, 0.3], ['gem', GEM_MAP, 0.15], ['maul', MAUL_MAP, 0.25], ['linewars', LW_MAP, 0.35], ['twin rooms', openMap(9, 7, [0, 0], [[[8, 0]], [[0, 6]], [[8, 6]]], [[4, 0], [4, 1], [4, 2], [4, 4], [4, 5], [4, 6]]), 0.2]] as const) {
+      const s = newRun({ map });
+      for (let round = 0; round < 3; round++) {
+        for (let i = 0; i < s.grid.length; i++) s.grid[i] = map.terrain[Math.floor(i / map.cols)]![i % map.cols] === '.' && random() < share ? 999_999 : 0;
+        s.pathVersion++;
+        const ref = referenceFields(s);
+        ref.dist.forEach((d, seg) => {
+          for (let cell = 0; cell < d.length; cell++) {
+            if (!Object.is(pathDistance(s, seg, cell), d[cell])) throw new Error(`${name}: distance of cell ${cell} to region ${seg}`);
+            if (nextCell(s, seg, cell) !== ref.next[seg]![cell]) throw new Error(`${name}: step from cell ${cell} toward region ${seg}`);
+          }
+        });
+      }
+    }
   });
 });
 

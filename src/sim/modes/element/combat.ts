@@ -107,15 +107,19 @@ export function targetable(creep: Creep): boolean {
   return creep.hp > 0 && !isDead(creep) && !hasStatus(creep.status, SHIELD);
 }
 
-/** Targetable creeps within `radius` of a point (centre distance, assumed), in spawn order. */
+/**
+ * Targetable creeps within `radius` of a point (centre distance, assumed), in
+ * spawn order. Distance is checked first: it is cheap, while targetable()
+ * reads every status a creep carries, and stacked DoTs make those lists long.
+ */
 export function creepsInArea(state: GameState, x: number, y: number, radius: number, except?: Creep): Creep[] {
   const r2 = radius * radius;
   const out: Creep[] = [];
   for (const c of state.creeps) {
-    if (c === except || !targetable(c)) continue;
+    if (c === except) continue;
     const dx = c.x - x;
     const dy = c.y - y;
-    if (dx * dx + dy * dy <= r2) out.push(c);
+    if (dx * dx + dy * dy <= r2 && targetable(c)) out.push(c);
   }
   return out;
 }

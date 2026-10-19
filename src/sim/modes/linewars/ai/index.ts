@@ -18,7 +18,7 @@ import { lwNextOf } from '../build';
 import { applyLwCommand } from '../commands';
 import { sendHp, sendIncome, sendLocked, suddenTick, unlockTick } from '../sends';
 import { creepField, lwState, modeEvent, other, payOf, ticks, type LwAi, type LwSide, type SideId } from '../state';
-import { ARMORS, airTailCover, armorIndex, coverAt, fieldMap, potential, potentialLeft, profileOf, type FieldMap } from './field';
+import { ARMORS, airTailCover, armorIndex, coverAt, fieldMap, potential, potentialLeft, profileOf, type FieldMap, type RouteLine } from './field';
 
 // The Rival's AI (docs/line-wars-design.md §11). It is sim code under
 // ADR-0002: it runs inside the tick after the logged commands, reads only the
@@ -157,8 +157,13 @@ interface Slot {
   readonly row: number;
 }
 
+/** Each AI memory's blueprint slots: its flip, skips and rows are drawn once at the start, so they never change. */
+const slotLists = new WeakMap<LwAi, readonly Slot[]>();
+
 /** The blueprint's Walls on the Map for this Side, in build order, with Easy's skips and unused rows left out. */
-function slots(m: Mind): Slot[] {
+function slots(m: Mind): readonly Slot[] {
+  const cached = slotLists.get(m.ai);
+  if (cached) return cached;
   const limit = m.profile.rows * ROW_WALLS;
   const skip = new Set(m.ai.skip);
   const out: Slot[] = [];
@@ -168,6 +173,7 @@ function slots(m: Mind): Slot[] {
     const b = mapCol(m.side, local + 1);
     out.push({ index, col: Math.min(a, b), row: FIELD_ROWS[0] + row });
   });
+  slotLists.set(m.ai, out);
   return out;
 }
 
@@ -239,15 +245,19 @@ const CREEP_OF: Readonly<Record<SendId, { readonly armorType: ArmorType; readonl
 const LIGHT = armorIndex('light');
 
 /** What a tower of `spec` standing where `at` stands is worth to the AI: its DPS against the mix times the route and air it covers. */
-function worth(fm: FieldMap, cache: Map<string, { ground: number; air: number }>, spec: string, at: Tower, ley: number, mix: Mix): number {
+function worth(fm: FieldMap, cache: CoverCache, spec: string, at: Tower, ley: number, mix: Mix): number {
   const p = profileOf(spec);
   const W = LW_AI_WEIGHTS;
-  const cover = (r: number): { ground: number; air: number } => {
-    const key = `${at.id}:${r}`;
-    let c = cache.get(key);
+  const cover = (r: number): Cover => {
+    let byRadius = cache.get(at.id);
+    if (!byRadius) {
+      byRadius = new Map();
+      cache.set(at.id, byRadius);
+    }
+    let c = byRadius.get(r);
     if (!c) {
       c = coverAt(fm, at.x, at.y, r);
-      cache.set(key, c);
+      byRadius.set(r, c);
     }
     return c;
   };
@@ -269,36 +279,36 @@ function worth(fm: FieldMap, cache: Map<string, { ground: number; air: number }>
   return v;
 }
 
-/**
- * How much route and air line each tower covers at each radius. Towers never
- * move and upgrades never change the route, so it is kept until the path
- * changes: derived data keyed by the state, as flow fields are.
- */
-const covers = new WeakMap<GameState, [CoverCache | null, CoverCache | null]>();
-
-interface CoverCache {
-  readonly pathVersion: number;
-  readonly map: Map<string, { ground: number; air: number }>;
+interface Cover {
+  readonly ground: number;
+  readonly air: number;
 }
 
-function coverCache(m: Mind): Map<string, { ground: number; air: number }> {
-  let pair = covers.get(m.state);
-  if (!pair) {
-    pair = [null, null];
-    covers.set(m.state, pair);
+/** Cover by tower id, then radius. */
+type CoverCache = Map<number, Map<number, Cover>>;
+
+/**
+ * How much route and air line each tower covers at each radius. Towers never
+ * move, ids are never reused and upgrades never change the route, so it is
+ * kept for as long as the Field's route stays the same: derived data, as flow
+ * fields are.
+ */
+const covers = new WeakMap<RouteLine, CoverCache>();
+
+function coverCache(fm: FieldMap): CoverCache {
+  let cache = covers.get(fm.route);
+  if (!cache) {
+    cache = new Map();
+    covers.set(fm.route, cache);
   }
-  const cached = pair[m.side];
-  if (cached && cached.pathVersion === m.state.pathVersion) return cached.map;
-  const fresh: CoverCache = { pathVersion: m.state.pathVersion, map: new Map() };
-  pair[m.side] = fresh;
-  return fresh.map;
+  return cache;
 }
 
 /** Every upgrade its towers could take now, best value per gold first (§11.3). */
 function upgradeList(m: Mind): readonly Upgrade[] {
   if (m.upgrades && m.upgrades.version === m.me.version) return m.upgrades.list;
   const fm = ownMap(m);
-  const cache = coverCache(m);
+  const cache = coverCache(fm);
   const mix = mixOf(m);
   const list: Upgrade[] = [];
   fm.towers.forEach((t, i) => {
@@ -407,24 +417,28 @@ function maze(m: Mind): Action {
 
 // --- Rule 4: the air guard -----------------------------------------------------
 
-function airGuard(m: Mind): Action {
-  const { state, me, profile } = m;
-  if (profile.airFrom === null && me.airLeaks === 0) return undefined;
-  const from = profile.airFrom ?? 0;
-  let need = 0;
-  for (const [at, towers] of AIR_GUARD) if (state.tick >= ticks(Math.max(at, from))) need = towers;
-  if (need === 0) return undefined;
-  const fm = ownMap(m);
+interface AirGuardView {
+  /** Tier 1+ towers that hit air over the air line's tail. */
+  readonly have: number;
+  /** The Wall upgrade that would cover most of the tail, cheapest on a tie; null for none. */
+  readonly best: { readonly tower: Tower; readonly to: string; readonly cover: number; readonly price: number } | null;
+}
+
+/** The air guard's view of a Field map: its towers and the Race's tree alone decide it, so it is kept with the map. */
+const airGuardViews = new WeakMap<FieldMap, AirGuardView>();
+
+function airGuardView(m: Mind, fm: FieldMap): AirGuardView {
+  const cached = airGuardViews.get(fm);
+  if (cached) return cached;
   let have = 0;
   for (const t of fm.towers) {
     const p = profileOf(t.spec);
     if (MAUL_TOWERS[t.spec]!.maul.tier >= 1 && p.air && airTailCover(fm, t.x, t.y, p.range, AIR_GUARD_SPAN) > 0) have++;
   }
-  if (have >= need) return undefined;
-  let best: { tower: Tower; to: string; cover: number; price: number } | null = null;
+  let best: AirGuardView['best'] = null;
   for (const t of fm.towers) {
     if (MAUL_TOWERS[t.spec]!.maul.tier !== 0) continue;
-    for (const to of lwNextOf(state, m.side, t.spec)) {
+    for (const to of lwNextOf(m.state, m.side, t.spec)) {
       const p = profileOf(to);
       if (!p.air) continue;
       const cover = airTailCover(fm, t.x, t.y, p.range, AIR_GUARD_SPAN);
@@ -432,6 +446,20 @@ function airGuard(m: Mind): Action {
       if (cover > 0 && (!best || cover > best.cover || (cover === best.cover && price < best.price))) best = { tower: t, to, cover, price };
     }
   }
+  const view: AirGuardView = { have, best };
+  airGuardViews.set(fm, view);
+  return view;
+}
+
+function airGuard(m: Mind): Action {
+  const { state, me, profile } = m;
+  if (profile.airFrom === null && me.airLeaks === 0) return undefined;
+  const from = profile.airFrom ?? 0;
+  let need = 0;
+  for (const [at, towers] of AIR_GUARD) if (state.tick >= ticks(Math.max(at, from))) need = towers;
+  if (need === 0) return undefined;
+  const { have, best } = airGuardView(m, ownMap(m));
+  if (have >= need) return undefined;
   if (!best) return undefined;
   if (best.price > free(m)) return HOLD;
   return act({ type: 'lw.upgrade', side: m.side, tower: best.tower.id, to: best.to });

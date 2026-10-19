@@ -3,17 +3,25 @@ import { placementError } from './block';
 import { mapData, nearestPart, openCells, walkOverIds, type MapData, type Point } from './grid';
 
 // One flow field per route segment: the octile distance from every cell to that
-// segment's waypoint region, plus the downhill neighbour to step to. Fields are
-// derived data, so they live in a cache keyed by the state object and rebuild
-// when `pathVersion` moves; a JSON-restored state rebuilds identical ones.
+// segment's waypoint region, plus the downhill neighbour to step to, worked out
+// the first time a cell asks. Fields are derived data, so they live in a cache
+// keyed by the state object and rebuild when `pathVersion` moves; a
+// JSON-restored state rebuilds identical ones.
 
-export interface Flow {
+export interface Flow extends Fields {
   readonly version: number;
   readonly map: GameState['map'];
+}
+
+/** A build's fields. Read a cell's next step through stepOf(), which works it out the first time it's asked. */
+interface Fields {
   /** dist[segment][cell]; Infinity where the region can't be reached. */
   readonly dist: readonly Float64Array[];
-  /** next[segment][cell]: the neighbour to step to, -1 inside the region or when unreachable. */
+  /** next[segment][cell]: the neighbour to step to, -1 inside the region or when unreachable, NOT_YET until asked. */
   readonly next: readonly Int32Array[];
+  /** Each cell's open steps (stepMasks) and its neighbours, for working out a next step. */
+  readonly moves: Uint8Array;
+  readonly nb: Int32Array;
 }
 
 /** Neighbour offsets: N, E, S, W, then NE, SE, SW, NW. Orthogonal first breaks ties toward straight steps. */
@@ -34,137 +42,143 @@ export function flow(state: GameState): Flow {
   return built;
 }
 
-function fields(md: MapData, open: Uint8Array): Pick<Flow, 'dist' | 'next'> {
+/** A next step not worked out yet. */
+const NOT_YET = -2;
+
+function fields(md: MapData, open: Uint8Array): Fields {
   const dist: Float64Array[] = [];
   const next: Int32Array[] = [];
+  const nb = neighbours(md);
+  const moves = stepMasks(md, open, nb);
+  const done = new Uint8Array(md.size);
   for (const region of md.regions) {
-    const d = distances(md, open, region);
-    dist.push(d);
-    next.push(downhill(md, open, d));
+    dist.push(distances(md, open, region, nb, moves, done));
+    next.push(new Int32Array(md.size).fill(NOT_YET));
   }
-  return { dist, next };
+  return { dist, next, moves, nb };
 }
 
-/** Whether a step from (c, r) in direction k stays on open cells without cutting a corner. */
-function canStep(md: MapData, open: Uint8Array, c: number, r: number, k: number): number {
-  const nc = c + DC[k]!;
-  const nr = r + DR[k]!;
-  if (nc < 0 || nr < 0 || nc >= md.cols || nr >= md.rows) return -1;
-  const n = nr * md.cols + nc;
-  if (open[n] !== 1) return -1;
-  if (k >= 4 && (open[r * md.cols + nc] !== 1 || open[nr * md.cols + c] !== 1)) return -1;
-  return n;
-}
+/** For a diagonal step k, the two straight neighbours it passes between (no corner cutting): the column step's, then the row step's. */
+const SIDE_A = [0, 0, 0, 0, 1, 1, 3, 3] as const;
+const SIDE_B = [0, 0, 0, 0, 0, 2, 2, 0] as const;
 
-/** Dijkstra from the region outward. Moves are symmetric, so distance to the region equals distance from it. */
-function distances(md: MapData, open: Uint8Array, targets: Int32Array): Float64Array {
-  const dist = new Float64Array(md.size).fill(Infinity);
-  const heap = new MinHeap();
-  for (const t of targets) {
-    if (open[t] === 1 && dist[t] !== 0) {
-      dist[t] = 0;
-      heap.push(0, t);
-    }
-  }
-  while (heap.size > 0) {
-    const d = heap.peekKey();
-    const u = heap.pop();
-    if (d > dist[u]!) continue;
+const neighbourCache = new WeakMap<MapData, Int32Array>();
+
+/** Every cell's 8 neighbours in DC/DR order, -1 off the Map: entry cell × 8 + k. Derived from the Map's size alone. */
+function neighbours(md: MapData): Int32Array {
+  const cached = neighbourCache.get(md);
+  if (cached) return cached;
+  const nb = new Int32Array(md.size * 8);
+  for (let u = 0; u < md.size; u++) {
     const c = u % md.cols;
     const r = (u - c) / md.cols;
     for (let k = 0; k < 8; k++) {
-      const v = canStep(md, open, c, r, k);
-      if (v < 0) continue;
-      const nd = d + STEP[k]!;
-      if (nd < dist[v]!) {
-        dist[v] = nd;
-        heap.push(nd, v);
+      const nc = c + DC[k]!;
+      const nr = r + DR[k]!;
+      nb[u * 8 + k] = nc < 0 || nr < 0 || nc >= md.cols || nr >= md.rows ? -1 : nr * md.cols + nc;
+    }
+  }
+  neighbourCache.set(md, nb);
+  return nb;
+}
+
+/**
+ * Per cell, bit k set when a step in direction k stays on open cells without
+ * cutting a corner: worked out once per build and shared by every region.
+ */
+function stepMasks(md: MapData, open: Uint8Array, nb: Int32Array): Uint8Array {
+  const moves = new Uint8Array(md.size);
+  for (let u = 0; u < md.size; u++) {
+    if (open[u] !== 1) continue;
+    let m = 0;
+    for (let k = 0; k < 8; k++) {
+      const v = nb[u * 8 + k]!;
+      if (v < 0 || open[v] !== 1) continue;
+      if (k >= 4 && (open[nb[u * 8 + SIDE_A[k]!]!] !== 1 || open[nb[u * 8 + SIDE_B[k]!]!] !== 1)) continue;
+      m |= 1 << k;
+    }
+    moves[u] = m;
+  }
+  return moves;
+}
+
+/**
+ * Dijkstra from the region outward. Moves are symmetric, so distance to the
+ * region equals distance from it. A cell's distance is the least of its
+ * neighbours' distances plus the step, so every correct Dijkstra gives the
+ * same floats; this one keeps its queue in buckets one cell wide. Every step
+ * is at least 1, so a cell's best neighbour sits in an earlier bucket and two
+ * cells in one bucket never shorten each other: a bucket's cells are final
+ * when it is reached, in any order, and new ones land one or two buckets on,
+ * so three buckets in a ring hold the queue.
+ */
+function distances(md: MapData, open: Uint8Array, targets: Int32Array, nb: Int32Array, moves: Uint8Array, done: Uint8Array): Float64Array {
+  const dist = new Float64Array(md.size).fill(Infinity);
+  done.fill(0);
+  const ring: number[][] = [[], [], []];
+  let queued = 0;
+  for (const t of targets) {
+    if (open[t] === 1 && dist[t] !== 0) {
+      dist[t] = 0;
+      ring[0]!.push(t);
+      queued++;
+    }
+  }
+  for (let b = 0; queued > 0; b++) {
+    const bucket = ring[b % 3]!;
+    // Nothing joins this bucket while it is read: every new distance is at least b + 1.
+    for (let i = 0; i < bucket.length; i++) {
+      const u = bucket[i]!;
+      if (done[u] === 1) continue;
+      done[u] = 1;
+      const d = dist[u]!;
+      const m = moves[u]!;
+      for (let k = 0; k < 8; k++) {
+        if ((m & (1 << k)) === 0) continue;
+        const v = nb[u * 8 + k]!;
+        const nd = d + STEP[k]!;
+        if (nd < dist[v]!) {
+          dist[v] = nd;
+          ring[Math.floor(nd) % 3]!.push(v);
+          queued++;
+        }
       }
     }
+    queued -= bucket.length;
+    bucket.length = 0;
   }
   return dist;
 }
 
-function downhill(md: MapData, open: Uint8Array, dist: Float64Array): Int32Array {
-  const next = new Int32Array(md.size).fill(-1);
-  for (let u = 0; u < md.size; u++) {
-    const du = dist[u]!;
-    if (open[u] !== 1 || du === 0 || du === Infinity) continue;
-    const c = u % md.cols;
-    const r = (u - c) / md.cols;
-    let best = -1;
+/**
+ * The neighbour a ground creep in `cell` heading for region `segment` steps
+ * to: the open neighbour with the shortest way on, straight steps first on a
+ * tie; -1 inside the region or when it can't be reached. Worked out the first
+ * time a cell is asked and kept, since creeps and routes visit few cells.
+ */
+export function stepOf(fl: Fields, segment: number, cell: number): number {
+  const next = fl.next[segment];
+  const known = next?.[cell];
+  if (known === undefined) return -1;
+  if (known !== NOT_YET) return known;
+  const dist = fl.dist[segment]!;
+  const du = dist[cell]!;
+  let best = -1;
+  if (du !== 0 && du !== Infinity) {
     let bestLen = Infinity;
+    const m = fl.moves[cell]!;
     for (let k = 0; k < 8; k++) {
-      const v = canStep(md, open, c, r, k);
-      if (v < 0) continue;
+      if ((m & (1 << k)) === 0) continue;
+      const v = fl.nb[cell * 8 + k]!;
       const len = dist[v]! + STEP[k]!;
       if (len < bestLen - TIE) {
         best = v;
         bestLen = len;
       }
     }
-    next[u] = best;
   }
-  return next;
-}
-
-/** Binary min-heap of (key, cell), ordered by key then cell so pop order never depends on insertion luck. */
-class MinHeap {
-  private keys: number[] = [];
-  private vals: number[] = [];
-
-  get size(): number {
-    return this.keys.length;
-  }
-
-  peekKey(): number {
-    return this.keys[0]!;
-  }
-
-  push(key: number, val: number): void {
-    const keys = this.keys;
-    const vals = this.vals;
-    let i = keys.length;
-    keys.push(key);
-    vals.push(val);
-    while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (!less(key, val, keys[p]!, vals[p]!)) break;
-      keys[i] = keys[p]!;
-      vals[i] = vals[p]!;
-      i = p;
-    }
-    keys[i] = key;
-    vals[i] = val;
-  }
-
-  pop(): number {
-    const keys = this.keys;
-    const vals = this.vals;
-    const top = vals[0]!;
-    const key = keys.pop()!;
-    const val = vals.pop()!;
-    const n = keys.length;
-    if (n === 0) return top;
-    let i = 0;
-    for (;;) {
-      const l = 2 * i + 1;
-      if (l >= n) break;
-      const r = l + 1;
-      const m = r < n && less(keys[r]!, vals[r]!, keys[l]!, vals[l]!) ? r : l;
-      if (!less(keys[m]!, vals[m]!, key, val)) break;
-      keys[i] = keys[m]!;
-      vals[i] = vals[m]!;
-      i = m;
-    }
-    keys[i] = key;
-    vals[i] = val;
-    return top;
-  }
-}
-
-function less(ka: number, va: number, kb: number, vb: number): boolean {
-  return ka < kb || (ka === kb && va < vb);
+  next![cell] = best;
+  return best;
 }
 
 /** Octile distance from `cell` to waypoint region `segment`, Infinity when it can't be reached. */
@@ -174,7 +188,7 @@ export function pathDistance(state: GameState, segment: number, cell: number): n
 
 /** The neighbour a ground creep in `cell` heading for region `segment` steps to, or -1. */
 export function nextCell(state: GameState, segment: number, cell: number): number {
-  return flow(state).next[segment]?.[cell] ?? -1;
+  return stepOf(flow(state), segment, cell);
 }
 
 /**
@@ -182,14 +196,14 @@ export function nextCell(state: GameState, segment: number, cell: number): numbe
  * For the renderer's live path line. Stops early if a segment is unreachable.
  */
 export function routeCells(state: GameState, spawn = 0): number[] {
-  return trace(mapData(state.map), flow(state).next, spawn);
+  return trace(mapData(state.map), flow(state), spawn);
 }
 
 /** The ground route from every spawn, spawn 0 first. */
 export function allRouteCells(state: GameState): number[][] {
   const md = mapData(state.map);
-  const next = flow(state).next;
-  return md.spawns.map((_, i) => trace(md, next, i));
+  const fl = flow(state);
+  return md.spawns.map((_, i) => trace(md, fl, i));
 }
 
 /**
@@ -206,11 +220,11 @@ export function previewAllRoutes(state: GameState, cells: readonly number[]): nu
   const md = mapData(state.map);
   const open = openCells(md, state.grid, walkOverIds(state));
   for (const c of cells) open[c] = 0;
-  const next = fields(md, open).next;
-  return md.spawns.map((_, i) => trace(md, next, i));
+  const fl = fields(md, open);
+  return md.spawns.map((_, i) => trace(md, fl, i));
 }
 
-function trace(md: MapData, next: readonly Int32Array[], spawn: number): number[] {
+function trace(md: MapData, fl: Fields, spawn: number): number[] {
   const last = md.regions.length;
   let cell = md.spawns[spawn] ?? md.spawn;
   let seg = 0;
@@ -221,7 +235,7 @@ function trace(md: MapData, next: readonly Int32Array[], spawn: number): number[
       seg++;
       if (seg >= last) return route;
     }
-    const n = next[seg]![cell]!;
+    const n = stepOf(fl, seg, cell);
     if (n < 0) return route;
     route.push(n);
     cell = n;

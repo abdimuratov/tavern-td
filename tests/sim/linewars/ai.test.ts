@@ -99,6 +99,26 @@ describe('the Rival\'s AI', () => {
     expect(newRun({ drivers: ['ai', 'ai'], seed: 9 }).mode.ai[1]!.skip).toEqual([]);
   });
 
+  it('sees each Field as a fresh build would, though it keeps routes, maps and towers\' reach between thinks', () => {
+    const s = newRun({ drivers: ['ai', 'ai'], difficulty: 'insane', seed: 2 });
+    const arrays = ['x', 'y', 'len', 'dist', 'direct', 'raw', 'dot', 'slow', 'strip', 'ax', 'ay', 'alen', 'adirect', 'araw', 'adot', 'aslow', 'astrip'] as const;
+    let towers = 0;
+    // Every 13 s through the first 12 minutes: the AI's own caches have lived through its builds, upgrades and the other Field's.
+    for (let tick = 13 * TICK_RATE; tick < 12 * 60 * TICK_RATE; tick += 13 * TICK_RATE) {
+      runTo(s, tick);
+      const fresh = restore(snapshot(s)) as typeof s;
+      for (const side of [0, 1] as const) {
+        const kept = linewars.fieldMap(s, side, s.mode.sides[side].version);
+        const built = linewars.fieldMap(fresh, side, fresh.mode.sides[side].version);
+        for (const k of arrays) expect([...kept[k]], `${k}, Side ${side}, tick ${tick}`).toEqual([...built[k]]);
+        expect(kept.ley).toEqual(built.ley);
+        expect(kept.towers.map((t) => t.id)).toEqual(built.towers.map((t) => t.id));
+        towers += kept.towers.length;
+      }
+    }
+    expect(towers).toBeGreaterThan(1000);
+  });
+
   it('keeps its memory plain JSON, so a save resumes it mid-thought', () => {
     const s = newRun({ drivers: ['ai', 'ai'], difficulty: 'hard', seed: 5 });
     runTo(s, 9 * 60 * TICK_RATE + 7);

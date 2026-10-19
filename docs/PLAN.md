@@ -102,7 +102,7 @@ Phase 5 progress (2026-10-18):
   - The Rival's AI inside the sim: its blueprint maze, Danger, the air guard, the defense floor, greed and banked salvos, on five skill profiles. It acts only through the handler, its commands are never logged, and `['human', 'human']` runs none.
 - Tested: 45 Line Wars tests. The replay hash, snapshot-restore (the AI's memory included) and AI-regeneration tests pass, and Chromium matches Node on a fixed Line Wars replay. A tick takes about 7 µs, a think tick about 24 µs.
 - Tuned with `pnpm balance linewars` on 5 seeds a row: the competent bot wins Easy 5/5, Normal 3/5, Hard 1/5 and Insane 0/5, with a median Run of 17:45. Turtle, Rusher and Flyer lose Normal every time, and the seat check is 6/10. Send prices doubled, HP climbs faster than price, Hard's factor fell to ×1.1, and the AI's salvos got a bank of their own.
-- Not met: one Normal Run in five reaches 19:50, and Normal Runs are long (median 19:30). The AI's worst think tick, about 0.6–0.9 ms in Node, may pass 4 ms on a phone.
+- Not met: one Normal Run in five reaches 19:50, and Normal Runs are long (median 19:30). The AI's worst think tick was about 0.6–0.9 ms in Node; it is now 0.23–0.34 ms (about 1 ms on a phone), and 0.8 ms for the first think after a save loads (see Performance below).
 - Done: Line Wars is playable from the main menu.
   - New Run asks for your Race (with each Race's role), the Rival's (Random first) and the Difficulty, each with the Rival's income factor and a line on how it plays.
   - The board: both Fields at fit zoom with yours on the right, your live route and the Rival's fainter, faint air fans, a band along each spawn strip and an exit box per Field. Each Side's Race hangs on a banner over the Divide, and every Send throws a small token across it, drawn by the board only. Towers and creeps wear Maul's looks. The HUD is 288 px wide in Line Wars, which costs the board nothing, since it is height-bound on a phone and on a 16:9 Mac.
@@ -152,6 +152,21 @@ Phase 5 progress (2026-10-18):
   - Each phone sent to the background mid-Run (both stop, then Ready), and a Reconnect after Wi-Fi drops.
   - The Lobby and Host screen on a phone in landscape: the QR is 132 px there, and the Host's page scrolls.
 - Next: the two-device play-test of Versus, then Phase 5's exit bar.
+
+Performance (2026-10-19), on the dev Mac (M5 Pro). A phone core is taken as 3× slower, so a tick must stay under about 1.3 ms here to meet §2's 4 ms. Node ticks are whole bot Runs replayed, each tick the least of three plays; "worst" leaves out GC pauses. Frames are Chromium at the iphone and android projects' landscape sizes with the CPU slowed 4×, on the Mac's GPU, during each mode's busiest moment of a bot's Run (`TAVERN_PERF=1`, see `e2e/perf.spec.ts`).
+
+| Game Mode | Node tick, mean / worst, before → after | Frames at ×4 CPU: interval mean / p95, main thread mean / p95 |
+|---|---|---|
+| Gem | 7.0 µs / 3.9 ms → 5.7 µs / 1.0 ms | 16.7 / 16.8 ms, 0.5–1.0 / 1.2–1.7 ms |
+| Element | 2.3 / 50 µs → 2.2 / 43 µs; 300 creeps and 80 towers: 0.20 / 1.7 ms → 0.12 / 0.73 ms | 16.7 / 16.8 ms, 0.8–1.2 / 1.7–2.3 ms |
+| Original | 6.6 / 63 µs → 6.4 / 38 µs (Stage 6) | 16.7 / 16.8 ms, 0.8–1.6 / 1.7–3.8 ms |
+| Maul | 3.5 µs / 0.48 ms → 3.4 µs / 0.16 ms | 16.7 / 16.8 ms, 0.5–1.4 / 1.2–2.4 ms |
+| Line Wars, Insane | 7.7 µs / 0.53 ms → 6.8 µs / 0.34 ms (AI thinks: 30 → 21 µs mean) | 16.7 / 16.8 ms, 1.8–2.4 / 5.0–6.4 ms |
+| Versus | the state hash once a second: 0.1–0.2 ms; a Turn's messages: about 2 µs | not measured apart: Line Wars' board and HUD without an AI |
+
+- What was slow: the flow fields (all of Gem's 8 regions after every Draft gem, Ghost preview and route line: 3.4 → 0.9 ms), Element's area queries reading every creep's statuses before its distance, the AI rebuilding its Field maps from scratch after every action, and the HUD's number formatting (Line Wars' costliest function in a frame). Every replay hash and bot result is unchanged.
+- No frame missed 60 fps at ×4 in any mode, window, zoom or speed. Line Wars' HUD frames (4 a second) are the heaviest at ×4: 5–6 ms of main thread, 13–17 ms at worst.
+- Guards in `pnpm test`: a perf test per Game Mode with budgets several times the Mac's numbers.
 
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem

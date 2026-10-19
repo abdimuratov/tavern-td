@@ -1,6 +1,13 @@
+/**
+ * One formatter for every whole number the HUD shows. `toLocaleString` builds
+ * a formatter on each call, and the HUD formats dozens of numbers a few times
+ * a second, which made it Line Wars' costliest function in a frame.
+ */
+const WHOLE = new Intl.NumberFormat('en-US');
+
 /** A number as the HUD shows it: thousands separated, at most two decimals for small values. */
 export function num(n: number): string {
-  if (Number.isInteger(n)) return n.toLocaleString('en-US');
+  if (Number.isInteger(n)) return WHOLE.format(n);
   return n < 10 ? n.toFixed(2).replace(/0$/, '') : n.toFixed(1).replace(/\.0$/, '');
 }
 

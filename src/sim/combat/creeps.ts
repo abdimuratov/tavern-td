@@ -4,7 +4,7 @@ import type { GameModeRules, LeakOutcome, Sim } from '../core/mode';
 import type { Creep, Difficulty, GameState } from '../core/state';
 import { loseLives } from '../economy';
 import { getMode } from '../modes/registry';
-import { flow, type Flow } from '../path/flow';
+import { flow, stepOf, type Flow } from '../path/flow';
 import { cellAt, mapData, nearestPart, type MapData } from '../path/grid';
 import { creepLine, lineOf, mapLines, moveOnRoute, placeOnRoute, routeCount } from '../path/route';
 import { creepMods, speedFactor, tickCreepStatuses } from './mods';
@@ -109,7 +109,7 @@ function moveGround(c: Creep, dist: number, md: MapData, fl: Flow): boolean {
       if (c.seg >= last) return true;
     }
     if (dist <= 0) return false;
-    const next = fl.next[c.seg]![cell]!;
+    const next = stepOf(fl, c.seg, cell);
     if (next < 0) return false;
     const dx = md.cx[next]! - c.x;
     const dy = md.cy[next]! - c.y;

@@ -17,8 +17,11 @@ import { towerSide, type SideId } from '../state';
 // sums over towers and cells, with + − × ÷ and sqrt only (ADR-0002).
 //
 // A Field's map is derived data, so it is cached like a flow field: keyed by
-// the state object, the Side's tower version and the path version. A restored
-// Run rebuilds identical maps.
+// the state object, and kept in two parts. Its route and air line are traced
+// again when any path changes, and kept (the same object) when the route comes
+// out the same, as it does after a build in the other Field; what its towers
+// deal along them is summed again when the Side's tower version or the route
+// changes. A restored Run rebuilds identical maps.
 
 export const ARMORS = ARMOR_TYPES.length;
 
@@ -127,10 +130,27 @@ export function profileOf(spec: string): SpecProfile {
   return profile;
 }
 
+/** A Field's ground route and air line, without its towers. */
+export interface RouteLine {
+  /** The route's cells in order, and each cell's step on it (-1 off it); null if the route crosses a cell twice. */
+  readonly cells: readonly number[];
+  readonly stepAt: Int32Array | null;
+  readonly n: number;
+  readonly x: Float64Array;
+  readonly y: Float64Array;
+  readonly len: Float64Array;
+  readonly dist: Float64Array;
+  readonly m: number;
+  readonly ax: Float64Array;
+  readonly ay: Float64Array;
+  readonly alen: Float64Array;
+}
+
 /** A Field as the AI sees it. */
 export interface FieldMap {
   readonly side: SideId;
-  readonly key: string;
+  /** The route and air line it was summed over: kept while the route stays the same, so what is derived from it can be kept too. */
+  readonly route: RouteLine;
   /** The ground route from the spawn row's middle cell: its cells in order and their centres. */
   readonly n: number;
   readonly x: Float64Array;
@@ -177,55 +197,175 @@ export function fieldTowers(state: GameState, side: SideId): Tower[] {
   return state.towers.filter((t) => towerSide(state, t) === side);
 }
 
-const caches = new WeakMap<GameState, [FieldMap | null, FieldMap | null]>();
+interface SideCache {
+  readonly pathVersion: number;
+  readonly version: number;
+  readonly route: RouteLine;
+  readonly map: FieldMap;
+}
 
-/** `side`'s Field map, rebuilt when its towers or any path changed. `version` is the Side's tower version. */
+const caches = new WeakMap<GameState, [SideCache | null, SideCache | null]>();
+
+/**
+ * `side`'s Field map. `version` is the Side's tower version, bumped by every
+ * build, upgrade and sale in its Field; the route is traced again when any
+ * path changed, and the towers summed again only if it or `version` did.
+ */
 export function fieldMap(state: GameState, side: SideId, version: number): FieldMap {
-  const key = `${version}:${state.pathVersion}`;
   let pair = caches.get(state);
   if (!pair) {
     pair = [null, null];
     caches.set(state, pair);
   }
   const cached = pair[side];
-  if (cached && cached.key === key) return cached;
-  const built = buildMap(state, side, key);
-  pair[side] = built;
-  return built;
+  if (cached && cached.pathVersion === state.pathVersion && cached.version === version) return cached.map;
+  const route = cached && cached.pathVersion === state.pathVersion ? cached.route : routeLine(state, side, cached?.route ?? null);
+  const map = cached && cached.version === version && cached.route === route ? cached.map : buildMap(state, side, route);
+  pair[side] = { pathVersion: state.pathVersion, version, route, map };
+  return map;
 }
 
-function buildMap(state: GameState, side: SideId, key: string): FieldMap {
-  const md = mapData(state.map);
-  const mid = fieldMiddle(side);
-  const route = routeCells(state, mid.spawn);
-  const n = route.length;
-  const x = new Float64Array(n);
-  const y = new Float64Array(n);
-  const len = new Float64Array(n);
-  const dist = new Float64Array(n);
-  for (let j = 0; j < n; j++) {
-    const c = route[j]!;
-    x[j] = md.cx[c]!;
-    y[j] = md.cy[c]!;
-    dist[j] = pathDistance(state, 0, c);
-    if (j > 0) {
-      const dx = x[j]! - x[j - 1]!;
-      const dy = y[j]! - y[j - 1]!;
-      len[j] = Math.sqrt(dx * dx + dy * dy);
-    }
+const airLines = new WeakMap<GameState['map'], [AirLine | null, AirLine | null]>();
+
+interface AirLine {
+  readonly m: number;
+  readonly ax: Float64Array;
+  readonly ay: Float64Array;
+  readonly alen: Float64Array;
+}
+
+/** `side`'s air line: samples from the middle of its spawn row to its exit row's. It depends on the Map alone. */
+function airLine(state: GameState, side: SideId): AirLine {
+  let pair = airLines.get(state.map);
+  if (!pair) {
+    pair = [null, null];
+    airLines.set(state.map, pair);
   }
+  const cached = pair[side];
+  if (cached) return cached;
+  const md = mapData(state.map);
   const y0 = (0 + 0.5) * CELL;
   const y1 = (md.rows - 0.5) * CELL;
   const m = Math.floor((y1 - y0) / AIR_STEP) + 1;
-  const ax = new Float64Array(m).fill(mid.x);
+  const ax = new Float64Array(m).fill(fieldMiddle(side).x);
   const ay = new Float64Array(m);
   const alen = new Float64Array(m);
   for (let j = 0; j < m; j++) {
     ay[j] = y0 + j * AIR_STEP;
     if (j > 0) alen[j] = AIR_STEP;
   }
+  const line: AirLine = { m, ax, ay, alen };
+  pair[side] = line;
+  return line;
+}
+
+/** `side`'s route as it runs now: `last` itself when its cells and their distances are unchanged. */
+function routeLine(state: GameState, side: SideId, last: RouteLine | null): RouteLine {
+  const md = mapData(state.map);
+  const cells = routeCells(state, fieldMiddle(side).spawn);
+  const n = cells.length;
+  const dist = new Float64Array(n);
+  for (let j = 0; j < n; j++) dist[j] = pathDistance(state, 0, cells[j]!);
+  if (last && last.n === n) {
+    let same = true;
+    for (let j = 0; j < n && same; j++) same = cells[j] === last.cells[j] && dist[j] === last.dist[j];
+    if (same) return last;
+  }
+  const x = new Float64Array(n);
+  const y = new Float64Array(n);
+  const len = new Float64Array(n);
+  let stepAt: Int32Array | null = new Int32Array(md.size).fill(-1);
+  for (let j = 0; j < n; j++) {
+    const c = cells[j]!;
+    x[j] = md.cx[c]!;
+    y[j] = md.cy[c]!;
+    if (stepAt && stepAt[c] !== -1) stepAt = null;
+    else if (stepAt) stepAt[c] = j;
+    if (j > 0) {
+      const dx = x[j]! - x[j - 1]!;
+      const dy = y[j]! - y[j - 1]!;
+      len[j] = Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+  return { cells, stepAt, n, x, y, len, dist, ...airLine(state, side) };
+}
+
+/**
+ * The Map cells and air line samples a tower reaches: in its range, then in
+ * its creep aura's radius. A tower never moves and only its spec changes its
+ * range, so this is kept by tower id and spec, whatever the route.
+ */
+interface Reach {
+  readonly spec: string;
+  readonly cells: Int32Array;
+  readonly auraCells: Int32Array;
+  readonly air: Int32Array;
+  readonly airAura: Int32Array;
+}
+
+const reaches = new WeakMap<GameState, Map<number, Reach>>();
+
+function reachOf(state: GameState, route: RouteLine, t: Tower, p: SpecProfile): Reach {
+  let byTower = reaches.get(state);
+  if (!byTower) {
+    byTower = new Map();
+    reaches.set(state, byTower);
+  }
+  const cached = byTower.get(t.id);
+  if (cached && cached.spec === t.spec) return cached;
+  const md = mapData(state.map);
+  const r2 = p.range * p.range;
+  const q2 = p.auraRadius * p.auraRadius;
+  const cells: number[] = [];
+  const auraCells: number[] = [];
+  const air: number[] = [];
+  const airAura: number[] = [];
+  if (p.ground || p.auraRadius > 0) {
+    // Cell centres within reach of it, from a box a cell wider than its reach.
+    const r = Math.max(p.ground ? p.range : 0, p.auraRadius) + CELL;
+    const c0 = Math.max(0, Math.floor((t.x - r) / CELL));
+    const c1 = Math.min(md.cols - 1, Math.floor((t.x + r) / CELL));
+    const r0 = Math.max(0, Math.floor((t.y - r) / CELL));
+    const r1 = Math.min(md.rows - 1, Math.floor((t.y + r) / CELL));
+    for (let row = r0; row <= r1; row++) {
+      for (let col = c0; col <= c1; col++) {
+        const c = row * md.cols + col;
+        const dx = md.cx[c]! - t.x;
+        const dy = md.cy[c]! - t.y;
+        const d2 = dx * dx + dy * dy;
+        if (p.ground && d2 <= r2) cells.push(c);
+        if (p.auraRadius > 0 && d2 <= q2) auraCells.push(c);
+      }
+    }
+  }
+  if (p.air || p.auraAir) {
+    const { m, ax, ay } = route;
+    for (let j = 0; j < m; j++) {
+      const dx = ax[j]! - t.x;
+      const dy = ay[j]! - t.y;
+      const d2 = dx * dx + dy * dy;
+      if (p.air && d2 <= r2) air.push(j);
+      if (p.auraAir && d2 <= q2) airAura.push(j);
+    }
+  }
+  const reach: Reach = {
+    spec: t.spec, cells: Int32Array.from(cells), auraCells: Int32Array.from(auraCells), air: Int32Array.from(air), airAura: Int32Array.from(airAura),
+  };
+  byTower.set(t.id, reach);
+  return reach;
+}
+
+/**
+ * What the Field's towers deal along its route and air line. Each step adds
+ * the towers in id order, a tower's hits before its aura's, so a step's sums
+ * come out the same however a tower's reach was found.
+ */
+function buildMap(state: GameState, side: SideId, route: RouteLine): FieldMap {
+  const { n, m, stepAt } = route;
   const towers = fieldTowers(state, side);
-  const ley = towers.map((t) => leyFactorAt(towers, t));
+  const profiles = towers.map((t) => profileOf(t.spec));
+  const shrines = towers.filter((_, i) => profiles[i]!.leyRadius > 0);
+  const ley = towers.map((t) => leyFactorAt(shrines, t));
   const direct = new Float64Array(n * ARMORS);
   const raw = new Float64Array(n);
   const dot = new Float64Array(n);
@@ -236,62 +376,66 @@ function buildMap(state: GameState, side: SideId, key: string): FieldMap {
   const adot = new Float64Array(m);
   const aslow = new Float64Array(m);
   const astrip = new Float64Array(m);
+  // A tower's DPS by armor type times its Ley factor: the same products a sum over every step would take.
+  const dk = new Float64Array(ARMORS);
   towers.forEach((t, i) => {
-    const p = profileOf(t.spec);
+    const p = profiles[i]!;
     const k = ley[i]!;
-    const r2 = p.range * p.range;
-    const q2 = p.auraRadius * p.auraRadius;
-    if (p.ground || p.auraRadius > 0) {
-      for (let j = 0; j < n; j++) {
-        const dx = x[j]! - t.x;
-        const dy = y[j]! - t.y;
-        const d2 = dx * dx + dy * dy;
-        if (p.ground && d2 <= r2) {
-          for (let a = 0; a < ARMORS; a++) direct[j * ARMORS + a] = direct[j * ARMORS + a]! + p.direct[a]! * k;
-          raw[j] = raw[j]! + p.raw * k;
-          dot[j] = dot[j]! + p.dot;
-          if (p.hitSlow > slow[j]!) slow[j] = p.hitSlow;
-          if (p.hitStrip > strip[j]!) strip[j] = p.hitStrip;
-        }
-        if (p.auraRadius > 0 && d2 <= q2) {
-          dot[j] = dot[j]! + p.auraPoison;
-          if (p.auraSlow > slow[j]!) slow[j] = p.auraSlow;
-          if (p.auraStrip > strip[j]!) strip[j] = p.auraStrip;
-        }
-      }
+    for (let a = 0; a < ARMORS; a++) dk[a] = p.direct[a]! * k;
+    const rk = p.raw * k;
+    const reach = reachOf(state, route, t, p);
+    const hits = stepAt ? reach.cells : stepsIn(route, reach.cells);
+    for (let h = 0; h < hits.length; h++) {
+      const j = stepAt ? stepAt[hits[h]!]! : hits[h]!;
+      if (j < 0) continue;
+      const base = j * ARMORS;
+      for (let a = 0; a < ARMORS; a++) direct[base + a] = direct[base + a]! + dk[a]!;
+      raw[j] = raw[j]! + rk;
+      dot[j] = dot[j]! + p.dot;
+      if (p.hitSlow > slow[j]!) slow[j] = p.hitSlow;
+      if (p.hitStrip > strip[j]!) strip[j] = p.hitStrip;
     }
-    if (p.air || p.auraAir) {
-      for (let j = 0; j < m; j++) {
-        const dx = ax[j]! - t.x;
-        const dy = ay[j]! - t.y;
-        const d2 = dx * dx + dy * dy;
-        if (p.air && d2 <= r2) {
-          for (let a = 0; a < ARMORS; a++) adirect[j * ARMORS + a] = adirect[j * ARMORS + a]! + p.direct[a]! * k;
-          araw[j] = araw[j]! + p.raw * k;
-          adot[j] = adot[j]! + p.dotAir;
-          if (p.hitSlow > aslow[j]!) aslow[j] = p.hitSlow;
-        }
-        if (p.auraAir && d2 <= q2) {
-          if (p.auraSlow > aslow[j]!) aslow[j] = p.auraSlow;
-          if (p.auraStrip > astrip[j]!) astrip[j] = p.auraStrip;
-        }
-      }
+    const auras = stepAt ? reach.auraCells : stepsIn(route, reach.auraCells);
+    for (let h = 0; h < auras.length; h++) {
+      const j = stepAt ? stepAt[auras[h]!]! : auras[h]!;
+      if (j < 0) continue;
+      dot[j] = dot[j]! + p.auraPoison;
+      if (p.auraSlow > slow[j]!) slow[j] = p.auraSlow;
+      if (p.auraStrip > strip[j]!) strip[j] = p.auraStrip;
+    }
+    for (const j of reach.air) {
+      const base = j * ARMORS;
+      for (let a = 0; a < ARMORS; a++) adirect[base + a] = adirect[base + a]! + dk[a]!;
+      araw[j] = araw[j]! + rk;
+      adot[j] = adot[j]! + p.dotAir;
+      if (p.hitSlow > aslow[j]!) aslow[j] = p.hitSlow;
+    }
+    for (const j of reach.airAura) {
+      if (p.auraSlow > aslow[j]!) aslow[j] = p.auraSlow;
+      if (p.auraStrip > astrip[j]!) astrip[j] = p.auraStrip;
     }
   });
   return {
-    side, key, n, x, y, len, dist, direct, raw, dot, slow, strip,
-    m, ax, ay, alen, adirect, araw, adot, aslow, astrip, towers, ley, suffix: new Map(),
+    side, route, n, x: route.x, y: route.y, len: route.len, dist: route.dist, direct, raw, dot, slow, strip,
+    m, ax: route.ax, ay: route.ay, alen: route.alen, adirect, araw, adot, aslow, astrip, towers, ley, suffix: new Map(),
   };
 }
 
-/** The DPS factor a Ley Shrine near `t` gives it (shrines share their keys, so they don't stack). */
-function leyFactorAt(towers: readonly Tower[], t: Tower): number {
+/** For a route that crosses a cell twice: the steps on any of `cells`, in route order. */
+function stepsIn(route: RouteLine, cells: Int32Array): number[] {
+  const set = new Set(cells);
+  const out: number[] = [];
+  for (let j = 0; j < route.n; j++) if (set.has(route.cells[j]!)) out.push(j);
+  return out;
+}
+
+/** The DPS factor a Ley Shrine near `t` gives it (shrines share their keys, so they don't stack). `shrines` are the Field's towers with a tower aura. */
+function leyFactorAt(shrines: readonly Tower[], t: Tower): number {
   if (!MAUL_TOWERS[t.spec]?.attack) return 1;
   let best = 1;
-  for (const u of towers) {
+  for (const u of shrines) {
     if (u === t) continue;
     const p = profileOf(u.spec);
-    if (p.leyRadius <= 0) continue;
     const dx = u.x - t.x;
     const dy = u.y - t.y;
     if (dx * dx + dy * dy <= p.leyRadius * p.leyRadius && p.leyFactor > best) best = p.leyFactor;
