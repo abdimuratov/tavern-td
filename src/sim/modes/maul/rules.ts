@@ -13,7 +13,7 @@ import { earnGold } from '../../economy';
 import { setMap } from '../../path/grid';
 import { build, buildError, sell, spotError, towerById, upgrade, upgradeError } from './build';
 import { MAUL_MODE_ID, creepSpec, modeEvent, ticks, type MaulState } from './state';
-import { bountyPool, interestOn, runWaves, waveBonus, waveSpec } from './waves';
+import { bountyRate, interestOn, runWaves, waveBonus, waveSpec } from './waves';
 
 // The Maul Game Mode: Wintermaul's rules with Tavern TD's numbers
 // (docs/maul-design.md). Commands are `maul.*`; each checks its arguments and
@@ -160,6 +160,11 @@ function isMaulCommand(type: string): type is MaulCommand['type'] {
   return (MAUL_COMMANDS as readonly string[]).includes(type);
 }
 
+/** True when creep `spec` of Wave `wave` ends the Run by leaking: the last Wave's boss, as Wintermaul's did. */
+export function endsRun(spec: string, wave: number, total: number): boolean {
+  return creepSpec(spec)?.maul.kind === 'boss' && wave === total;
+}
+
 /** Hundredths of a gold of float error a bounty payout overlooks. */
 const CARRY_SLACK = 1e-6;
 
@@ -208,7 +213,7 @@ export const MAUL_RULES: GameModeRules<MaulState> = {
     const active = state.wave.active.find((w) => w.number === wave);
     let hp = 0;
     for (const g of active?.groups ?? []) hp += g.count * g.hp;
-    ms.bountyRate[String(wave)] = hp > 0 ? (bountyPool(wave) * 100) / hp : 0;
+    ms.bountyRate[String(wave)] = bountyRate(wave, hp);
     const row = runWaves(state)[wave - 1];
     modeEvent(events, 'maul.wave', { wave, creep: row?.creep ?? '', air: creepSpec(row?.creep ?? '')?.flying ?? false });
   },
@@ -243,8 +248,7 @@ export const MAUL_RULES: GameModeRules<MaulState> = {
     const ms = state.mode;
     ms.leaks++;
     const cs = creepSpec(creep.spec);
-    // The last Wave's boss getting through ends the Run, as Wintermaul's did.
-    if (cs?.maul.kind === 'boss' && creep.wave === state.wave.total) return { lives: Math.max(1, state.lives), then: 'remove' };
+    if (endsRun(creep.spec, creep.wave, state.wave.total)) return { lives: Math.max(1, state.lives), then: 'remove' };
     return { lives: cs?.leakCost ?? 1, then: 'remove' };
   },
 };

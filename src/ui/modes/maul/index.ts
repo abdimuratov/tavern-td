@@ -9,6 +9,7 @@ import { MAUL_LOOK } from './look';
 import { MaulPanel } from './MaulPanel';
 import { MaulStatus } from './MaulStatus';
 import { building } from './picks';
+import { MAUL_REFERENCE } from './reference';
 import { SendNow } from './SendNow';
 import { ARMOR_NAME, BEST_AGAINST, KIND_TAG, raceName, racesText } from './text';
 
@@ -104,6 +105,7 @@ export const MAUL_UI: ModeUi = {
   Panel: MaulPanel,
   Footer: SendNow,
   HowTo: MaulHowTo,
+  reference: MAUL_REFERENCE,
 
   runOptions: [
     {

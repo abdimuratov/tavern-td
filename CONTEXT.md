@@ -88,6 +88,10 @@ _Avoid_: builder, faction, class
 In Maul and Line Wars, a Race's cheap 2 × 2 block with a weak attack, built to shape the maze. It upgrades into either line's Tier 1 tower of any Race its Side holds.
 _Avoid_: rock (Gem's word), blocker, barricade
 
+**Line**:
+In Maul and Line Wars, one of a Race's two tower paths: a Tier 1 tower, its Tier 2 and the two Tier 3 towers it forks into. A Wall upgrades into either line's Tier 1.
+_Avoid_: Tower Family (the Original's), branch, tree
+
 **Leak**:
 A creep reaching the exit. What it costs depends on the Game Mode: in Gem a leak from Wave 10 on ends the Run, and in Element it costs lives and the creep walks the route again. In Line Wars it moves lives from the defending Side to the sender (twice as many in Sudden Death), and the creep is removed.
 _Avoid_: escape, breach, pass
@@ -325,6 +329,10 @@ _Avoid_: payday, round, cycle
 **Stock**:
 How many of one Send a Side can buy right now. It starts at 1 when the Send unlocks and refills one at a time up to its cap.
 _Avoid_: charges, supply, food
+
+**Live cap**:
+In Line Wars, the most creeps a Side's Sends may have alive in the Rival's Field at once: 40. A Send that would pass it is refused until some die or Leak.
+_Avoid_: unit cap, supply, food, Tower cap (the Original's)
 
 **Sudden Death**:
 Line Wars from 11:00: Income stops growing, every Income tick takes a life from each Side, Leaks steal double, and new Sends get tougher. It ends every Run by 15:50.

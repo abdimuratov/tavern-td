@@ -7,12 +7,13 @@ import { MAUL_RULES } from './rules';
 
 registerMode(MAUL_RULES);
 
-export { MAUL_RULES, MAUL_COMMANDS, DEFAULT_OPTIONS, maulOptions, sendNowError, addRaceError, type MaulCommand, type MaulOptions } from './rules';
+export { MAUL_RULES, MAUL_COMMANDS, DEFAULT_OPTIONS, maulOptions, sendNowError, addRaceError, endsRun, type MaulCommand, type MaulOptions } from './rules';
 export { MAUL_MODE_ID, type MaulState, type MaulGameState, type MaulTowerState } from './state';
 export { footprintAt, sellValue, spotError, buildError, upgradeError, buildable, nextOf } from './build';
-export { raiderHp, bountyPool, waveBonus, interestOn, waveSpec, runWaves, spawnsOf } from './waves';
+export { raiderHp, bountyPool, bountyRate, waveBonus, interestOn, waveGroups, waveSpec, runWaves, spawnsOf } from './waves';
+export { buildableBy, nextFor, saleValue } from './tree';
 export {
-  maulStatus, buildOptions, buildSpot, towerActions, wavePreview, maulRecord, FOOTPRINT,
+  maulStatus, buildOptions, buildSpot, towerActions, wavePreview, previewWave, hpScaleFor, attackInfo, maulRecord, FOOTPRINT,
   type MaulStep, type MaulStatus, type AttackInfo, type BuildOption, type UpgradeOption, type TowerActions,
   type WavePreview, type WavePreviewGroup, type MaulRecord,
 } from './queries';

@@ -46,22 +46,37 @@ export function sendLocked(s: LwSide, id: SendId): boolean {
   return (s.stock[id] ?? 0) === 0 && (s.restock[id] ?? -1) < 0;
 }
 
-/** HP of each creep of a Send bought now: its own, times Sudden Death's growth by tick from its start. */
-export function sendHp(state: GameState, send: LwSendSpec): number {
+/** HP of each creep of a Send bought on Run tick `tick`: its own, times Sudden Death's growth by tick from its start. */
+export function sendHpAt(send: LwSendSpec, tick: number): number {
   const from = suddenTick();
-  if (state.tick < from) return send.hp;
-  const minutes = (state.tick - from) / (60 * TICK_RATE);
+  if (tick < from) return send.hp;
+  const minutes = (tick - from) / (60 * TICK_RATE);
   return Math.max(1, Math.round(send.hp * (1 + SUDDEN_HP_PER_MINUTE * minutes)));
 }
 
-/** Lives a creep of `send` steals if it leaks now: its steal, doubled in Sudden Death. */
-export function leakSteal(state: GameState, send: LwSendSpec): number {
-  return state.tick < suddenTick() ? send.steals : send.steals * SUDDEN_STEAL;
+/** HP of each creep of a Send bought now. */
+export function sendHp(state: GameState, send: LwSendSpec): number {
+  return sendHpAt(send, state.tick);
 }
 
-/** Income a Send bought now adds: none from Sudden Death on. */
+/** Lives a creep of `send` steals if it leaks on Run tick `tick`: its steal, doubled in Sudden Death. */
+export function leakStealAt(send: LwSendSpec, tick: number): number {
+  return tick < suddenTick() ? send.steals : send.steals * SUDDEN_STEAL;
+}
+
+/** Lives a creep of `send` steals if it leaks now. */
+export function leakSteal(state: GameState, send: LwSendSpec): number {
+  return leakStealAt(send, state.tick);
+}
+
+/** Income a Send bought on Run tick `tick` adds: none from Sudden Death on. */
+export function sendIncomeAt(send: LwSendSpec, tick: number): number {
+  return tick < suddenTick() ? send.income : 0;
+}
+
+/** Income a Send bought now adds. */
 export function sendIncome(state: GameState, send: LwSendSpec): number {
-  return state.tick < suddenTick() ? send.income : 0;
+  return sendIncomeAt(send, state.tick);
 }
 
 /** Why `side` can't buy `send` now, or null: locked, no Stock, gold, or the live cap. */

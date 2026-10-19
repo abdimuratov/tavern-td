@@ -48,16 +48,13 @@ export function runWaves(state: GameState): readonly MaulWave[] {
 }
 
 /**
- * Wave `index` (0-based) as core groups: HP from the curve (the core applies
- * Difficulty); bounty comes from the pool instead. On a Map with one spawn
- * (tests), both gates' creeps leave from it.
+ * Wave `wave` (1-based) of `row` as core groups, on a Map with `spawns` spawns:
+ * HP from the curve (the core applies Difficulty); bounty comes from the pool
+ * instead. On a Map with one spawn (tests), both gates' creeps leave from it.
  */
-export function waveSpec(state: GameState, index: number): WaveSpec | undefined {
-  const row = runWaves(state)[index];
-  if (!row) return undefined;
-  const wave = index + 1;
+export function waveGroups(row: MaulWave, wave: number, spawns: number): WaveGroup[] {
   const unit = raiderHp(wave);
-  const last = spawnCount(state.map) - 1;
+  const last = spawns - 1;
   const groups: WaveGroup[] = [];
   for (const gate of spawnsOf(row)) {
     const spawn = Math.min(gate, last);
@@ -74,5 +71,20 @@ export function waveSpec(state: GameState, index: number): WaveSpec | undefined 
       });
     }
   }
-  return { groups };
+  return groups;
+}
+
+/** Wave `index` (0-based) of this Run as core groups. */
+export function waveSpec(state: GameState, index: number): WaveSpec | undefined {
+  const row = runWaves(state)[index];
+  if (!row) return undefined;
+  return { groups: waveGroups(row, index + 1, spawnCount(state.map)) };
+}
+
+/**
+ * Hundredths of a gold each point of a creep's max HP pays on Wave w, whose
+ * creeps have `hp` max HP between them: the pool split by each creep's share.
+ */
+export function bountyRate(wave: number, hp: number): number {
+  return hp > 0 ? (bountyPool(wave) * 100) / hp : 0;
 }

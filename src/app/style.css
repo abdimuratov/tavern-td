@@ -608,14 +608,14 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .sheet > header .sheet-actions { margin-left: auto; display: flex; gap: 6px; min-width: 0; }
 .sheet-actions > .btn { padding: 0 12px; font-weight: 650; white-space: nowrap; }
 .sheet-actions .seg { flex: none; }
-.sheet-actions .seg .btn { padding: 0 12px; white-space: nowrap; }
+.sheet-actions .seg .btn { flex: none; padding: 0 12px; white-space: nowrap; }
 /* The sheet takes the screen's height, so only its list scrolls and the tabs and filters stay put. */
 .screen > .sheet.ref-sheet { display: flex; flex-direction: column; margin: auto; height: 100%; max-height: 860px; }
 .ref-sheet > .sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ref { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
 .ref-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ref-bar .seg { flex: none; }
-.ref-bar .seg .btn { padding: 0 10px; white-space: nowrap; }
+.ref-bar .seg .btn { flex: none; padding: 0 10px; white-space: nowrap; }
 .ref-tabs .btn { min-width: 76px; }
 .ref-select {
   font: inherit;

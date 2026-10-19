@@ -1,17 +1,18 @@
 import {
   MAUL_CREEPS, RACE_SPECS, RACES, SECOND_RACE_AFTER, TOWER_FOOTPRINT,
-  type ArmorType, type AttackType, type CreepKind, type RaceId, type TowerLine,
+  type ArmorType, type AttackType, type CreepKind, type MaulWave, type RaceId, type TowerLine,
 } from '../../../content/maul';
 import { difficultyHp } from '../../combat/creeps';
 import { towerMods } from '../../combat/mods';
 import { TICK_RATE } from '../../core/constants';
 import type { Difficulty, GameState } from '../../core/state';
 import { canAfford } from '../../economy';
+import { spawnCount } from '../../path/grid';
 import { getMode } from '../registry';
 import { buildError, footprintAt, nextOf, sellValue, spotError, towerById, upgradeError } from './build';
 import { addRaceError, sendNowError } from './rules';
-import { mlState, towerSpec } from './state';
-import { bountyPool, interestOn, runWaves, spawnsOf, waveBonus, waveSpec } from './waves';
+import { MAUL_MODE_ID, mlState, towerSpec } from './state';
+import { bountyPool, interestOn, runWaves, spawnsOf, waveBonus, waveGroups } from './waves';
 
 // Pure questions the UI and the bots ask about a Maul Run. None of them change the state.
 
@@ -91,7 +92,8 @@ export interface AttackInfo {
   readonly targets: 'ground' | 'air' | 'both';
 }
 
-function attackInfo(spec: string): AttackInfo | null {
+/** Tower `spec`'s attack as the panel, the build menu and Waves & Towers describe it; null for one that doesn't attack. */
+export function attackInfo(spec: string): AttackInfo | null {
   const atk = towerSpec(spec)?.attack;
   if (!atk) return null;
   return {
@@ -228,17 +230,24 @@ export interface WavePreview {
   readonly bonus: number;
 }
 
-/** What Wave `wave` (1-based) brings, or null past the last. */
-export function wavePreview(state: GameState, wave: number): WavePreview | null {
-  const spec = waveSpec(state, wave - 1);
-  const row = runWaves(state)[wave - 1];
-  if (!spec || !row) return null;
-  const diff = difficultyHp(getMode(state.modeId), state.difficulty);
+/** Creep HP × this on `difficulty`: the core's Difficulty table as Maul plays it. */
+export function hpScaleFor(difficulty: Difficulty): number {
+  return difficultyHp(getMode(MAUL_MODE_ID), difficulty);
+}
+
+/**
+ * What Wave `wave` (1-based) of `waves` brings on a Map with `spawns` spawns,
+ * with HP times `hpScale` (the Difficulty's), or null past the last. The
+ * state-free form of `wavePreview`, for Waves & Towers.
+ */
+export function previewWave(waves: readonly MaulWave[], wave: number, hpScale: number, spawns: number): WavePreview | null {
+  const row = waves[wave - 1];
+  if (!row) return null;
   const byCreep = new Map<string, { count: number; hp: number }>();
-  for (const g of spec.groups) {
+  for (const g of waveGroups(row, wave, spawns)) {
     const seen = byCreep.get(g.creep);
     if (seen) seen.count += g.count;
-    else byCreep.set(g.creep, { count: g.count, hp: Math.max(1, Math.round((g.hp ?? 0) * diff)) });
+    else byCreep.set(g.creep, { count: g.count, hp: Math.max(1, Math.round((g.hp ?? 0) * hpScale)) });
   }
   const groups = [...byCreep].map(([creep, { count, hp }]): WavePreviewGroup => {
     const cs = MAUL_CREEPS[creep]!;
@@ -251,6 +260,11 @@ export function wavePreview(state: GameState, wave: number): WavePreview | null 
     wave, groups, air: groups.some((g) => g.flying), boss: groups.some((g) => g.boss), spawns: spawnsOf(row),
     bounty: bountyPool(wave), bonus: waveBonus(wave),
   };
+}
+
+/** What Wave `wave` (1-based) brings, or null past the last. */
+export function wavePreview(state: GameState, wave: number): WavePreview | null {
+  return previewWave(runWaves(state), wave, difficultyHp(getMode(state.modeId), state.difficulty), spawnCount(state.map));
 }
 
 /** The finished (or running) Run as a Record entry. */

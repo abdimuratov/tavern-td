@@ -10,6 +10,7 @@ import { lwLook } from './look';
 import { LwPanel } from './LwPanel';
 import { IncomeTick, LwStatus } from './LwStatus';
 import { building, lastSend } from './picks';
+import { LINEWARS_REFERENCE } from './reference';
 import { SendMenu } from './SendMenu';
 import {
   bestSteal, difficultyText, isRace, leakedText, lwEndText, matchup, progressText, rivalSendText, sendCreep, stolenText,
@@ -200,6 +201,7 @@ export const LINEWARS_UI: ModeUi = {
   Footer: SendMenu,
   HowTo: LwHowTo,
   End: LwEnd,
+  reference: LINEWARS_REFERENCE,
 
   runOptions: [
     {

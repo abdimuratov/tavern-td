@@ -83,6 +83,44 @@ test('Waves & Towers from the main menu: the Original\'s Waves with Best against
   await expect(page.getByTestId('mode-original')).toBeVisible();
 });
 
+test('Waves & Towers for Maul and Line Wars: their Waves and Sends, and their towers', async ({ page }) => {
+  await page.goto('./');
+  await page.getByTestId('reference-button').click();
+
+  // Maul: 40 Waves, the Race and Difficulty filters, a Harpy Wave's Best against.
+  await page.getByTestId('reference-mode-maul').click();
+  await expect(page.getByTestId('ref-tab-waves')).toHaveText('Waves');
+  await expectFits(page);
+  await expect(page.getByTestId('ref-waves').locator('.ref-row')).toHaveCount(40);
+  await expect(page.getByTestId('ref-filter-race')).toHaveValue('all');
+  const harpies = page.getByTestId('ref-row-wave-5');
+  await harpies.click();
+  await expect(harpies).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('ref-detail-wave-5')).toContainText('16 × Harpy');
+  await expect(page.getByTestId('ref-detail-wave-5')).toContainText('Can\'t hit air: Siege');
+  await page.getByTestId('ref-tab-towers').click();
+  await expect(page.getByTestId('ref-towers').locator('.ref-group')).toHaveCount(4);
+  await page.getByTestId('ref-filter-race').selectOption('rimeborn');
+  await expect(page.getByTestId('ref-towers').locator('.ref-group')).toHaveCount(1);
+  await page.getByTestId('ref-row-tower-frost_spire').click();
+  await expect(page.getByTestId('ref-detail-tower-frost_spire')).toContainText('Slows don\'t stack');
+
+  // Line Wars: the first tab is Sends, ten of them, and a Send opens with its Stock and Sudden Death HP.
+  await page.getByTestId('reference-mode-linewars').click();
+  await expect(page.getByTestId('ref-tab-waves')).toHaveText('Sends');
+  await expect(page.getByTestId('ref-tab-towers')).toBeVisible();
+  await expectFits(page);
+  await expect(page.getByTestId('ref-waves').locator('.ref-row')).toHaveCount(10);
+  const golem = page.getByTestId('ref-row-send-ice_golem');
+  await golem.click();
+  await expect(golem).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('ref-detail-send-ice_golem')).toContainText('up to 3');
+  await expect(page.getByTestId('ref-detail-send-ice_golem')).toContainText('Sudden Death HP');
+  await page.getByTestId('ref-tab-towers').click();
+  await expect(page.getByTestId('ref-towers').locator('.ref-group')).toHaveCount(4);
+  await expect(page.getByTestId('ref-row-race-ironclad')).toBeVisible();
+});
+
 test('Waves & Towers from the war map opens on the Stage picked there', async ({ page }) => {
   await page.goto('./');
   await page.getByTestId('mode-original').getByTestId('mode-page').click();
