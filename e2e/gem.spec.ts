@@ -5,6 +5,10 @@ import { finishWave, newGemRun, OPEN_SPOTS, placeDraft } from './app';
 // Keep, a Wave at 3×, then a reload and Continue. The Wave itself is run to
 // its end through the debug handle; everything before it goes through the UI.
 
+// Each test plays a whole Wave through the debug handle, which can take more
+// than the default 30 s on CI's single slow worker.
+test.describe.configure({ timeout: 60_000 });
+
 test('a Gem Run drafts, keeps, plays a Wave, autosaves and continues paused', async ({ page }) => {
   await page.goto('./');
   await newGemRun(page, 'normal');
