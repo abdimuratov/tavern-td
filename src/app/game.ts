@@ -161,6 +161,7 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     say: (text, tone = 'info', ms) => input?.flash(text, tone, ms),
     showGhost: (p, kind) => input?.pin(p, kind),
     toScreen: (p) => board.worldToClient(p),
+    pointer: () => input?.pointer() ?? null,
   };
   const feedback = createFeedback({ play, haptic }, () => board.looks, () => ui, side);
   input = createInput({ controller, board, ui, view, feedback });

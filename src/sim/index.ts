@@ -26,7 +26,7 @@ export { createRng, nextFloat, nextInt, nextU32, type RngState } from './core/rn
 export { registerMode, getMode, hasMode, listModes } from './modes/registry';
 
 export {
-  setMap, validateMap, spawnCount, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds,
+  setMap, validateMap, spawnCount, cellOf, cellCol, cellRow, cellCentre, footprintCells, footprintCentre, walkOverIds, sceneryAt,
   type Point,
 } from './path/grid';
 export { routeCells, allRouteCells, previewRoute, previewAllRoutes, airRoute, pathDistance, nextCell } from './path/flow';

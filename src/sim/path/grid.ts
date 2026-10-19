@@ -1,5 +1,5 @@
 import { CELL } from '../core/constants';
-import type { MapSpec } from '../core/specs';
+import type { MapSpec, ScenerySpec } from '../core/specs';
 import type { GameState } from '../core/state';
 import { getMode } from '../modes/registry';
 import { routeProblem } from './route';
@@ -220,6 +220,18 @@ export function setMap(state: GameState, map: MapSpec): void {
 export function cellOf(map: MapSpec, col: number, row: number): number {
   if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || row < 0 || col >= map.cols || row >= map.rows) return -1;
   return row * map.cols + col;
+}
+
+/**
+ * The piece of Scenery the Map names at (col, row), or undefined. A cell under
+ * two pieces is the first's, so a Stage's own Scenery outranks a Challenge's
+ * Burnt ground. It reads only the list: a road cell a piece crosses still finds it.
+ */
+export function sceneryAt(map: MapSpec, col: number, row: number): ScenerySpec | undefined {
+  for (const piece of map.scenery ?? []) {
+    for (const [c, r, w, h] of piece.rects) if (col >= c && col < c + w && row >= r && row < r + h) return piece;
+  }
+  return undefined;
 }
 
 export function cellCol(map: MapSpec, cell: number): number {

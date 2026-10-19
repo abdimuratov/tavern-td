@@ -1,7 +1,9 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { airLinePolyline, airRoute, CELL, routeCount, routePolyline, type GameState, type MapSpec, type Point } from '../sim';
+import {
+  airLinePolyline, airRoute, CELL, routeCount, routePolyline, sceneryAt, type GameState, type MapSpec, type Point, type SceneryKind, type ScenerySpec,
+} from '../sim';
 import { cellsBox } from './footprint';
-import type { TerrainBanner, TerrainLook } from './look';
+import type { SceneryLook, TerrainBanner, TerrainLook } from './look';
 
 export const TERRAIN_COLORS = {
   background: 0x12100e,
@@ -30,7 +32,8 @@ export function buildTerrain(state: GameState, look: TerrainLook = {}): Terrain 
   const root = new Container();
   const ground = new Graphics();
   drawGround(ground, map, colors);
-  if (look.plotRim !== undefined) drawPlotRims(ground, map, look.plotRim);
+  if (look.scenery && map.scenery) drawScenery(ground, map, look.scenery);
+  if (look.plotRim !== undefined) drawPlotRims(ground, map, look.plotRim, look.plotRimEdges ?? true);
   root.addChild(ground);
 
   const grid = new Graphics();
@@ -109,10 +112,13 @@ function drawGround(g: Graphics, map: MapSpec, colors: typeof TERRAIN_COLORS): v
   g.fill(colors.blockedRim);
 }
 
-/** A light edge on each side of buildable ground that meets something else, so plots read as raised. */
-function drawPlotRims(g: Graphics, map: MapSpec, color: number): void {
+/**
+ * A light edge on each side of buildable ground that meets something else, so
+ * plots read as raised; along the Map's own edge too, unless `edges` is false.
+ */
+function drawPlotRims(g: Graphics, map: MapSpec, color: number, edges: boolean): void {
   const W = 5;
-  const buildable = (c: number, r: number): boolean => r >= 0 && r < map.rows && c >= 0 && c < map.cols && map.terrain[r]![c] === '.';
+  const buildable = (c: number, r: number): boolean => (r >= 0 && r < map.rows && c >= 0 && c < map.cols ? map.terrain[r]![c] === '.' : !edges);
   for (let r = 0; r < map.rows; r++) {
     for (let c = 0; c < map.cols; c++) {
       if (!buildable(c, r)) continue;
@@ -125,6 +131,143 @@ function drawPlotRims(g: Graphics, map: MapSpec, color: number): void {
     }
   }
   g.fill({ color, alpha: 0.9 });
+}
+
+/**
+ * The Map's named Scenery, each piece in its kind's look: water rippled, a
+ * building's hipped roof, a cliff's strata, a pit's rim falling away to black
+ * and burnt ground's embers. Only the `#` cells a piece owns (the first piece
+ * naming a cell, as the Ghost names it) are drawn: where a piece crosses the
+ * road, the road stays on top. Plain shapes, drawn once per Run.
+ */
+function drawScenery(g: Graphics, map: MapSpec, looks: Readonly<Record<SceneryKind, SceneryLook>>): void {
+  const owner = (c: number, r: number): ScenerySpec | undefined =>
+    c >= 0 && r >= 0 && c < map.cols && r < map.rows && map.terrain[r]![c] === '#' ? sceneryAt(map, c, r) : undefined;
+  for (const piece of map.scenery ?? []) {
+    const look = looks[piece.kind];
+    const mine = (c: number, r: number): boolean => owner(c, r) === piece;
+    const cells = new Set<number>();
+    for (const [c0, r0, w, h] of piece.rects) {
+      for (let r = r0; r < r0 + h; r++) for (let c = c0; c < c0 + w; c++) if (mine(c, r)) cells.add(r * map.cols + c);
+    }
+    if (cells.size === 0) continue;
+    const list = [...cells];
+    // The fill, in runs along each row so neighbouring cells show no seams.
+    for (let r = 0; r < map.rows; r++) {
+      let c = 0;
+      while (c < map.cols) {
+        if (!cells.has(r * map.cols + c)) {
+          c++;
+          continue;
+        }
+        const start = c;
+        while (c < map.cols && cells.has(r * map.cols + c)) c++;
+        g.rect(start * CELL, r * CELL, (c - start) * CELL, CELL);
+      }
+    }
+    g.fill(look.fill);
+    switch (piece.kind) {
+      case 'water':
+        // A ripple in each cell, staggered so they don't line up in rows.
+        for (const cell of list) {
+          const [x, y] = cellOrigin(map, cell);
+          const odd = ((cell % map.cols) + Math.floor(cell / map.cols)) % 2 === 1;
+          const ox = x + (odd ? 26 : 8);
+          const oy = y + (odd ? 44 : 22);
+          g.moveTo(ox, oy).quadraticCurveTo(ox + 7.5, oy - 7, ox + 15, oy).quadraticCurveTo(ox + 22.5, oy + 7, ox + 30, oy);
+        }
+        g.stroke({ color: look.mark, width: 4, alpha: 0.7, cap: 'round' });
+        bands(g, map, list, mine, 0, 5);
+        g.fill({ color: look.edge, alpha: 0.85 });
+        break;
+      case 'building':
+        bands(g, map, list, mine, 0, 6);
+        g.fill(look.edge);
+        for (const [c0, r0, w, h] of piece.rects) {
+          let whole = true;
+          for (let r = r0; r < r0 + h && whole; r++) for (let c = c0; c < c0 + w; c++) if (!mine(c, r)) whole = false;
+          if (whole) roof(g, c0 * CELL + 6, r0 * CELL + 6, (c0 + w) * CELL - 6, (r0 + h) * CELL - 6, look.mark);
+        }
+        break;
+      case 'cliff':
+        // Strata: diagonals that run on from cell to cell.
+        for (const cell of list) {
+          const [x, y] = cellOrigin(map, cell);
+          const half = CELL / 2;
+          g.moveTo(x, y + CELL).lineTo(x + CELL, y);
+          g.moveTo(x, y + half).lineTo(x + half, y);
+          g.moveTo(x + half, y + CELL).lineTo(x + CELL, y + half);
+        }
+        g.stroke({ color: look.mark, width: 5, alpha: 0.55 });
+        bands(g, map, list, mine, 0, 6);
+        g.fill(look.edge);
+        break;
+      case 'pit':
+        // A lit rim, then a darker band inside it, falling away to the black.
+        bands(g, map, list, mine, 0, 9);
+        g.fill(look.edge);
+        bands(g, map, list, mine, 9, 9);
+        g.fill({ color: look.mark, alpha: 0.6 });
+        break;
+      case 'burnt':
+        // Embers scattered by each cell's own number, so the pattern never changes.
+        for (const cell of list) {
+          const [x, y] = cellOrigin(map, cell);
+          const n = (cell * 2654435761) >>> 0;
+          g.circle(x + 12 + (n % 40), y + 12 + ((n >>> 8) % 40), 4);
+          if (n % 3 === 0) g.circle(x + 12 + ((n >>> 16) % 40), y + 12 + ((n >>> 4) % 40), 3);
+        }
+        g.fill({ color: look.mark, alpha: 0.75 });
+        bands(g, map, list, mine, 0, 4);
+        g.fill({ color: look.edge, alpha: 0.8 });
+        break;
+    }
+  }
+}
+
+function cellOrigin(map: MapSpec, cell: number): [number, number] {
+  const c = cell % map.cols;
+  return [c * CELL, ((cell - c) / map.cols) * CELL];
+}
+
+/**
+ * A band `width` wide, `from` in from each side of `cells` that meets other
+ * ground on the Map (not the Map's own edge, where Scenery runs on). Clipped
+ * at corners, so a band inside another doesn't cross it.
+ */
+function bands(g: Graphics, map: MapSpec, cells: readonly number[], mine: (c: number, r: number) => boolean, from: number, width: number): void {
+  const open = (c: number, r: number): boolean => c >= 0 && r >= 0 && c < map.cols && r < map.rows && !mine(c, r);
+  for (const cell of cells) {
+    const c = cell % map.cols;
+    const r = (cell - c) / map.cols;
+    const [x, y] = [c * CELL, r * CELL];
+    const top = open(c, r - 1) ? from : 0;
+    const bottom = open(c, r + 1) ? from : 0;
+    const left = open(c - 1, r) ? from : 0;
+    const right = open(c + 1, r) ? from : 0;
+    if (open(c, r - 1)) g.rect(x + left, y + from, CELL - left - right, width);
+    if (open(c, r + 1)) g.rect(x + left, y + CELL - from - width, CELL - left - right, width);
+    if (open(c - 1, r)) g.rect(x + from, y + top, width, CELL - top - bottom);
+    if (open(c + 1, r)) g.rect(x + CELL - from - width, y + top, width, CELL - top - bottom);
+  }
+}
+
+/** A hipped roof seen from above over (x0, y0)–(x1, y1): its ridge along the long side, the far facets shaded. */
+function roof(g: Graphics, x0: number, y0: number, x1: number, y1: number, color: number): void {
+  const wide = x1 - x0 >= y1 - y0;
+  const half = (wide ? y1 - y0 : x1 - x0) / 2;
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  // The ridge's two ends.
+  const [ax, ay, bx, by] = wide ? [x0 + half, cy, x1 - half, cy] : [cx, y0 + half, cx, y1 - half];
+  // The south and east facets in shade.
+  g.poly(wide ? [x0, y1, ax, ay, bx, by, x1, y1] : [x1, y0, ax, ay, bx, by, x1, y1]).fill({ color, alpha: 0.32 });
+  g.poly(wide ? [x1, y0, bx, by, x1, y1] : [x0, y1, bx, by, x1, y1]).fill({ color, alpha: 0.32 });
+  g.rect(x0, y0, x1 - x0, y1 - y0);
+  g.moveTo(ax, ay).lineTo(bx, by);
+  g.moveTo(x0, y0).lineTo(ax, ay).moveTo(x0, y1).lineTo(wide ? ax : bx, wide ? ay : by);
+  g.moveTo(x1, y0).lineTo(wide ? bx : ax, wide ? by : ay).moveTo(x1, y1).lineTo(bx, by);
+  g.stroke({ color, width: 4, alpha: 0.9, join: 'round' });
 }
 
 /** The Map's spawns (a mazing Map may list several), and on a Map with several fixed routes the start of each. */

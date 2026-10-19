@@ -1,5 +1,6 @@
 import { challengeById, challengeOfStage, PERKS, stageByNumber, TARGETINGS, type ChallengeSpec } from '../../../content/original';
-import { original, routeCount, type GameState, type SimEvent } from '../../../sim';
+import type { PointerKind } from '../../../render/gestures';
+import { original, routeCount, type GameState, type Point, type SimEvent } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
 import type { ModeUi, Placement, RunChoices, RunView } from '../../mode-ui';
 import { BuildRing } from './BuildRing';
@@ -10,7 +11,7 @@ import { creepColor, ORIGINAL_LOOK } from './look';
 import { OriginalPanel } from './OriginalPanel';
 import { OriginalStatus } from './OriginalStatus';
 import { OriginalRecords } from './Records';
-import { buildPicked, cellAtPoint, closeRing, inPlace, openRing, placeAt, ring } from './ring';
+import { buildPicked, cellAtPoint, closeRing, followPlace, groundWhyNot, inPlace, isOpenGround, openRing, placeAt, ring } from './ring';
 import { SendNow } from './SendNow';
 import { StageSelect } from './StageSelect';
 import { BOSS_LINE, creepAbout, creepSpecOf, creepTags, towerSpecOf } from './text';
@@ -27,20 +28,26 @@ function orState(state: GameState): OrState {
 
 const over = (state: GameState): boolean => state.phase === 'won' || state.phase === 'lost';
 
-/** The picked family's Ghost on the ring's 2 × 2, with its price and range; nothing elsewhere. */
-function placement(view: RunView, p: { x: number; y: number }): Placement | null {
+/**
+ * The picked family's Ghost, with its price and range, red with the reason
+ * where it can't go. On a phone it stands on the ring's 2 × 2; on the Mac it
+ * follows the mouse over the board (followPlace).
+ */
+function placement(view: RunView, p: Point, kind: PointerKind = 'touch'): Placement | null {
   const r = ring.value;
   const s = view.state;
   const cell = cellAtPoint(s, p);
-  if (!r?.family || !cell || !inPlace(r.place, cell.col, cell.row)) return null;
-  const info = original.placeInfo(s, r.place.col, r.place.row);
+  if (!r?.family || !cell || over(s)) return null;
+  const place = kind === 'mouse' ? followPlace(s, r, p) : inPlace(r.place, cell.col, cell.row) ? r.place : null;
+  if (!place) return null;
+  const info = original.placeInfo(s, place.col, place.row);
   const option = info.options.find((o) => o.family === r.family);
   const spec = option ? towerSpecOf(option.spec) : undefined;
   if (!option || !spec || info.cells.length === 0) return null;
   return {
     cells: info.cells,
     spec: option.spec,
-    command: { type: 'original.build', col: r.place.col, row: r.place.row, spec: option.spec },
+    command: { type: 'original.build', col: place.col, row: place.row, spec: option.spec },
     error: option.blocked,
     checked: true,
     route: false,
@@ -49,31 +56,49 @@ function placement(view: RunView, p: { x: number; y: number }): Placement | null
   };
 }
 
+/** On the Mac with no family picked: the 2 × 2 of Open ground a click would open the ring on. */
+function outline(view: RunView, p: Point): readonly number[] | null {
+  const s = view.state;
+  const cell = cellAtPoint(s, p);
+  const r = ring.value;
+  if (r?.family || !cell || !isOpenGround(s, cell.col, cell.row)) return null;
+  const at = placeAt(s, p);
+  if (!at || (r && at.place.col === r.place.col && at.place.row === r.place.row)) return null;
+  return original.placeCells(s, at.place.col, at.place.row);
+}
+
 /**
- * Open ground opens the ring on the 2 × 2 a tap snaps to, or moves it there;
- * the ring's own 2 × 2 builds its pick; the road and Scenery close it.
+ * Open ground opens the ring on the 2 × 2 a tap snaps to, or moves it there
+ * keeping the family. With a family picked, a tap on its Ghost builds, and on
+ * the Mac so does a click anywhere on Open ground, where the Ghost follows
+ * the pointer. While the ring is up, the road and Scenery close it and say why.
  */
-function tapGround(view: RunView, p: { x: number; y: number }, kind: Parameters<NonNullable<ModeUi['tapGround']>>[2]): boolean {
+function tapGround(view: RunView, p: Point, kind: PointerKind): boolean {
   const s = view.state;
   if (over(s)) return false;
   const cell = cellAtPoint(s, p);
+  if (!cell) return false;
   const r = ring.value;
-  if (cell && r?.family && inPlace(r.place, cell.col, cell.row)) {
-    buildPicked(view);
-    return true;
+  const open = isOpenGround(s, cell.col, cell.row);
+  if (r?.family) {
+    if (inPlace(r.place, cell.col, cell.row)) {
+      buildPicked(view, r.place);
+      return true;
+    }
+    if (kind === 'mouse' && open) {
+      buildPicked(view, followPlace(s, r, p));
+      return true;
+    }
   }
-  const at = cell && s.map.terrain[cell.row]?.[cell.col] === '.' ? placeAt(s, p) : null;
-  if (at && at.error === null) {
+  const at = open ? placeAt(s, p) : null;
+  if (at) {
     openRing(view, at.place, kind);
     return true;
   }
-  // Open ground with no free 2 × 2 under the tap says why.
-  if (at?.error) view.say(at.error, 'error');
-  if (r) {
-    closeRing(view);
-    return true;
-  }
-  return at !== null;
+  if (!r) return false;
+  view.say(groundWhyNot(s, cell.col, cell.row) ?? 'Nothing stands there', 'error');
+  closeRing(view);
+  return true;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -190,6 +215,7 @@ export const ORIGINAL_UI: ModeUi = {
   })[d],
 
   placement,
+  outline,
   tapGround,
   // A tap on a tower selects it, so the ring gives way.
   tapTower(view) {
@@ -205,8 +231,12 @@ export const ORIGINAL_UI: ModeUi = {
     const st = original.originalStatus(s);
     if (st.step === 'over') return null;
     const r = ring.value;
-    if (r && !r.family) return { text: 'Pick a tower family for this place', tone: 'info' };
-    if (r) return null;
+    if (r) {
+      // Something in the way of the ring's 2 × 2, or the Tower cap, before any family is picked; the Ghost says its own.
+      const blocked = original.placeInfo(s, r.place.col, r.place.row).error;
+      if (blocked) return { text: blocked.charAt(0).toUpperCase() + blocked.slice(1), tone: 'error' };
+      return r.family ? null : { text: 'Pick a tower family for this place', tone: 'info' };
+    }
     if (s.towers.length === 0) return { text: 'Tap the ground beside the road to build', tone: 'info' };
     if (st.step === 'ready') return { text: 'Send Wave 1 when you are ready', tone: 'info' };
     return null;

@@ -18,11 +18,12 @@ function RingButton({ s, o, i, n, picked }: { s: PlaySession; o: original.BuildO
   useHotkey(s, key, picked ? `Build ${o.name}` : FAMILY_NAME[o.family], run);
   // Clockwise from the upper left, so the first two sit side by side and the hotkeys read round the ring in order.
   const turn = -Math.PI / 2 - Math.PI / n + (i * Math.PI * 2) / n;
-  const short = o.blocked !== null && / gold$/.test(o.blocked);
+  // Dimmed but still pressable for gold, the Tower cap or the ground, as its Ghost then shows red with the reason.
+  const dim = o.blocked !== null;
   return (
     <button
       type="button"
-      class={`btn ring-btn${picked ? ' active' : ''}${short ? ' dim' : ''}`}
+      class={`btn ring-btn${picked ? ' active' : ''}${dim ? ' dim' : ''}`}
       style={{ '--dx': Math.cos(turn).toFixed(3), '--dy': Math.sin(turn).toFixed(3) }}
       aria-pressed={picked}
       title={`${o.name} · ${o.price} gold${o.blocked ? ` · ${o.blocked}` : ''}${key ? ` (${keyLabel(key)})` : ''}`}
@@ -38,8 +39,9 @@ function RingButton({ s, o, i, n, picked }: { s: PlaySession; o: original.BuildO
 }
 
 /**
- * Around a free 2 × 2 of Open ground: the families it can take, with their
- * prices. It follows the place as the board pans and zooms, kept inside the board.
+ * Around a 2 × 2 of Open ground: the families it can take, with their prices,
+ * dimmed with the reason when gold, the Tower cap or something in the way
+ * refuses them. It follows the place as the board pans and zooms, kept inside the board.
  */
 export function BuildRing({ s }: ModeHudProps) {
   void revision.value;
@@ -47,7 +49,7 @@ export function BuildRing({ s }: ModeHudProps) {
   const root = useRef<HTMLDivElement>(null);
   const state = s.view.state;
   const info = r ? original.placeInfo(state, r.place.col, r.place.row) : null;
-  const open = r !== null && info !== null && info.cells.length > 0 && info.cells.every((c) => state.grid[c] === 0);
+  const open = r !== null && info !== null && info.cells.length > 0;
 
   useEffect(() => {
     if (!open || !r) return;
@@ -66,7 +68,7 @@ export function BuildRing({ s }: ModeHudProps) {
         const y = Math.min(Math.max(c.y - host.top, reach), Math.max(reach, host.height - reach));
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         el.style.setProperty('--r', `${radius.toFixed(1)}px`);
-        el.style.setProperty('--spot', `${(half * 2).toFixed(1)}px`);
+        el.style.setProperty('--place', `${(half * 2).toFixed(1)}px`);
         // Near the board's edge the ring moves inward; the outline stays on the place.
         el.style.setProperty('--ox', `${(c.x - host.left - x).toFixed(1)}px`);
         el.style.setProperty('--oy', `${(c.y - host.top - y).toFixed(1)}px`);
@@ -80,7 +82,7 @@ export function BuildRing({ s }: ModeHudProps) {
   if (!open || !r || !info) return null;
   return (
     <div ref={root} class="build-ring" data-testid="build-ring" role="group" aria-label="Build">
-      <span class="ring-spot" />
+      <span class="ring-place" />
       {info.options.map((o, i) => <RingButton key={o.family} s={s} o={o} i={i} n={info.options.length} picked={r.family === o.family} />)}
     </div>
   );

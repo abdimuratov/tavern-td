@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultCue } from '../src/app/feedback';
-import { cellsBox, footprintAt, towerCells } from '../src/render/footprint';
+import { cellsBox, footprintAt, snapSquare, towerCells } from '../src/render/footprint';
 import { CELL, createRun, step, type MapSpec, type Tower } from '../src/sim';
 import { TEST_MAP } from '../src/sim/testing';
 import { createHotkeys, keyName } from '../src/ui/hotkeys';
@@ -61,6 +61,16 @@ describe('footprints', () => {
     expect(cellsBox(map, footprintAt(map, at(11.9, 8.9), 2)!)).toEqual({ col: 10, row: 7, w: 2, h: 2 });
     expect(footprintAt(map, at(-0.5, 3), 1)).toBeNull();
     expect(footprintAt(map, at(3, 9.2), 1)).toBeNull();
+  });
+
+  it('snaps a 2×2 onto the open one of the four over the pointer nearest it, else onto the nearest grid corner', () => {
+    const notCol4 = (col: number): boolean => col !== 4;
+    // Over cell (4, 2), only the two with column 3 top-left are open; (3, 2) is centred nearer.
+    expect(snapSquare(map, at(4.8, 2.8), notCol4)).toEqual({ col: 3, row: 2, open: true });
+    expect(snapSquare(map, at(4.8, 2.8), () => false)).toEqual({ col: 4, row: 2, open: false });
+    // Kept on the Map at its edge, and null off it.
+    expect(snapSquare(map, at(11.9, 8.9), () => true)).toEqual({ col: 10, row: 7, open: true });
+    expect(snapSquare(map, at(-0.5, 3), () => true)).toBeNull();
   });
 
   it("reads a tower's cells, falling back to its anchor", () => {

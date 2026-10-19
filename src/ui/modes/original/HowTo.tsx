@@ -9,8 +9,8 @@ export function OriginalHowTo() {
         <p>The dead walk the road from the spawn to the exit. Fliers cut along the faint dashed air line instead. A creep that gets through costs its lives (big ones cost more) and is gone. You have 20 lives.</p>
       </section>
       <section>
-        <h3>Build Spots</h3>
-        <p>Towers stand only on the square pads beside the road. Tap an empty one and a ring shows the families you can build there, with their prices. Tap one for its Ghost and range, then tap it again, or the Ghost, to build.</p>
+        <h3>Building</h3>
+        <p>A tower takes 2 × 2 cells of open ground anywhere beside the road, but never the road or the Scenery: water, buildings, cliffs and pits. Tap the ground and a ring shows the families you can build there, with their prices. Tap one for its Ghost and range, then tap it again, or the Ghost, to build. Gold is the only limit.</p>
       </section>
       <section>
         <h3>Six families</h3>
@@ -42,12 +42,12 @@ export function OriginalHowTo() {
       </section>
       <section>
         <h3>Challenges</h3>
-        <p>Winning a Stage opens its Challenge: the same Stage under its own rule, such as fewer Build Spots or tougher creeps. It always plays Normal, with your Talents. Its first win, with any lives left, pays 1 more Star, up to {MOST_STARS} in all.</p>
+        <p>Winning a Stage opens its Challenge: the same Stage under its own rule, such as Burnt ground and a Tower cap, or tougher creeps. It always plays Normal, with your Talents. Its first win, with any lives left, pays 1 more Star, up to {MOST_STARS} in all.</p>
       </section>
       <section class="controls-help">
         <h3>Controls</h3>
-        <p><b>Phone:</b> tap a Build Spot for the ring, tap a family, tap again to build. Tap a tower for its upgrades, targeting and Sell. Pinch to zoom, drag to pan.</p>
-        <p><b>Mac:</b> click a Build Spot, then Q W E R T Y pick the ring's families in order; the same key again builds. With a tower selected: Q and W upgrade, T changes targeting, S sells. Space sends the next Wave, P pauses, 1–3 set the speed, Esc steps back.</p>
+        <p><b>Phone:</b> tap the ground for the ring, tap a family, tap again to build; a tap on other ground moves the ring. Tap a tower for its upgrades, targeting and Sell. Pinch to zoom, drag to pan.</p>
+        <p><b>Mac:</b> click the ground, then Q W E R T Y pick the ring's families in order. The Ghost follows the mouse: click, or press the same key again, to build where it stands. With a tower selected: Q and W upgrade, T changes targeting, S sells. Space sends the next Wave, P pauses, 1–3 set the speed, Esc steps back.</p>
       </section>
     </div>
   );

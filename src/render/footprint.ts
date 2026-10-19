@@ -66,6 +66,34 @@ export function footprintAt(map: MapSpec, p: Point, w = 1, h = w): number[] | nu
   return cells;
 }
 
+/**
+ * The top-left cell of the 2×2 a pointer at `p` snaps to: of the four that
+ * cover the cell under it, the one `open` takes whose centre is nearest the
+ * pointer, so a ghost snaps onto a narrow strip instead of hanging off its
+ * edge. With none open, the one centred on the nearest grid corner (as
+ * footprintAt's), and `open` false. Kept on the Map; null off it.
+ */
+export function snapSquare(map: MapSpec, p: Point, open: (col: number, row: number) => boolean): { col: number; row: number; open: boolean } | null {
+  const col = Math.floor(p.x / CELL);
+  const row = Math.floor(p.y / CELL);
+  if (p.x < 0 || p.y < 0 || col >= map.cols || row >= map.rows) return null;
+  const clamp = (v: number, n: number): number => Math.min(n - 2, Math.max(0, v));
+  let best: { col: number; row: number; d: number } | null = null;
+  for (let dr = -1; dr <= 0; dr++) {
+    for (let dc = -1; dc <= 0; dc++) {
+      const c = clamp(col + dc, map.cols);
+      const r = clamp(row + dr, map.rows);
+      if (!open(c, r)) continue;
+      const dx = (c + 1) * CELL - p.x;
+      const dy = (r + 1) * CELL - p.y;
+      const d = dx * dx + dy * dy;
+      if (!best || d < best.d) best = { col: c, row: r, d };
+    }
+  }
+  if (best) return { col: best.col, row: best.row, open: true };
+  return { col: clamp(Math.round(p.x / CELL) - 1, map.cols), row: clamp(Math.round(p.y / CELL) - 1, map.rows), open: false };
+}
+
 /** Whether two cell lists cover the same cells in the same order. */
 export function sameCells(a: readonly number[] | null, b: readonly number[] | null): boolean {
   if (a === b) return true;

@@ -1,17 +1,19 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { buildAt, newOriginalRun, placePoint, tapAt, touch, towerSpecs } from './app';
+import { buildAt, newOriginalRun, placePoint, tapAt, touch, towerSpecs, worldPoint } from './app';
 
 // The Original as a player plays it: menu → Campaign → Stage 1 → Normal, a
 // tower built through the ring on Open ground, Send Wave 1, then a reload and
-// Continue; a won Stage that stores its Stars and opens Talents; and its
-// Challenge, opened by that win and won for one more Star. Waves are run to
-// their end through the debug handle; everything else goes through the UI.
+// Continue; the phone's taps and the Mac's pointer-following Ghost; a red
+// Ghost on the road; a won Stage that stores its Stars and opens Talents; and
+// its Challenge, opened by that win, whose Tower cap refuses a fifth tower,
+// won for one more Star. Waves are run to their end through the debug handle;
+// everything else goes through the UI.
 
 /**
- * Wins the Run through the debug handle: Tier 2 Arrows and Cannons on the Mill
- * Road's eight old Build Spots, then each Wave in turn. The Burnt Mill takes the
- * first four: the rest are burnt, and its Tower cap is 4.
+ * Wins the Run through the debug handle: Tier 2 Arrows and Cannons on eight
+ * places by the Mill Road's bends (its old Build Spots), then each Wave in
+ * turn. The Burnt Mill takes the first four: the rest are burnt, and its Tower cap is 4.
  */
 async function winRun(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -39,12 +41,13 @@ test('an Original Run builds through the ring, sends a Wave, autosaves and conti
   await expect(page.getByTestId('threat')).toHaveText('Threat 1');
   await expect(page.getByTestId('wave-preview')).toContainText('Ghoul');
 
-  await buildAt(page, 19, 4, 'arrow');
+  // Open ground that was never a Build Spot, beside the road's last bend.
+  await buildAt(page, 22, 11, 'arrow');
   expect(await towerSpecs(page)).toEqual(['arrow_tower']);
   await expect(page.getByTestId('gold')).toHaveText('180');
 
   // A tap on the tower opens its panel: Upgrade, targeting, Sell and its Tower Level.
-  const p = await placePoint(page, 19, 4);
+  const p = await placePoint(page, 22, 11);
   await tapAt(page, p.x, p.y);
   await expect(page.getByTestId('original-panel')).toContainText('Longbow Tower');
   await expect(page.getByTestId('tower-level')).toHaveText('Lv 1');
@@ -175,6 +178,33 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
     return { difficulty: s.difficulty, challenge: (s.mode as { challenge?: string }).challenge, burnt, wave: s.wave.number };
   });
   expect(await run()).toEqual({ difficulty: 'normal', challenge: 'burnt-mill', burnt: 'Lower bend and west burnt', wave: 0 });
+
+  // Its Tower cap: with four towers standing (where winRun puts them), the ring dims every family and refuses a fifth.
+  await page.evaluate(() => {
+    const c = window.tavern!.controller;
+    c.state.gold = 5000;
+    [[19, 4], [23, 4], [19, 6], [23, 6]].forEach(([col, row], i) => c.send({ type: 'original.build', col, row, spec: i % 2 ? 'cannon_tower' : 'arrow_tower' }));
+    c.fastForward(1);
+  });
+  expect(await towerSpecs(page)).toHaveLength(4);
+  const cap = '4 towers stand: the most in this Challenge';
+  const fifth = await placePoint(page, 28, 5);
+  await tapAt(page, fifth.x, fifth.y);
+  await expect(page.getByTestId('build-ring')).toBeVisible();
+  await expect(page.locator('[data-action="ring-arrow"]')).toHaveClass(/dim/);
+  await expect(page.locator('[data-action="ring-arrow"]')).toHaveAttribute('title', new RegExp(cap));
+  await expect(page.getByTestId('hint')).toHaveText(cap);
+  await page.locator('[data-action="ring-arrow"]').click();
+  await expect(page.getByTestId('hint')).toHaveText(cap);
+  await tapAt(page, fifth.x, fifth.y);
+  await page.evaluate(() => window.tavern!.controller.fastForward(2));
+  expect(await towerSpecs(page)).toHaveLength(4);
+  await expect(page.getByTestId('build-ring')).toBeVisible();
+  // Burnt ground says why and closes the ring.
+  const burnt = await worldPoint(page, 2.5 * 64, 12.5 * 64);
+  await tapAt(page, burnt.x, burnt.y);
+  await expect(page.getByTestId('hint')).toHaveText('Nothing stands on burnt ground');
+  await expect(page.getByTestId('build-ring')).toBeHidden();
   await winRun(page);
 
   // The end card: the Challenge's Star, added to the Campaign's 48, and its time as a new best.
@@ -214,13 +244,78 @@ test('a won Stage opens its Challenge, whose first win pays one more Star toward
   await expect(page.getByTestId('records-challenge-2')).toHaveText('–');
 });
 
-test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }) => {
-  test.skip(touch(), 'keyboard only');
+test('on a phone a tap opens the ring, a family shows its Ghost, another tap builds, and the ring moves with its family', async ({ page }) => {
+  test.skip(!touch(), 'touch only');
   await page.goto('./');
   await newOriginalRun(page, 'normal');
+  const ring = page.getByTestId('build-ring');
+  const arrow = page.locator('[data-action="ring-arrow"]');
+  const first = await placePoint(page, 22, 11);
+  await tapAt(page, first.x, first.y);
+  await expect(ring).toBeVisible();
+  await expect(page.getByTestId('hint')).toHaveText('Pick a tower family for this place');
+  await arrow.click();
+  await expect(arrow).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('hint')).toHaveText('Arrow Tower · 70 gold: tap again to build');
+
+  // Other Open ground moves the ring there, Arrow still picked; nothing is built.
+  const second = await placePoint(page, 2, 0);
+  await tapAt(page, second.x, second.y);
+  await expect(arrow).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('hint')).toHaveText(/tap again to build/);
+  expect(await towerSpecs(page)).toEqual([]);
+  // The family tapped again builds where the ring now stands, and the ring closes.
+  await arrow.click();
+  await expect.poll(() => towerSpecs(page)).toEqual(['arrow_tower']);
+  expect(await page.evaluate(() => window.tavern!.controller.state.towers[0]!.cell)).toBe(2);
+  await expect(ring).toBeHidden();
+
+  // A tap on the road says why and closes the ring.
+  await tapAt(page, first.x, first.y);
+  await expect(ring).toBeVisible();
+  const road = await worldPoint(page, 9.5 * 64, 3.5 * 64);
+  await tapAt(page, road.x, road.y);
+  await expect(page.getByTestId('hint')).toHaveText('Not on the road');
+  await expect(ring).toBeHidden();
+  expect(await towerSpecs(page)).toEqual(['arrow_tower']);
+});
+
+test('a red Ghost says why where a tower can\'t stand, and nothing is built', async ({ page }) => {
+  await page.goto('./');
+  await newOriginalRun(page, 'normal');
+  // Two towers below the road's last leg leave one Open column between them.
+  await page.evaluate(() => {
+    const c = window.tavern!.controller;
+    c.send({ type: 'original.build', col: 5, row: 16, spec: 'arrow_tower' });
+    c.send({ type: 'original.build', col: 8, row: 16, spec: 'arrow_tower' });
+    c.fastForward(1);
+  });
+  expect(await towerSpecs(page)).toHaveLength(2);
+  const p = await placePoint(page, 22, 11);
+  await tapAt(page, p.x, p.y);
+  await page.locator('[data-action="ring-arrow"]').click();
+  // Just under the road in that column, the Ghost snaps to the 2 × 2 nearest: half of it on the road.
+  const gap = await worldPoint(page, 7.5 * 64, 16.15 * 64);
+  if (touch()) await tapAt(page, gap.x, gap.y);
+  else await page.mouse.move(gap.x, gap.y);
+  await expect(page.getByTestId('hint')).toHaveText('On the road');
+  // Building there is refused, with the same reason.
+  await tapAt(page, gap.x, gap.y);
+  await expect(page.getByTestId('hint')).toHaveText('On the road');
+  await page.evaluate(() => window.tavern!.controller.fastForward(2));
+  expect(await towerSpecs(page)).toHaveLength(2);
+});
+
+test('on the Mac the ring\'s hotkeys pick and build, and the picked Ghost follows the pointer', async ({ page }) => {
+  test.skip(touch(), 'mouse and keyboard only');
+  await page.goto('./');
+  await newOriginalRun(page, 'normal');
+  const ring = page.getByTestId('build-ring');
+  const hint = page.getByTestId('hint');
+  // Q W E R T Y pick the ring's families in order, and the same key again builds.
   const p = await placePoint(page, 7, 10);
   await tapAt(page, p.x, p.y);
-  await expect(page.getByTestId('build-ring')).toBeVisible();
+  await expect(ring).toBeVisible();
   await page.keyboard.press('w');
   await expect(page.locator('[data-action="ring-cannon"]')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('w');
@@ -230,6 +325,49 @@ test('Mac hotkeys pick the ring\'s families in order and build', async ({ page }
   await page.keyboard.press('s');
   await expect.poll(() => towerSpecs(page)).toEqual([]);
   await expect(page.getByTestId('gold')).toHaveText('250');
+
+  // Once a family is picked, its Ghost follows the mouse, red where it can't go.
+  const home = await placePoint(page, 2, 0);
+  await tapAt(page, home.x, home.y);
+  await page.keyboard.press('q');
+  const far = await placePoint(page, 22, 11);
+  await page.mouse.move(far.x, far.y);
+  await expect(hint).toHaveText('Arrow Tower · 70 gold: click again to build');
+  const road = await worldPoint(page, 9.5 * 64, 3.5 * 64);
+  await page.mouse.move(road.x, road.y);
+  await expect(hint).toHaveText('On the road');
+  const mill = await worldPoint(page, 14.5 * 64, 5.5 * 64);
+  await page.mouse.move(mill.x, mill.y);
+  await expect(hint).toHaveText('On the mill');
+  // The same key over the mill is refused there; over Open ground it builds where the Ghost stands, not on the ring's 2 × 2.
+  await page.keyboard.press('q');
+  await expect(hint).toHaveText('On the mill');
+  await page.mouse.move(far.x, far.y);
+  await page.keyboard.press('q');
+  await expect.poll(() => towerSpecs(page)).toEqual(['arrow_tower']);
+  expect(await page.evaluate(() => window.tavern!.controller.state.towers[0]!.cell)).toBe(11 * 32 + 22);
+  await expect(ring).toBeHidden();
+
+  // A click on Open ground builds where the Ghost stands too.
+  await tapAt(page, home.x, home.y);
+  await page.keyboard.press('w');
+  const there = await placePoint(page, 28, 11);
+  await page.mouse.move(there.x, there.y);
+  await expect(hint).toHaveText('Cannon Tower · 90 gold: click again to build');
+  await page.mouse.click(there.x, there.y);
+  await expect.poll(() => towerSpecs(page)).toEqual(['arrow_tower', 'cannon_tower']);
+  expect(await page.evaluate(() => window.tavern!.controller.state.towers[1]!.cell)).toBe(11 * 32 + 28);
+
+  // Esc and right-click close the ring.
+  await tapAt(page, home.x, home.y);
+  await expect(ring).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(ring).toBeHidden();
+  await tapAt(page, home.x, home.y);
+  await expect(ring).toBeVisible();
+  await page.mouse.click(home.x, home.y, { button: 'right' });
+  await expect(ring).toBeHidden();
+  expect(await towerSpecs(page)).toEqual(['arrow_tower', 'cannon_tower']);
 });
 
 test('an Original save code exported mid-Wave imports back to the same Run', async ({ page }) => {

@@ -41,6 +41,12 @@ export interface RunView {
   showGhost?(p: Point | null, kind?: PointerKind): void;
   /** Where a world point is on the page, in CSS pixels, for the mode's own layer over the board. */
   toScreen?(p: Point): Point;
+  /**
+   * Where the mouse is over the board, in world units, or null while it is
+   * elsewhere (off the board, over the HUD or the mode's own layer). Always
+   * null on touch.
+   */
+  pointer?(): Point | null;
 }
 
 /** What a ghost looks like when there's no tower spec to take it from. */
@@ -257,8 +263,18 @@ export interface ModeUi {
   readonly Records?: ComponentType;
   /** Re-read marks at least every this many ticks, for marks that change without an event (a build finishing). */
   readonly marksEvery?: number;
-  /** What the pointer at world point `p` would build, or null when nothing can be built there now. */
-  placement?(view: RunView, p: Point): Placement | null;
+  /**
+   * What the pointer at world point `p` would build, or null when nothing can
+   * be built there now. `kind` is the pointer asking (a touch when left
+   * out): the mouse's hover, or a tap's or the mode's own pinned ghost.
+   */
+  placement?(view: RunView, p: Point, kind?: PointerKind): Placement | null;
+  /**
+   * With the mouse over the board and no ghost up, the cells a click there
+   * would take, which the board outlines, such as the Original's 2 × 2 before
+   * a family is picked; null for none. Never built from.
+   */
+  outline?(view: RunView, p: Point): readonly number[] | null;
   /** Buttons for the selected structure, such as Sell or Keep. */
   towerActions?(view: RunView, tower: Tower): readonly UiAction[];
   /** Extra label–value rows for the selected structure's panel. */

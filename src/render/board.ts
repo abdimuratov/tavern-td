@@ -8,6 +8,7 @@ import { Effects } from './effects';
 import { Entities } from './entities';
 import { attachGestures, type PointerKind } from './gestures';
 import { Extras } from './extras';
+import type { Box } from './footprint';
 import { createLookCache, type LookCache, type ModeLook } from './look';
 import { Marks, type BoardMark } from './marks';
 import { Overlay, type GhostView, type RouteStyle, type SelectionView } from './overlay';
@@ -41,6 +42,8 @@ export interface Board {
   /** The routes as lines through world points, for Maps whose creeps walk fixed routes. */
   setRoutePaths(lines: readonly (readonly Point[])[], style: RouteStyle): void;
   setGhost(ghost: GhostView | null): void;
+  /** A plain outline round a box of cells, such as the 2 × 2 a click would take; null takes it down. */
+  setOutline(box: Box | null): void;
   setSelection(sel: SelectionView | null): void;
   /** The Game Mode's marks on structures; the list replaces the last one. */
   setMarks(marks: readonly BoardMark[]): void;
@@ -296,6 +299,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
       }
       terrain.grid.visible = showGrid;
       overlay.setGhost(null);
+      overlay.setOutline(null);
       overlay.setSelection(null);
       marks.set([]);
       entities.sync(state);
@@ -326,6 +330,7 @@ export async function createBoard(host: HTMLElement, opts: BoardOptions): Promis
       return { x: r.left + q.x, y: r.top + q.y };
     },
     setGhost: (ghost) => overlay.setGhost(ghost),
+    setOutline: (box) => overlay.setOutline(box),
     setSelection: (sel) => overlay.setSelection(sel),
     setMarks: (list) => marks.set(list),
     setShowGrid(show) {

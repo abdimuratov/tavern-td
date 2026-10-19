@@ -4,7 +4,7 @@ import { findTower } from '../../combat/targeting';
 import type { SimEvent } from '../../core/events';
 import type { GameState, Tower } from '../../core/state';
 import { canAfford, earnGold, spendGold } from '../../economy';
-import { cellCol, cellOf, cellRow, footprintCells } from '../../path/grid';
+import { cellCol, cellOf, cellRow, footprintCells, sceneryAt } from '../../path/grid';
 import { challengeUnlocks, runModifiers } from './challenge';
 import { unlocksFor, type Unlocks } from './progression';
 import { familyTalents } from './talents';
@@ -49,13 +49,8 @@ export function placeCells(state: GameState, col: number, row: number): number[]
 }
 
 /** The Ghost's words for a Scenery cell: the first piece covering it, or plain words on a Map that names none. */
-function sceneryAt(state: GameState, cell: number): string {
-  const col = cellCol(state.map, cell);
-  const row = cellRow(state.map, cell);
-  for (const piece of state.map.scenery ?? []) {
-    for (const [c, r, w, h] of piece.rects) if (col >= c && col < c + w && row >= r && row < r + h) return piece.at;
-  }
-  return 'nothing can stand there';
+function sceneryWords(state: GameState, cell: number): string {
+  return sceneryAt(state.map, cellCol(state.map, cell), cellRow(state.map, cell))?.at ?? 'nothing can stand there';
 }
 
 /**
@@ -69,7 +64,7 @@ export function placeError(state: GameState, col: number, row: number): string |
   const ground = (c: number): string | undefined => state.map.terrain[cellRow(state.map, c)]?.[cellCol(state.map, c)];
   if (cells.some((c) => ground(c) === ',')) return 'on the road';
   const scenery = cells.find((c) => ground(c) !== '.');
-  if (scenery !== undefined) return sceneryAt(state, scenery);
+  if (scenery !== undefined) return sceneryWords(state, scenery);
   if (cells.some((c) => state.grid[c] !== 0)) return 'a tower stands there';
   return null;
 }

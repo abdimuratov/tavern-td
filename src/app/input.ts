@@ -70,6 +70,8 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
   /** A ghost the Game Mode asked for (the Original's chosen family on its ring's 2 × 2): it stays up while the pointer is elsewhere. */
   let pinned: { readonly p: Point; readonly kind: PointerKind } | null = null;
   let mouse: Point | null = null;
+  /** The cells the board outlines under the mouse, kept so an unchanged outline isn't redrawn. */
+  let outlined: readonly number[] | null = null;
   let routeVersion = -1;
   let routeShown: readonly number[] | null = null;
   let sinceCheck = 0;
@@ -81,7 +83,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
   function evaluate(p: Point, by: PointerKind): Ghost | null {
     const s = state();
     if (s.phase === 'won' || s.phase === 'lost') return null;
-    const placement = ui.placement?.(view, p) ?? null;
+    const placement = ui.placement?.(view, p, by) ?? null;
     if (!placement || placement.cells.length === 0) return null;
     const error = placement.checked ? (placement.error ?? null) : placement.error ?? placementError(s, placement.cells);
     return { p, placement, error, by };
@@ -224,13 +226,26 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     return pinned ? evaluate(pinned.p, pinned.kind) : null;
   }
 
-  /** The hover ghost: none over a tower (a click there selects it) or off the Map, where a pinned one stays up. */
+  function setOutline(cells: readonly number[] | null): void {
+    const next = cells && cells.length > 0 ? cells : null;
+    if (sameCells(outlined, next)) return;
+    outlined = next;
+    board.setOutline(next ? cellsBox(state().map, next) : null);
+  }
+
+  /**
+   * The hover ghost: none over a tower (a click there selects it) or off the
+   * Map, where a pinned one stays up. With no ghost at all, the Game Mode's
+   * outline of what a click would take.
+   */
   function hoverGhost(): void {
     if (!mouse) return;
     const s = state();
     const cell = cellAtPoint(s.map, mouse);
-    const g = cell < 0 || towerAt(s, cell) ? null : evaluate(mouse, 'mouse');
+    const free = cell >= 0 && !towerAt(s, cell);
+    const g = free ? evaluate(mouse, 'mouse') : null;
     setGhost(g ?? pinnedGhost());
+    setOutline(!ghost && free && s.phase !== 'won' && s.phase !== 'lost' ? ui.outline?.(view, mouse) ?? null : null);
   }
 
   function cancel(): void {
@@ -285,21 +300,25 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     hover(p: Point | null): void {
       mouse = p;
       if (!p) {
+        setOutline(null);
         if (ghost?.by === 'mouse') setGhost(pinnedGhost());
         return;
       }
       hoverGhost();
     },
-    /** The Game Mode's own ghost at `p` (see RunView.showGhost); null takes it down. */
+    /**
+     * The Game Mode's own ghost at `p` (see RunView.showGhost); null takes it
+     * down. With the mouse over the board, the mouse's ghost shows instead, and
+     * the pinned one comes back once the mouse leaves.
+     */
     pin(p: Point | null, kind: PointerKind = 'touch'): void {
       pinned = p ? { p, kind } : null;
-      if (!p) {
-        setGhost(null);
-        if (mouse) hoverGhost();
-        return;
-      }
-      setGhost(evaluate(p, kind));
+      if (!p) setGhost(null);
+      if (mouse) hoverGhost();
+      else if (p) setGhost(evaluate(p, kind));
     },
+    /** Where the mouse is over the board, or null (see RunView.pointer). */
+    pointer: (): Point | null => mouse,
     secondary(): void {
       cancel();
     },
@@ -311,7 +330,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
     },
     /** Re-reads the Game Mode's placement, after its own UI state changed. */
     refresh(): void {
-      if (ghost?.by === 'mouse' || (!ghost && mouse)) hoverGhost();
+      if (mouse && (!ghost || ghost.by === 'mouse')) hoverGhost();
       else if (ghost) setGhost(evaluate(ghost.p, ghost.by));
       revision.value++;
     },
@@ -332,7 +351,7 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       if (ghost || mouse) {
         if (structural || sinceCheck >= RECHECK_TICKS) {
           sinceCheck = 0;
-          if (ghost?.by === 'mouse' || (!ghost && mouse)) hoverGhost();
+          if (mouse && (!ghost || ghost.by === 'mouse')) hoverGhost();
           else if (ghost) setGhost(evaluate(ghost.p, ghost.by));
         }
       }
@@ -343,6 +362,8 @@ export function createInput({ controller, board, ui, view, feedback }: InputDeps
       ghost = null;
       pinned = null;
       board.setGhost(null);
+      outlined = null;
+      board.setOutline(null);
       selected.value = 0;
       board.setSelection(null);
       flashUntil = 0;

@@ -1,5 +1,7 @@
 import type { ShootVariant } from '../platform/audio';
-import { fnv1a, type Creep, type CreepSpec, type GameModeRules, type GameState, type SimEvent, type Tower, type TowerSpec } from '../sim';
+import {
+  fnv1a, type Creep, type CreepSpec, type GameModeRules, type GameState, type SceneryKind, type SimEvent, type Tower, type TowerSpec,
+} from '../sim';
 
 /** Shapes drawn into the atlas at boot. Each is white with a dark outline, so a tint colours it. */
 export type Shape =
@@ -122,6 +124,10 @@ export interface TerrainLook {
   readonly gridLine?: number;
   /** A lighter edge where buildable ground meets anything else, so plots read as raised. */
   readonly plotRim?: number;
+  /** False leaves the Map's own edge without that rim, for ground that runs off the Map (the Original's). */
+  readonly plotRimEdges?: boolean;
+  /** How each kind of Scenery the Map names is drawn (the Original's water, buildings and so on); without it, Scenery is plain blocked ground. */
+  readonly scenery?: Readonly<Record<SceneryKind, SceneryLook>>;
   /** False hides the dashed air line, for Maps no creep flies over. */
   readonly airLine?: boolean;
   /** How strongly the air lines show, 0–1 (0.28 by default): lower for a Map with many spawns, whose lines fan out. */
@@ -132,6 +138,17 @@ export interface TerrainLook {
   readonly splitRegions?: boolean;
   /** Banners painted on the ground, such as each Side's Race on Line Wars' Divide. */
   readonly banners?: readonly TerrainBanner[];
+}
+
+/**
+ * One kind of Scenery's colours: its `fill`, the `mark`s drawn over it
+ * (water's ripples, a building's roof lines, a cliff's strata, a pit's depth,
+ * burnt ground's embers) and the `edge` where it meets other ground.
+ */
+export interface SceneryLook {
+  readonly fill: number;
+  readonly mark: number;
+  readonly edge: number;
 }
 
 /** A pennant hanging from (x, y), its top centre in world units, with a small title and a big word down its length. */

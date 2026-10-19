@@ -32,6 +32,8 @@ const ROUTE = {
   preview: { color: 0x7fe8a8, alpha: 0.9, width: 8 },
 };
 const VALID = 0x6fdc5a;
+/** The hover outline: the build ring's own gold, so it reads as "the ring opens here". */
+const OUTLINE = 0xf2c14e;
 const INVALID = 0xf0503c;
 const WHITE = 8;
 /** An arrowhead every this many route cells shows which way creeps walk. */
@@ -53,6 +55,7 @@ export class Overlay {
   private readonly ghostArea: Sprite;
   private readonly ghostPlate: Sprite;
   private readonly ghostTop: Sprite;
+  private readonly outline = new Graphics();
   private readonly ring: Sprite;
 
   constructor(private readonly atlas: Atlas) {
@@ -66,7 +69,7 @@ export class Overlay {
     this.ghostPlate.alpha = 0.7;
     this.ghostTop.alpha = 0.8;
     this.ring.tint = 0xffe7a8;
-    this.over.addChild(this.ghostArea, this.ghostPlate, this.ghostTop, this.ring);
+    this.over.addChild(this.outline, this.ghostArea, this.ghostPlate, this.ghostTop, this.ring);
     this.setGhost(null);
     this.setSelection(null);
   }
@@ -144,6 +147,17 @@ export class Overlay {
     this.ghostTop.scale.set((span * (look?.size ?? 0.5)) / ATLAS_UNIT);
     this.ghostTop.tint = valid ? (look?.color ?? 0xffffff) : INVALID;
     drawRange(this.ghostRange, cx, cy, ghost.range, tint);
+  }
+
+  /** A light rounded outline just inside a box of cells, with a faint fill: what a click there would take. */
+  setOutline(box: Box | null): void {
+    const g = this.outline;
+    g.clear();
+    if (!box) return;
+    const inset = 4;
+    g.roundRect(box.col * CELL + inset, box.row * CELL + inset, box.w * CELL - inset * 2, box.h * CELL - inset * 2, 10)
+      .fill({ color: OUTLINE, alpha: 0.1 })
+      .stroke({ color: OUTLINE, width: 4, alpha: 0.85 });
   }
 
   setSelection(sel: SelectionView | null): void {

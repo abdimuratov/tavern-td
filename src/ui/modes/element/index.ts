@@ -1,5 +1,6 @@
 import { DRAW_POOL, ELEMENTS, FULL_WAVES, MAX_ELEMENT_LEVEL, elementName, type Element } from '../../../content/element';
-import { CELL, element, TICK_RATE, type GameState, type Point, type SimEvent } from '../../../sim';
+import { snapSquare } from '../../../render/footprint';
+import { element, TICK_RATE, type GameState, type Point, type SimEvent } from '../../../sim';
 import { DIFFICULTY_NAME } from '../../catalog';
 import type { ModeUi, Placement, RunChoices, RunView, StructureMark } from '../../mode-ui';
 import { BuildMenu } from './BuildMenu';
@@ -21,34 +22,14 @@ function elState(state: GameState): ElementState {
   return state.mode as ElementState;
 }
 
-const SIZE = element.FOOTPRINT;
-
 /**
- * The 2 × 2 spot for the pointer at `p`: of the four that cover the cell under
- * it, the valid one nearest the pointer, so a ghost snaps onto a narrow plot
- * instead of hanging off its edge. With none valid, the one centred on the
- * nearest grid corner, with its reason.
+ * The 2 × 2 spot for the pointer at `p`, snapped onto a narrow plot instead of
+ * hanging off its edge (snapSquare), with its cells and the reason it can't
+ * be built, if any.
  */
 export function spotAt(state: GameState, p: Point): { col: number; row: number; cells: number[]; error: string | null } | null {
-  const map = state.map;
-  const cell = { col: Math.floor(p.x / CELL), row: Math.floor(p.y / CELL) };
-  if (p.x < 0 || p.y < 0 || cell.col >= map.cols || cell.row >= map.rows) return null;
-  const clamp = (v: number, n: number): number => Math.min(n - SIZE, Math.max(0, v));
-  const col0 = clamp(Math.round(p.x / CELL) - 1, map.cols);
-  const row0 = clamp(Math.round(p.y / CELL) - 1, map.rows);
-  let best: { col: number; row: number; d: number } | null = null;
-  for (let dr = -1; dr <= 0; dr++) {
-    for (let dc = -1; dc <= 0; dc++) {
-      const col = clamp(cell.col + dc, map.cols);
-      const row = clamp(cell.row + dr, map.rows);
-      if (element.buildSpot(state, col, row).error !== null) continue;
-      const cx = (col + 1) * CELL - p.x;
-      const cy = (row + 1) * CELL - p.y;
-      const d = cx * cx + cy * cy;
-      if (!best || d < best.d) best = { col, row, d };
-    }
-  }
-  const pick = best ?? { col: col0, row: row0 };
+  const pick = snapSquare(state.map, p, (col, row) => element.buildSpot(state, col, row).error === null);
+  if (!pick) return null;
   const spot = element.buildSpot(state, pick.col, pick.row);
   return { col: pick.col, row: pick.row, cells: spot.cells, error: spot.error };
 }

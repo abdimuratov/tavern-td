@@ -175,15 +175,43 @@ function towerLabel(tower: Tower, state: GameState): TowerLabel | null {
 
 /**
  * Each Region's ground: the road, the Open ground beside it in the land's own
- * colour, and Scenery darker, as land nothing stands on.
+ * colour with a light rim where it meets road or Scenery, and each kind of
+ * Scenery in the Region's palette (docs/original-design.md §17).
  */
 export const REGION_TERRAIN: Readonly<Record<Region, TerrainLook>> = {
   // Scorched wheat, smoke grey, ember red.
-  ashfield: { buildable: 0x231c15, walkable: 0x5a4834, blocked: 0x110d09, blockedRim: 0x1a140f, gridLine: 0x3a3026 },
+  ashfield: {
+    buildable: 0x2b231a, walkable: 0x5e4a33, blocked: 0x110d09, blockedRim: 0x110d09, gridLine: 0x3d3227, plotRim: 0x9a8058, plotRimEdges: false,
+    scenery: {
+      water: { fill: 0x1f3c48, mark: 0x5c8a99, edge: 0x7c9a9a },
+      building: { fill: 0x5b5650, mark: 0x221d19, edge: 0x2e2822 },
+      cliff: { fill: 0x5a524a, mark: 0x2c2620, edge: 0x8a7f70 },
+      pit: { fill: 0x060403, mark: 0x1a120c, edge: 0x6a4a2c },
+      burnt: { fill: 0x141110, mark: 0xd8642c, edge: 0x3a2a20 },
+    },
+  },
   // Sick green, bruise violet, black water.
-  blightfen: { buildable: 0x121812, walkable: 0x3e4630, blocked: 0x070a07, blockedRim: 0x0d110d, gridLine: 0x283024 },
+  blightfen: {
+    buildable: 0x18201a, walkable: 0x46503a, blocked: 0x070a07, blockedRim: 0x070a07, gridLine: 0x2a3426, plotRim: 0x74865a, plotRimEdges: false,
+    scenery: {
+      water: { fill: 0x103236, mark: 0x44766c, edge: 0x5a7a5e },
+      building: { fill: 0x4c4852, mark: 0x1a1720, edge: 0x24212a },
+      cliff: { fill: 0x4a4650, mark: 0x1c1a20, edge: 0x76727e },
+      pit: { fill: 0x030503, mark: 0x101a0c, edge: 0x7a9a34 },
+      burnt: { fill: 0x0e100c, mark: 0xa8c048, edge: 0x2a3020 },
+    },
+  },
   // Obsidian, hellfire orange, blood red.
-  rift: { buildable: 0x0f0b11, walkable: 0x43241e, blocked: 0x050306, blockedRim: 0x0a070c, gridLine: 0x30222a },
+  rift: {
+    buildable: 0x1a1419, walkable: 0x4c2a22, blocked: 0x050306, blockedRim: 0x050306, gridLine: 0x34262e, plotRim: 0x84606e, plotRimEdges: false,
+    scenery: {
+      water: { fill: 0x16203a, mark: 0x4a5c88, edge: 0x5c6890 },
+      building: { fill: 0x4a4048, mark: 0x16101a, edge: 0x221a22 },
+      cliff: { fill: 0x3c3440, mark: 0x18121c, edge: 0x7a6a7c },
+      pit: { fill: 0x040204, mark: 0x2a0c08, edge: 0xd2501e },
+      burnt: { fill: 0x231c2c, mark: 0xb8a8d0, edge: 0x3e3448 },
+    },
+  },
 };
 
 export function regionOf(state: GameState): Region {

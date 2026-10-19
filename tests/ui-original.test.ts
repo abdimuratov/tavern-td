@@ -12,35 +12,40 @@ import {
 } from '../src/ui/modes/original/campaign';
 import { challengeStatus } from '../src/ui/modes/original/StageSelect';
 import { ORIGINAL_LOOK, REGION_TERRAIN } from '../src/ui/modes/original/look';
-import { placeAt, ring } from '../src/ui/modes/original/ring';
+import { ghostPlace, groundWhyNot, pickFamily, placeAt, ring } from '../src/ui/modes/original/ring';
 import { asSpotSave, buildOn, newRun, placeTower, setLevel } from './sim/original/helpers';
-import { formerSpot, FORMER_SPOTS } from './sim/original/former-spots';
+import { FORMER_SPOTS } from './sim/original/former-spots';
 
 interface FakeView extends RunView {
   readonly sent: Command[];
   readonly ghosts: (Point | null)[];
   readonly said: string[];
+  /** Where the fake mouse is over the board; null off it. */
+  mouse: Point | null;
 }
 
 function viewOf(state: GameState): FakeView {
   const sent: Command[] = [];
   const ghosts: (Point | null)[] = [];
   const said: string[] = [];
-  return {
-    state, side: 0, sent, ghosts, said,
+  const view: FakeView = {
+    state, side: 0, sent, ghosts, said, mouse: null,
     send: (c) => void sent.push(c),
     refresh: () => {},
     select: () => {},
     say: (text) => void said.push(text),
     showGhost: (p) => void ghosts.push(p),
+    pointer: () => view.mouse,
   };
+  return view;
 }
 
-/** The middle of the 2 × 2 the Mill Road's Build Spot `spot` was: the grid corner it centres on. */
-function spotPoint(spot: number): Point {
-  const [col, row] = formerSpot('mill-road', spot);
-  return { x: (col + 1) * 64, y: (row + 1) * 64 };
-}
+/** The middle of the 2 × 2 with its top-left at (col, row): the grid corner it centres on. */
+const corner = (col: number, row: number): Point => ({ x: (col + 1) * 64, y: (row + 1) * 64 });
+/** The middle of cell (col, row). */
+const mid = (col: number, row: number): Point => ({ x: (col + 0.5) * 64, y: (row + 0.5) * 64 });
+const cellsOf = (col: number, row: number): number[] => [row * 32 + col, row * 32 + col + 1, (row + 1) * 32 + col, (row + 1) * 32 + col + 1];
+const build = (col: number, row: number, spec: string): Command => ({ type: 'original.build', col, row, spec });
 
 const won = (stars: number, seconds = 400) => ({ won: true, stars, difficulty: 'normal' as const, seconds });
 const EMPTY: CampaignProgress = { stages: {}, challenges: {}, talents: [] };
@@ -51,28 +56,41 @@ afterEach(() => {
 });
 
 describe('the build ring', () => {
-  it('opens on Open ground, shows the picked Ghost there, and builds on a second tap', () => {
+  it('opens on Open ground that was never a Build Spot, shows the picked Ghost there, and builds on a second tap', () => {
     const state = newRun({ cleared: 0 });
     const view = viewOf(state);
-    const p = spotPoint(2);
+    const p = corner(22, 11);
     expect(ORIGINAL_UI.placement!(view, p)).toBeNull();
     expect(ORIGINAL_UI.tapGround!(view, p, 'touch')).toBe(true);
-    expect(ring.value).toEqual({ place: { col: 19, row: 6 }, family: null, kind: 'touch' });
+    expect(ring.value).toEqual({ place: { col: 22, row: 11 }, family: null, kind: 'touch' });
+    expect(ORIGINAL_UI.hint!(view)).toEqual({ text: 'Pick a tower family for this place', tone: 'info' });
     // No family yet: no Ghost.
     expect(ORIGINAL_UI.placement!(view, p)).toBeNull();
 
-    ring.value = { ...ring.value!, family: 'cannon' };
-    const ghost = ORIGINAL_UI.placement!(view, p)!;
-    expect(ghost.command).toEqual({ type: 'original.build', col: 19, row: 6, spec: 'cannon_tower' });
+    pickFamily(view, 'cannon');
+    expect(ring.value!.family).toBe('cannon');
+    expect(view.ghosts.at(-1)).toEqual(p);
+    const ghost = ORIGINAL_UI.placement!(view, p, 'touch')!;
+    expect(ghost.command).toEqual(build(22, 11, 'cannon_tower'));
     expect(ghost).toMatchObject({ error: null, label: 'Cannon Tower · 90 gold', range: 288, route: false, checked: true });
-    expect(ghost.cells).toEqual([6 * 32 + 19, 6 * 32 + 20, 7 * 32 + 19, 7 * 32 + 20]);
-    // The Ghost stands only on the ring's own 2 × 2.
-    expect(ORIGINAL_UI.placement!(view, spotPoint(3))).toBeNull();
+    expect(ghost.cells).toEqual(cellsOf(22, 11));
+    // On a phone the Ghost stands only on the ring's own 2 × 2.
+    expect(ORIGINAL_UI.placement!(view, corner(28, 11), 'touch')).toBeNull();
 
     expect(ORIGINAL_UI.tapGround!(view, p, 'touch')).toBe(true);
-    expect(view.sent).toEqual([{ type: 'original.build', col: 19, row: 6, spec: 'cannon_tower' }]);
+    expect(view.sent).toEqual([build(22, 11, 'cannon_tower')]);
     expect(ring.value).toBeNull();
     expect(view.ghosts.at(-1)).toBeNull();
+  });
+
+  it('builds when the family is tapped again', () => {
+    const view = viewOf(newRun({ cleared: 0 }));
+    ORIGINAL_UI.tapGround!(view, corner(2, 0), 'touch');
+    pickFamily(view, 'arrow');
+    expect(view.sent).toEqual([]);
+    pickFamily(view, 'arrow');
+    expect(view.sent).toEqual([build(2, 0, 'arrow_tower')]);
+    expect(ring.value).toBeNull();
   });
 
   it('snaps a tap to the free 2 × 2 nearest it, as Element\'s Ghost does, at any alignment', () => {
@@ -86,44 +104,141 @@ describe('the build ring', () => {
     placeTower(state, [6, 0], 'arrow_tower');
     expect(placeAt(state, { x: 5 * 64 + 50, y: 50 })).toEqual({ place: { col: 4, row: 0 }, error: null });
     expect(placeAt(state, { x: 6 * 64 + 50, y: 1 * 64 + 10 })).toEqual({ place: { col: 6, row: 0 }, error: 'a tower stands there' });
+    // At the Map's edge it stays on the Map; off it there is none.
+    expect(placeAt(state, { x: 31 * 64 + 60, y: 17 * 64 + 60 })).toEqual({ place: { col: 30, row: 16 }, error: null });
     expect(placeAt(state, { x: -5, y: 10 })).toBeNull();
   });
 
-  it('moves to other Open ground keeping its family, says why where nothing fits, and closes on the road', () => {
+  it('on a phone, moves to other Open ground keeping its family, and opens where nothing fits with the reason', () => {
     const state = newRun({ cleared: 0 });
     const view = viewOf(state);
-    ORIGINAL_UI.tapGround!(view, spotPoint(0), 'mouse');
-    expect(ORIGINAL_UI.pending!(view)).toBe(true);
-    ring.value = { ...ring.value!, family: 'arrow' };
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'touch');
+    pickFamily(view, 'arrow');
     // Another 2 × 2 moves the ring and its Ghost there.
-    expect(ORIGINAL_UI.tapGround!(view, spotPoint(5), 'mouse')).toBe(true);
-    expect(ring.value).toEqual({ place: { col: 11, row: 10 }, family: 'arrow', kind: 'mouse' });
-    expect(view.ghosts.at(-1)).toEqual({ x: 12 * 64, y: 11 * 64 });
+    expect(ORIGINAL_UI.tapGround!(view, corner(2, 0), 'touch')).toBe(true);
+    expect(ring.value).toEqual({ place: { col: 2, row: 0 }, family: 'arrow', kind: 'touch' });
+    expect(view.ghosts.at(-1)).toEqual(corner(2, 0));
     expect(view.sent).toEqual([]);
-    // A free cell hemmed in by towers and the road says why and closes the ring.
+    // A free cell hemmed in by towers and the road: the ring goes round the nearest 2 × 2, its Ghost red with the reason.
     for (const at of [[3, 0], [6, 0]] as const) placeTower(state, at, 'arrow_tower');
-    expect(ORIGINAL_UI.tapGround!(view, { x: 5 * 64 + 32, y: 1 * 64 + 10 }, 'mouse')).toBe(true);
-    expect(view.said).toEqual(['a tower stands there']);
+    expect(ORIGINAL_UI.tapGround!(view, { x: 5 * 64 + 32, y: 1 * 64 + 10 }, 'touch')).toBe(true);
+    expect(ring.value).toEqual({ place: { col: 5, row: 0 }, family: 'arrow', kind: 'touch' });
+    expect(ORIGINAL_UI.placement!(view, corner(5, 0), 'touch')!.error).toBe('a tower stands there');
+    expect(ORIGINAL_UI.hint!(view)).toEqual({ text: 'A tower stands there', tone: 'error' });
+    expect(view.said).toEqual([]);
+  });
+
+  it('closes on the road or Scenery and says why, and leaves such a tap alone while it is shut', () => {
+    const view = viewOf(newRun({ cleared: 0 }));
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'touch');
+    expect(ORIGINAL_UI.pending!(view)).toBe(true);
+    expect(ORIGINAL_UI.tapGround!(view, mid(9, 3), 'touch')).toBe(true);
+    expect(view.said).toEqual(['Not on the road']);
     expect(ring.value).toBeNull();
-    // The road at the top of the Map takes no tower: it closes the ring, and with none open the tap is left alone.
-    ORIGINAL_UI.tapGround!(view, spotPoint(0), 'mouse');
-    expect(ORIGINAL_UI.tapGround!(view, { x: 600, y: 192 }, 'mouse')).toBe(true);
+    expect(ORIGINAL_UI.tapGround!(view, mid(9, 3), 'touch')).toBe(false);
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'touch');
+    pickFamily(view, 'cannon');
+    expect(ORIGINAL_UI.tapGround!(view, mid(18, 11), 'touch')).toBe(true);
+    expect(view.said).toEqual(['Not on the road', 'Nothing stands in the millpond']);
     expect(ring.value).toBeNull();
-    expect(ORIGINAL_UI.tapGround!(view, { x: 600, y: 192 }, 'mouse')).toBe(false);
-    // So does Scenery.
-    expect(ORIGINAL_UI.tapGround!(view, { x: 14 * 64, y: 5 * 64 }, 'mouse')).toBe(false);
+    expect(ORIGINAL_UI.tapGround!(view, mid(14, 5), 'touch')).toBe(false);
+    expect(view.sent).toEqual([]);
+  });
+
+  it('names what stands on the road and on each piece of Scenery, Burnt ground under the Stage\'s own', () => {
+    const state = newRun({ cleared: 0 });
+    expect(groundWhyNot(state, 9, 3)).toBe('Not on the road');
+    expect(groundWhyNot(state, 14, 5)).toBe('Nothing stands on the mill');
+    expect(groundWhyNot(state, 18, 11)).toBe('Nothing stands in the millpond');
+    expect(groundWhyNot(state, 2, 0)).toBeNull();
+    const burnt = newRun({ challenge: 'burnt-mill' });
+    expect(groundWhyNot(burnt, 2, 16)).toBe('Nothing stands on burnt ground');
+    expect(groundWhyNot(burnt, 18, 11)).toBe('Nothing stands in the millpond');
+  });
+
+  it('on the Mac, outlines the 2 × 2 a click would take until a family is picked', () => {
+    const view = viewOf(newRun({ cleared: 0 }));
+    expect(ORIGINAL_UI.outline!(view, corner(2, 0))).toEqual(cellsOf(2, 0));
+    expect(ORIGINAL_UI.outline!(view, mid(9, 3))).toBeNull();
+    expect(ORIGINAL_UI.outline!(view, mid(14, 5))).toBeNull();
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'mouse');
+    expect(ORIGINAL_UI.outline!(view, corner(22, 11))).toBeNull();
+    expect(ORIGINAL_UI.outline!(view, corner(2, 0))).toEqual(cellsOf(2, 0));
+    pickFamily(view, 'arrow');
+    expect(ORIGINAL_UI.outline!(view, corner(2, 0))).toBeNull();
+  });
+
+  it('on the Mac, the picked Ghost follows the pointer, red with the reason, and builds where it stands', () => {
+    const state = newRun({ cleared: 0 });
+    const view = viewOf(state);
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'mouse');
+    pickFamily(view, 'arrow');
+    const at = (p: Point) => ORIGINAL_UI.placement!(view, p, 'mouse');
+    expect(at(corner(28, 11))).toMatchObject({ command: build(28, 11, 'arrow_tower'), error: null });
+    expect(at(mid(9, 3))!.error).toBe('on the road');
+    expect(at(mid(18, 11))!.error).toBe('in the millpond');
+    expect(at(mid(14, 5))!.error).toBe('on the mill');
+    // On the ring's own 2 × 2, it stands there.
+    expect(at(mid(22, 11))!.command).toEqual(build(22, 11, 'arrow_tower'));
+
+    // The same key again builds where the Ghost stands: under the pointer, or on the ring's 2 × 2 with the pointer off the board.
+    view.mouse = mid(9, 3);
+    pickFamily(view, 'arrow');
+    expect(view.sent).toEqual([build(9, 3, 'arrow_tower')]);
+    expect(ring.value).not.toBeNull();
+    view.mouse = null;
+    pickFamily(view, 'arrow');
+    expect(view.sent.at(-1)).toEqual(build(22, 11, 'arrow_tower'));
+    expect(ring.value).toBeNull();
+
+    // A click on Open ground builds there; a click on the road closes the ring and says why.
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'mouse');
+    pickFamily(view, 'arrow');
+    expect(ORIGINAL_UI.tapGround!(view, corner(28, 11), 'mouse')).toBe(true);
+    expect(view.sent.at(-1)).toEqual(build(28, 11, 'arrow_tower'));
+    expect(ring.value).toBeNull();
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'mouse');
+    pickFamily(view, 'arrow');
+    expect(ORIGINAL_UI.tapGround!(view, mid(9, 3), 'mouse')).toBe(true);
+    expect(view.said).toEqual(['Not on the road']);
+    expect(ring.value).toBeNull();
+  });
+
+  it('on the Mac, puts the Ghost back on the ring\'s 2 × 2 over a tower', () => {
+    const state = newRun({ cleared: 0 });
+    const view = viewOf(state);
+    placeTower(state, [2, 0], 'arrow_tower');
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'mouse');
+    pickFamily(view, 'cannon');
+    view.mouse = mid(2, 0);
+    expect(ghostPlace(view)).toEqual({ col: 22, row: 11 });
+    view.mouse = corner(28, 11);
+    expect(ghostPlace(view)).toEqual({ col: 28, row: 11 });
   });
 
   it('keeps a place whose family is short of gold open, and shows why on the Ghost', () => {
     const state = newRun({ cleared: 0 });
     state.gold = 50;
     const view = viewOf(state);
-    ORIGINAL_UI.tapGround!(view, spotPoint(1), 'touch');
-    ring.value = { ...ring.value!, family: 'arrow' };
-    expect(ORIGINAL_UI.placement!(view, spotPoint(1))!.error).toBe('needs 70 gold');
-    ORIGINAL_UI.tapGround!(view, spotPoint(1), 'touch');
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'touch');
+    pickFamily(view, 'arrow');
+    expect(ORIGINAL_UI.placement!(view, corner(22, 11))!.error).toBe('needs 70 gold');
+    ORIGINAL_UI.tapGround!(view, corner(22, 11), 'touch');
     expect(view.sent).toHaveLength(1);
     expect(ring.value).not.toBeNull();
+  });
+
+  it('at a Challenge\'s Tower cap, opens with every family refused and the cap\'s reason', () => {
+    const state = newRun({ challenge: 'burnt-mill' });
+    for (let i = 0; i < 4; i++) placeTower(state, i, 'arrow_tower');
+    const view = viewOf(state);
+    ORIGINAL_UI.tapGround!(view, corner(28, 5), 'touch');
+    expect(ring.value?.place).toEqual({ col: 28, row: 5 });
+    const cap = '4 towers stand: the most in this Challenge';
+    expect(ORIGINAL_UI.hint!(view)).toEqual({ text: cap, tone: 'error' });
+    expect(original.placeInfo(state, 28, 5).options.map((o) => o.blocked)).toEqual(original.placeInfo(state, 28, 5).options.map(() => cap));
+    pickFamily(view, 'arrow');
+    expect(ORIGINAL_UI.placement!(view, corner(28, 5))!.error).toBe(cap);
   });
 
   it('shows a tower its real reach: its attack range, or a Totem its aura', () => {
@@ -174,9 +289,18 @@ describe('the Original play screen', () => {
     expect(tower('blizzard_spire').nova).toBe(true);
   });
 
-  it('paints each Region in its own palette', () => {
+  it('paints each Region in its own palette, every kind of Scenery apart from the ground and the road', () => {
     const state = newRun();
     expect(typeof ORIGINAL_LOOK.terrain === 'function' && ORIGINAL_LOOK.terrain(state)).toEqual(REGION_TERRAIN.ashfield);
+    const rgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+    const apart = (a: number, b: number) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]!));
+    for (const look of Object.values(REGION_TERRAIN)) {
+      expect(Object.keys(look.scenery!).sort()).toEqual(['building', 'burnt', 'cliff', 'pit', 'water']);
+      for (const kind of Object.values(look.scenery!)) {
+        expect(apart(kind.fill, look.buildable!)).toBeGreaterThan(20);
+        expect(apart(kind.fill, look.walkable!)).toBeGreaterThan(20);
+      }
+    }
   });
 
   it('accepts its own saves and refuses a damaged one', () => {

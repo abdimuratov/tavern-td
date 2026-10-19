@@ -903,8 +903,8 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .or-perks li.held { color: var(--text); }
 .or-perks li.held .lv { background: #6b5320; color: #ffe08a; }
 
-/* The build ring: buttons round the Spot, which stays clear in the middle. */
-/* Its box spans the ring, centred on the Spot by a transform; only the buttons take taps. */
+/* The build ring: buttons round its 2 × 2, which stays clear in the middle. */
+/* Its box spans the ring, centred on the 2 × 2 by a transform; only the buttons take taps. */
 .build-ring {
   --r: 64px;
   position: absolute;
@@ -938,14 +938,16 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 }
 .btn.ring-btn.active { background: var(--accent); }
 .btn.ring-btn.dim { opacity: 1; color: var(--muted); }
+/* A picked family that can't be built here: still the accent, faded, with dark text that stays legible. */
+.btn.ring-btn.active.dim { background: #a07a3c; color: #2a1f10; }
 .ring-btn .label { font-weight: 750; }
-/* The Spot the ring is open on. */
-.build-ring .ring-spot {
+/* The 2 × 2 the ring is open on. */
+.build-ring .ring-place {
   position: absolute;
-  left: calc(50% + var(--ox, 0px) - var(--spot) / 2);
-  top: calc(50% + var(--oy, 0px) - var(--spot) / 2);
-  width: var(--spot);
-  height: var(--spot);
+  left: calc(50% + var(--ox, 0px) - var(--place) / 2);
+  top: calc(50% + var(--oy, 0px) - var(--place) / 2);
+  width: var(--place);
+  height: var(--place);
   border: 2px dashed #f2c14e;
   border-radius: 6px;
   pointer-events: none;
