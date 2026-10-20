@@ -11,11 +11,11 @@ import type { Transport, TransportState } from './transport';
 // Relayed). The fetch and the clock are injected, so the tests run in Node.
 
 /**
- * The Relay's address, `https://<service>.onrender.com`. Empty means no
- * Relay: Host and Join go straight to the codes passed by hand.
- * docs/render-setup.md says how to make one.
+ * The Relay's address: the `tavern-relay` service on Render. Empty would mean
+ * no Relay, and Host and Join would go straight to the codes passed by hand.
+ * docs/render-setup.md says how it was made.
  */
-export const RELAY_URL = '';
+export const RELAY_URL = 'https://tavern-relay.onrender.com';
 
 /** Tests point the app at a local Relay in an init script (e2e/fixtures.ts), or at none with ''. */
 declare global {

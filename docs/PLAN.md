@@ -179,7 +179,7 @@ Phase 5 progress (2026-10-18):
   - The server: `server/`, Node 26 with `ws` 8.22.0, deployed by `render.yaml` as one free Docker service in Frankfurt. It gives out 4-character Room codes (no O, 0, I or 1), passes WebRTC's offer, answer and trickled candidates between the two apps in a room, and relays their messages when they can't connect directly. Rooms live in memory while either app is in them, plus 10 minutes. It allows only the Pages site, the Android app and localhost, limits rooms, joins, sockets, frame size (64 KiB) and rate, keeps nothing on disk and logs only counts.
   - The app: Host shows the Room code large with Share, Copy and a QR of its `#room=` link; the Guest types it in Join or opens the link. Direct first: if the DataChannel isn't open 5 s after the Host has the answer, or ICE fails, both go through the server's WebSocket. The Lobby says Direct or Relayed and the HUD adds "· relayed", as before. The main menu wakes the server as it shows Line Wars' Versus row, and Host and Join say "Waking the server… up to a minute" while it wakes. Reconnect goes through the same room. "Use codes instead" keeps the codes passed by hand as the fallback.
   - Tested: 26 server tests (rooms, codes, joining, forwarding, the grace, expiry and idle, origins, every limit, over real sockets), 28 for the app's side over a fake WebSocket backed by the server's own rooms (the room, Direct or Relayed with WebRTC faked, the warm-up), and the screens' words. In e2e on desktop Chrome, with the server run locally: two pages connect by Room code Direct and play the whole Versus test; two pages that can't connect directly play Relayed and agree on the hash checks; the codes still connect; a server that doesn't answer shows the waking line; and Join refuses a mistyped code and a room nobody made.
-  - Waiting on you: creating the service from the Blueprint ([render-setup.md](render-setup.md)). Until its URL is in `RELAY_URL`, Host and Join use the codes as before.
+  - Live: you created the service from the Blueprint ([render-setup.md](render-setup.md)), and `RELAY_URL` is https://tavern-relay.onrender.com. Two pages on this Mac connected by Room code through it, Direct (ping 1 ms) and, forced to relay, Relayed (ping 413 ms, so an Input Delay of 3 Turns), and agreed on their hash checks: `TAVERN_LIVE_RELAY=1 pnpm exec playwright test e2e/live-relay.spec.ts --project=mac-chrome --workers=1`, opt-in since it needs the network.
 - Left: a two-device play-test of Versus. Untested: real phones; Safari taking a rebuilt code (WebKit parses descriptions with the same libwebrtc as Chrome, so it should); carrier and symmetric NAT; Wi-Fi that isolates clients; the S24's WebView (WebRTC, mDNS host candidates, the share sheet); the iPhone's share sheet and Safari suspending the page in the background; Reconnect, rejoin, Claim the win and a real Desync between two devices (each covered only by the net layer's Node tests).
 - Watch in play-testing:
   - Whether the S24's APK and the iPhone connect on one Wi-Fi. Then the iPhone on mobile data against the Mac, and both phones on mobile data, where §3's message may be the answer.
@@ -187,7 +187,7 @@ Phase 5 progress (2026-10-18):
   - How 200–500 ms of Input Delay feels with the click and the faint marks, and whether "Waiting for the Rival…" shows up on a good connection.
   - Each phone sent to the background mid-Run (both stop, then Ready), and a Reconnect after Wi-Fi drops.
   - The Lobby and Host screen on a phone in landscape: the QR is 132 px there, and the Host's page scrolls.
-- Next: your Render setup for the Relay ([render-setup.md](render-setup.md)), then the two-device play-test of Versus, then Phase 5's exit bar.
+- Next: the two-device play-test of Versus, then Phase 5's exit bar.
 
 Performance (2026-10-19), on the dev Mac (M5 Pro). A phone core is taken as 3× slower, so a tick must stay under about 1.3 ms here to meet §2's 4 ms. Node ticks are whole bot Runs replayed, each tick the least of three plays; "worst" leaves out GC pauses. Frames are Chromium at the iphone and android projects' landscape sizes with the CPU slowed 4×, on the Mac's GPU, during each mode's busiest moment of a bot's Run (`TAVERN_PERF=1`, see `e2e/perf.spec.ts`).
 
@@ -386,11 +386,11 @@ Ported from [MNoya/Element-TD](https://github.com/MNoya/Element-TD); every rule 
 - **S24:** turn on Developer options and USB debugging, then connect it by cable when installing the APK.
 - **iPhone:** open the Pages URL in Safari, then Share → Add to Home Screen.
 - **GitHub:** approve creating the public `tavern-td` repo and turning on Pages. I'll ask before each step.
-- **Render:** create Versus' Relay from the repo's Blueprint, in the workspace where Catan runs ([render-setup.md](render-setup.md)), and send me the service's URL.
+- **Render:** Versus' Relay runs there from the repo's Blueprint, beside Catan ([render-setup.md](render-setup.md)). Done on 2026-10-20; nothing more unless Render suspends it.
 - **Play-test** at the end of each phase and tell me what feels off.
 
 ## 7. Parked for later
 
-- Versus: the Relay (built on Render, waiting on your setup in §6; it leaves this list once two pages connect through it), a handicap, keeping a Versus Run on disk, and encrypting Relayed messages end to end.
+- Versus: a handicap, keeping a Versus Run on disk, and encrypting Relayed messages end to end.
 - Music and more Races.
 - A Remix mode (Gem's Draft plus Element's picks).
