@@ -59,10 +59,13 @@ for (const [policy, route] of [['all', 'Direct'], ['relay', 'Relayed']] as const
       });
       await expect.poll(async () => (await run(host.page)).run.checks, { timeout: 30_000 }).toBeGreaterThan(2);
       await host.page.getByTestId('pause').click();
+      // Both stop on the pause's tick before they're compared.
+      await expect(host.page.getByTestId('versus-pause-title')).toHaveText('You paused');
       await expect(guest.page.getByTestId('versus-pause-title')).toHaveText('The Rival paused');
       const [h, g] = await Promise.all([run(host.page), run(guest.page)]);
       test.info().annotations.push({ type: 'live', description: `${route}: room ${code}, ping ${Math.round(h.ping ?? -1)} ms, ${h.run.checks} hash checks` });
       expect(h).toMatchObject({ route: route.toLowerCase(), room: code });
+      expect(h.tick).toBe(h.run.pause!.tick);
       expect(g.tick).toBe(h.tick);
       expect(g.run.agreed).toEqual(h.run.agreed);
       expect(h.run.desyncs + g.run.desyncs).toBe(0);

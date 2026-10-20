@@ -275,8 +275,11 @@ test('two devices that can\'t connect directly play through the Relay, Relayed o
     }
     await expect.poll(async () => (await versusRun(host.page)).run.checks, { timeout: 20_000 }).toBeGreaterThan(2);
     await host.page.getByTestId('pause').click();
+    // Both stop on the pause's tick before they're compared.
+    await expect(host.page.getByTestId('versus-pause-title')).toHaveText('You paused');
     await expect(guest.page.getByTestId('versus-pause-title')).toHaveText('The Rival paused');
     const [h, g] = await Promise.all([versusRun(host.page), versusRun(guest.page)]);
+    expect(h.tick).toBe(h.run.pause!.tick);
     expect(g.tick).toBe(h.tick);
     expect(h.run.agreed).not.toBeNull();
     expect(g.run.agreed).toEqual(h.run.agreed);
