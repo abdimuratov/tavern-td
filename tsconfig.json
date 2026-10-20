@@ -17,7 +17,8 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "tests", "e2e", "tools", "*.config.ts"]
+  "include": ["src", "tests", "e2e", "tools", "server", "*.config.ts"]
 }

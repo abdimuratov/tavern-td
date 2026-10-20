@@ -11,9 +11,9 @@
 export type TransportState = 'connecting' | 'open' | 'unstable' | 'closed';
 
 /**
- * How an open connection runs: `direct` between the two devices, or
- * `relayed` through the Relay (docs/versus-design.md §2). Local UI state,
- * never a message.
+ * How an open connection runs: `direct` between the two devices over a
+ * DataChannel, or `relayed` through the Relay's WebSocket
+ * (docs/versus-design.md §2). Local UI state, never a message.
  */
 export type Route = 'direct' | 'relayed';
 

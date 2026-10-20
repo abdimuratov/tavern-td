@@ -1,21 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { browserName, isIos, joinInUrl, linkBase, PAGES_URL } from '../src/app/versus-link';
+import { browserName, isIos, joinInUrl, linkBase, PAGES_URL, readRoomCode, roomLink } from '../src/app/versus-link';
 import { RACES } from '../src/content/maul';
 import { CONNECT_TIMEOUT_MS, joinLink, type LockstepStatus, type PauseStatus, type SessionStatus } from '../src/net';
 import { linewars } from '../src/sim';
 import { LINEWARS_UI } from '../src/ui/modes/linewars';
 import { lwEndText } from '../src/ui/modes/linewars/text';
-import type { CodeSwap } from '../src/ui/versus/state';
+import type { CodeSwap, RoomSwap } from '../src/ui/versus/state';
 import { linkDown, versusRunOn, type VersusState } from '../src/ui/versus/state';
 import {
-  ageText, boardBanner, connectionLine, countdownSeconds, FAIL_TEXT, FAIL_TEXT_NO_RELAY, FAIL_TEXT_RELAYED, failText, lostText, mismatchText,
-  pauseView, raceChoices, RELAY_NOTE, rivalLobbyText, routeText, sessionEndText, sessionRunEnd, STALE_MS, swapStale, swapTimedOut,
+  ageText, boardBanner, connectionLine, countdownSeconds, FAIL_TEXT, FAIL_TEXT_ROOM, failText, lostText, mismatchText, pauseView, raceChoices,
+  rivalLobbyText, ROOM_CODE_ERROR, roomProblemText, roomSlow, roomWaitText, routeText, sessionEndText, sessionRunEnd, STALE_MS, swapStale,
+  swapTimedOut,
 } from '../src/ui/versus/text';
 import { newRun } from './sim/linewars/helpers';
 
 // The pure parts of the Versus screens (docs/versus-design.md §2–§6): reading
-// a Join link at boot, the address a link opens, the device's name for
-// reports, and every line the screens decide from the session's status.
+// a room's or a Join code's link at boot, a typed Room code, the address a
+// link opens, the device's name for reports, and every line the screens
+// decide from the session's status or the room.
 
 const CODE = 'TTDJ1.AQEAq83vAQRhYmNkGHBhc3N3b3JkcGFzc3dvcmRwYXNzd29yZAAA';
 
@@ -38,7 +40,11 @@ function pause(o: Partial<PauseStatus> = {}): PauseStatus {
 }
 
 const swap = (o: Partial<CodeSwap>): CodeSwap => ({
-  role: 'host', step: 'offer', code: 'link', madeAt: 0, connectingAt: null, error: null, prefill: '', reconnect: false, relay: 'none', rivalRelay: false, ...o,
+  kind: 'codes', role: 'host', step: 'offer', code: 'link', madeAt: 0, connectingAt: null, error: null, prefill: '', reconnect: false, ...o,
+});
+
+const room = (o: Partial<RoomSwap>): RoomSwap => ({
+  kind: 'room', role: 'host', step: 'waiting', code: 'K7QX', link: null, since: 0, error: null, prefill: '', reconnect: false, ...o,
 });
 
 describe('Versus links', () => {
@@ -111,19 +117,11 @@ describe('the code swap', () => {
     expect(swapTimedOut(swap({ step: 'offer' }), 10 * CONNECT_TIMEOUT_MS)).toBe(false);
   });
 
-  it('says why it couldn\'t connect: even the relay, the relay unreachable, or no relay at all (§3)', () => {
-    // A relay candidate in either code: the Relay was tried.
-    expect(failText(swap({ relay: 'offered' }))).toBe(FAIL_TEXT_RELAYED);
-    expect(failText(swap({ relay: 'unavailable', rivalRelay: true }))).toBe(FAIL_TEXT_RELAYED);
-    expect(failText(swap({ relay: 'none', rivalRelay: true }))).toBe(FAIL_TEXT_RELAYED);
-    expect(FAIL_TEXT_RELAYED).toMatch(/^Even the relay couldn't link you/);
-    // A Relay set up but in neither code, and no Relay at all, as before.
-    expect(failText(swap({ relay: 'unavailable' }))).toBe(FAIL_TEXT_NO_RELAY);
-    expect(failText(swap({ relay: 'unneeded' }))).toBe(FAIL_TEXT_NO_RELAY);
-    expect(FAIL_TEXT_NO_RELAY).toContain("the relay couldn't be reached");
-    expect(failText(swap({}))).toBe(FAIL_TEXT);
-    expect(FAIL_TEXT).toContain('Tavern TD has no relay server');
-    expect(RELAY_NOTE).toBe('Relay unavailable: only direct connections will work.');
+  it('says codes connect only directly when they fail, and points to a room when a Relay is set up (§3)', () => {
+    expect(failText(false)).toBe(FAIL_TEXT);
+    expect(FAIL_TEXT).toContain('codes connect only directly');
+    expect(failText(true)).toBe(FAIL_TEXT_ROOM);
+    expect(FAIL_TEXT_ROOM).toContain('Use a room code instead');
   });
 
   it('says what differs when the versions don\'t match, and when the Host\'s Run is gone', () => {
@@ -211,6 +209,7 @@ describe('in a Run', () => {
   it('tells the Host and the Guest how a Reconnect goes, and when the win may be claimed (§5.4–§5.5)', () => {
     expect(lostText(status()).text).toMatch(/Reconnect makes a new code to send the Rival\.$/);
     expect(lostText(status({ role: 'guest', side: 1 })).text).toMatch(/Reconnect takes a new code from the Host\.$/);
+    expect(lostText(status(), 'K7QX').text).toMatch(/Reconnect, both of you, to connect again through room K7QX\.$/);
     expect(lostText(status({ rivalAway: true })).text).toMatch(/^The Rival's app went to the background/);
     expect(lostText(status()).claim).toMatch(/^If the Rival is gone 2 minutes/);
     expect(lostText(status({ canClaim: true })).claim).toMatch(/you may claim the win\.$/);
@@ -227,6 +226,7 @@ describe('in a Run', () => {
   it('keeps the Connection lost sheet up while a Reconnect\'s new connection is still connecting', () => {
     const v = (o: Partial<SessionStatus>, reconnecting = false, swapOpen = false): VersusState => ({
       role: 'host', swap: swapOpen ? swap({}) : null, status: status(o), now: 0, inRun: true, report: false, rejoin: false, reconnecting,
+      relay: true, room: null, waking: false,
     });
     expect(linkDown(v({ link: 'open' }))).toBe(false);
     expect(linkDown(v({ link: 'lost' }))).toBe(true);
@@ -241,6 +241,7 @@ describe('in a Run', () => {
   it('holds the new version\'s reload while a Versus Run is on', () => {
     const v = (phase: SessionStatus['phase']): VersusState => ({
       role: 'host', swap: null, status: status({ phase }), now: 0, inRun: true, report: false, rejoin: false, reconnecting: false,
+      relay: true, room: null, waking: false,
     });
     expect(versusRunOn(null)).toBe(false);
     expect(versusRunOn(v('playing'))).toBe(true);
@@ -280,5 +281,51 @@ describe('the end card', () => {
     const end = sessionRunEnd('rival-conceded', state, 1, 'Rimeborn vs Ironclad');
     expect(end).toMatchObject({ won: true, title: 'Victory', wave: '4', score: linewars.lwScore(state, 1), seconds: null, options: 'Rimeborn vs Ironclad' });
     expect(sessionRunEnd('desync', state, 1, '').score).toBeNull();
+  });
+});
+
+describe('Rooms', () => {
+  it('reads a Room code typed in any case, with spaces or a dash, or from a link', () => {
+    expect(readRoomCode('k7qx')).toBe('K7QX');
+    expect(readRoomCode(' K7 QX ')).toBe('K7QX');
+    expect(readRoomCode('k7-qx')).toBe('K7QX');
+    expect(readRoomCode('https://abdimuratov.github.io/tavern-td/#room=K7QX')).toBe('K7QX');
+    // O, 0, I and 1 are never in one, and it has 4.
+    for (const bad of ['K0QX', 'KOQX', 'K1QX', 'KIQX', 'K7Q', 'K7QXY', '', CODE]) expect(readRoomCode(bad)).toBeNull();
+    expect(ROOM_CODE_ERROR).toContain('no O, 0, I or 1');
+  });
+
+  it('opens Join from a room\'s link and gives the address back without it', () => {
+    const link = roomLink('https://abdimuratov.github.io/tavern-td/', 'K7QX');
+    expect(link).toBe('https://abdimuratov.github.io/tavern-td/#room=K7QX');
+    expect(joinInUrl(link)).toEqual({ code: 'K7QX', clean: '/tavern-td/' });
+    expect(joinInUrl('http://localhost:4173/tavern-td/?fps#room=k7qx')).toEqual({ code: 'K7QX', clean: '/tavern-td/?fps' });
+    expect(joinInUrl('https://abdimuratov.github.io/tavern-td/#room=OOPS')).toBeNull();
+  });
+
+  it('says what the room is doing, for the Host and the Guest, first time and on a Reconnect', () => {
+    expect(roomWaitText(room({ step: 'opening' }))).toBe('Making a room…');
+    expect(roomWaitText(room({ step: 'waiting' }))).toBe('Waiting for the Rival…');
+    expect(roomWaitText(room({ step: 'waiting', reconnect: true }))).toBe("Waiting for the Rival's app to come back…");
+    expect(roomWaitText(room({ step: 'connecting' }))).toBe('The Rival is here. Connecting…');
+    expect(roomWaitText(room({ role: 'guest', step: 'opening' }))).toBe('Joining room K7QX…');
+    expect(roomWaitText(room({ role: 'guest', step: 'waiting' }))).toBe("Waiting for the Host's app…");
+    expect(roomWaitText(room({ role: 'guest', step: 'waiting', reconnect: true }))).toBe('Waiting for the Host to press Reconnect…');
+    expect(roomWaitText(room({ role: 'guest', step: 'connecting' }))).toBe('Connecting…');
+  });
+
+  it('says it is still connecting 20 s after both apps were in', () => {
+    expect(roomSlow(room({ step: 'connecting', since: 1000 }), 1000 + CONNECT_TIMEOUT_MS - 1)).toBe(false);
+    expect(roomSlow(room({ step: 'connecting', since: 1000 }), 1000 + CONNECT_TIMEOUT_MS)).toBe(true);
+    expect(roomSlow(room({ step: 'waiting', since: 0 }), 10 * CONNECT_TIMEOUT_MS)).toBe(false);
+  });
+
+  it('says why a room failed', () => {
+    expect(roomProblemText('unreachable', 'host', null)).toMatch(/^Couldn't reach the server\..*use codes instead\.$/);
+    expect(roomProblemText('no-room', 'guest', 'K7QX')).toBe('No room K7QX is open. Check the code with the Host.');
+    expect(roomProblemText('full', 'guest', 'K7QX')).toBe('Room K7QX already has two players.');
+    expect(roomProblemText('expired', 'host', 'K7QX')).toBe('Nobody joined in 15 minutes, so the room closed.');
+    expect(roomProblemText('closed', 'host', 'K7QX')).toBe('The room was lost. Make a new one.');
+    expect(roomProblemText('closed', 'guest', 'K7QX')).toBe('The room closed. Ask the Host for a new code.');
   });
 });

@@ -82,7 +82,7 @@ function Reconnect({ v, st, a }: { v: VersusState; st: SessionStatus; a: VersusA
   if (v.reconnecting && v.swap) return <SwapPanel v={v} swap={v.swap} a={a} onBack={() => a.reconnect(false)} />;
   return (
     <div class="vs-reconnect">
-      <p class="muted">{lostText(st).text}</p>
+      <p class="muted">{lostText(st, v.room).text}</p>
       <div class="buttons">
         <button type="button" class="btn primary" data-testid="versus-reconnect" onClick={() => a.reconnect(true)}>Reconnect</button>
         <button type="button" class="btn" onClick={a.leave}>Menu</button>

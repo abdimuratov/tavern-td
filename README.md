@@ -12,7 +12,10 @@ pnpm dev          # Vite dev server, also on your LAN
 pnpm check        # typecheck, lint, unit tests, build
 pnpm test:e2e     # Playwright: Mac Chrome, Mac Safari, iPhone and Android emulation
 pnpm icons        # re-rasterise tools/icon.svg after editing it
+node server/src/main.ts   # Versus' Relay on :8787; point a dev page at it with TAVERN_RELAY_URL
 ```
+
+Versus' Relay (`server/`) runs on Render's free plan from `render.yaml`; [docs/render-setup.md](docs/render-setup.md) sets it up.
 
 Dev builds only: `?sandbox` skips the menu into the core's test Game Mode, and `?stress` plays the performance budget (300 creeps, 80 towers). `?fps` adds a frame-rate readout in any build.
 

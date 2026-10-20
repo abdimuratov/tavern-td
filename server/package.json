@@ -1,0 +1,19 @@
+{
+  "name": "tavern-relay",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Versus' Relay: room codes, WebRTC signaling and a WebSocket relay (docs/adr/0006-a-relay-server-on-render.md)",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1"
+  }
+}

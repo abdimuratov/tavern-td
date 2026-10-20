@@ -48,7 +48,7 @@ function PauseSheet({ s, st, pause, a }: { s: PlaySession; st: SessionStatus; pa
 }
 
 function LostSheet({ s, v, st, a }: { s: PlaySession; v: VersusState; st: SessionStatus; a: VersusActions }) {
-  const words = lostText(st);
+  const words = lostText(st, v.room);
   const swapping = v.reconnecting && v.swap !== null;
   return (
     <div class="vs-sheet lost" data-testid="versus-lost">

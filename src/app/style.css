@@ -1365,6 +1365,24 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .vs-share { margin-top: 0; align-items: center; }
 .qr { flex: none; width: 168px; height: 168px; border-radius: 6px; background: #fff; }
 .vs-wait { margin: 4px 0; font-weight: 650; color: var(--accent); }
+.vs-room-code { margin: 0; font: 700 44px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.18em; color: var(--text); -webkit-user-select: text; user-select: text; }
+.vs-room-tag { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.1em; }
+input.vs-room-input {
+  width: 8.5em;
+  max-width: 100%;
+  font: 700 28px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: #0d0b09;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+input.vs-room-input::placeholder { color: var(--line); }
+.btn.link { border-color: transparent; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 0 6px; }
+.btn.link:hover:not(:disabled) { border-color: transparent; color: var(--text); }
+.vs-fallback { margin-top: 2px; }
 .vs-failed h2 { margin: 0 0 4px; font-size: 17px; }
 .vs-failed p { margin: 0 0 6px; }
 .vs-lobby { display: grid; gap: 8px; }

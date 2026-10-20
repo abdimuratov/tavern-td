@@ -181,15 +181,36 @@ export async function buildInField(page: Page, action: string, col: number, row:
 }
 
 /**
- * Versus' swap of codes, as two players make it (docs/versus-design.md §2):
- * the Host makes a Join code, the Guest opens its link and answers, and the
- * Answer code goes back. `whileUp` runs while both codes are on screen.
- * Resolves once both pages are in the Lobby, with how long each code took
- * from its button.
+ * Versus through a room, as two players connect (docs/versus-design.md §2):
+ * the Host makes one, and the Guest opens Join and types its code, as
+ * `typed` writes it. Resolves with the code once both pages are in the Lobby.
+ */
+export async function connectByRoom(host: Page, guest: Page, typed = (code: string): string => code): Promise<string> {
+  await host.goto('./');
+  await host.getByTestId('mode-linewars').getByTestId('versus-host').click();
+  const shown = host.getByTestId('room-code');
+  await expect(shown).toHaveText(/^[A-HJ-NP-Z2-9]{4}$/, { timeout: 15_000 });
+  const code = (await shown.textContent())!;
+  await expect(host.getByTestId('room-wait')).toHaveText('Waiting for the Rival…');
+  await guest.goto('./');
+  await guest.getByTestId('mode-linewars').getByTestId('versus-join').click();
+  await guest.getByTestId('room-input').fill(typed(code));
+  await guest.getByTestId('room-join').click();
+  for (const p of [host, guest]) await expect(p.getByTestId('lobby')).toBeVisible({ timeout: 20_000 });
+  return code;
+}
+
+/**
+ * Versus' swap of codes by hand, the fallback to a room, as two players make
+ * it (docs/versus-design.md §2): the Host leaves its room for a Join code,
+ * the Guest opens its link and answers, and the Answer code goes back.
+ * `whileUp` runs while both codes are on screen. Resolves once both pages
+ * are in the Lobby, with how long each code took from its button.
  */
 export async function connectByCodes(host: Page, guest: Page, whileUp?: () => Promise<void>): Promise<{ joinMs: number; answerMs: number }> {
   await host.goto('./');
   await host.getByTestId('mode-linewars').getByTestId('versus-host').click();
+  await host.getByTestId('use-codes').click();
   let at = Date.now();
   const linkBox = host.getByTestId('join-link');
   await expect(linkBox).toHaveValue(/#join=TTDJ1\./, { timeout: 15_000 });

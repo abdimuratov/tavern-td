@@ -8,7 +8,7 @@ import { playRun as playGem } from '../tests/sim/gem/bot';
 import { pairingFor, playLw } from '../tests/sim/linewars/bots';
 import { playRun as playMaul } from '../tests/sim/maul/bot';
 import { playStage } from '../tests/sim/original/bot';
-import { expect, silenceAudio, test } from './fixtures';
+import { expect, test, testContext } from './fixtures';
 
 // Frame times on a phone-sized screen with the CPU slowed 4× (PLAN §2's 60 fps
 // budget), during each Game Mode's busiest moment of a bot's whole Run. Run it
@@ -250,7 +250,7 @@ function mainThread(trace: { traceEvents: TraceEvent[] }, ms: number): string[] 
 
 async function openRun(browser: Browser, screen: BrowserContextOptions, code: string): Promise<{ page: Page; cdp: CDPSession; close(): Promise<void> }> {
   const context = await browser.newContext({ ...screen, baseURL: test.info().project.use.baseURL ?? 'http://localhost:4173/tavern-td/' });
-  await context.addInitScript(silenceAudio);
+  await testContext(context);
   await context.addInitScript(recordFrames);
   const page = await context.newPage();
   await page.goto('./');

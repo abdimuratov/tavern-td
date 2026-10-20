@@ -1,15 +1,16 @@
 import { decodeCode, encodeCode, sdpFields, sdpFromCode } from './codes';
-import { codeRelay, hasTurn, holdsRelay, iceConfiguration, selectedRoute, startsLastSecond, type CodeRelay, type IcePolicy, type StatsEntry } from './ice';
-import { getRelay, type Relay } from './relay';
+import { iceConfiguration, selectedRoute, startsLastSecond, type IcePolicy, type StatsEntry } from './ice';
+import type { IceCandidate } from './room';
+import type { DirectPeer } from './route';
 import type { Route, Transport, TransportState } from './transport';
 
-// The browser's RTCPeerConnection as a Transport (docs/versus-design.md §2,
-// §4.5): one negotiated DataChannel (id 0, reliable, ordered), the Relay's
-// TURN servers beside public STUN, gathering that isn't trickled, codes made
-// and read through codes.ts, and whether the connection runs Direct or
-// Relayed. The only net module that touches browser APIs; it can't run in
-// Node, so it stays thin, ice.ts holds its decisions, and the e2e test
-// exercises it.
+// The browser's RTCPeerConnection (docs/versus-design.md §2, §4.5): one
+// negotiated DataChannel (id 0, reliable, ordered) over public STUN, as a
+// Transport. Two ways to connect it: through a room on the Relay, with ICE
+// trickled (directPeer, which route.ts drives), or by codes passed by hand,
+// with gathering that isn't trickled and codes made and read through
+// codes.ts. The only net module that touches WebRTC; it can't run in Node, so
+// it stays thin, ice.ts holds its decisions, and the e2e test exercises it.
 
 /** The two public STUN servers. They learn each device's public address, as any website does, and nothing else. */
 export const DEFAULT_ICE_SERVERS: readonly RTCIceServer[] = [
@@ -22,9 +23,10 @@ export const CONNECT_TIMEOUT_MS = 20_000;
 
 /**
  * Tests set `globalThis.TAVERN_ICE_SERVERS = []` in an init script, so two
- * pages on one machine connect over host candidates with no STUN; the
- * Relay's servers still join them. `TAVERN_ICE_POLICY = 'relay'` gathers
- * relay candidates only (e2e/relay.spec.ts).
+ * pages on one machine connect over host candidates with no STUN.
+ * `TAVERN_ICE_POLICY = 'relay'` gathers relay candidates only, and with no
+ * TURN server that's none, so nothing direct connects and a room's
+ * connection falls back to the Relay (e2e/versus.spec.ts).
  */
 declare global {
   var TAVERN_ICE_SERVERS: readonly RTCIceServer[] | undefined;
@@ -34,11 +36,9 @@ declare global {
 export interface RtcOptions {
   /** This build's `__SIM_HASH__`, written into each code and checked on paste. */
   readonly simHash: string;
-  /** The STUN servers: overrides TAVERN_ICE_SERVERS and the defaults. The Relay's are added to them. */
+  /** The STUN servers: overrides TAVERN_ICE_SERVERS and the defaults. */
   readonly iceServers?: readonly RTCIceServer[];
-  /** The Relay's servers; getRelay() unless given. */
-  readonly relay?: () => Promise<Relay>;
-  /** Gathering stops this long after the first relay candidate, or with no TURN server the first server-reflexive (1 s), or after `gatherMs` (5 s). */
+  /** Gathering stops this long after the first server-reflexive candidate (1 s), or after `gatherMs` (5 s). */
   readonly settleMs?: number;
   readonly gatherMs?: number;
 }
@@ -50,10 +50,6 @@ export interface HostLink {
   readonly transport: Transport;
   /** Takes the Guest's pasted Answer code. Throws a CodeError whose message can be shown as is. */
   accept(answerCode: string): Promise<void>;
-  /** How the Relay stood for the Join code. */
-  readonly relay: CodeRelay;
-  /** The Guest's Answer code holds a relay candidate; false until accept(). */
-  readonly rivalRelay: boolean;
   close(): void;
 }
 
@@ -63,34 +59,24 @@ export interface GuestLink {
   readonly transport: Transport;
   /** The session id of a rejoin's Join code, null for a fresh one. */
   readonly session: string | null;
-  /** How the Relay stood for the Answer code. */
-  readonly relay: CodeRelay;
-  /** The Host's Join code holds a relay candidate. */
-  readonly rivalRelay: boolean;
   close(): void;
 }
 
 /** The Host's side: a new connection and its Join code. `session` marks a rejoin's code (§5.4). */
 export async function makeJoinCode(opts: RtcOptions & { readonly session?: string | null }): Promise<HostLink> {
-  const { pc, relay, turn } = await connection(opts);
+  const pc = connection(opts);
   const transport = channelTransport(pc);
-  const gathered = gather(pc, opts, turn);
+  const gathered = gather(pc, opts);
   await pc.setLocalDescription(await pc.createOffer());
   const extra = await gathered;
   const fields = sdpFields(pc.localDescription!.sdp, extra);
   const code = encodeCode({ kind: 'join', sim: opts.simHash, session: opts.session ?? null, ...fields });
-  let rivalRelay = false;
   return {
     code,
     transport,
-    relay: codeRelay(relay, fields),
-    get rivalRelay() {
-      return rivalRelay;
-    },
     async accept(answerCode) {
       const answer = decodeCode(answerCode, 'answer', opts.simHash);
       await pc.setRemoteDescription({ type: 'answer', sdp: sdpFromCode(answer) });
-      rivalRelay = holdsRelay(answer);
     },
     close: () => transport.close(),
   };
@@ -99,40 +85,89 @@ export async function makeJoinCode(opts: RtcOptions & { readonly session?: strin
 /** The Guest's side: reads a pasted Join code or link (throwing a CodeError) and makes the Answer code. */
 export async function answerJoinCode(joinCode: string, opts: RtcOptions): Promise<GuestLink> {
   const offer = decodeCode(joinCode, 'join', opts.simHash);
-  const { pc, relay, turn } = await connection(opts);
+  const pc = connection(opts);
   const transport = channelTransport(pc);
   await pc.setRemoteDescription({ type: 'offer', sdp: sdpFromCode(offer) });
-  const gathered = gather(pc, opts, turn);
+  const gathered = gather(pc, opts);
   await pc.setLocalDescription(await pc.createAnswer());
   const extra = await gathered;
   const fields = sdpFields(pc.localDescription!.sdp, extra);
   const code = encodeCode({ kind: 'answer', sim: opts.simHash, session: null, ...fields });
-  // On one Wi-Fi the Guest often reaches the Host before the Host has this code, and Chrome then stops gathering.
-  const reached = pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed';
+  return { code, transport, session: offer.session, close: () => transport.close() };
+}
+
+/** A new RTCPeerConnection with the STUN servers, gathering relay candidates only under the test hook. */
+function connection(opts: { readonly iceServers?: readonly RTCIceServer[] | undefined }): RTCPeerConnection {
+  const stun = opts.iceServers ?? globalThis.TAVERN_ICE_SERVERS ?? DEFAULT_ICE_SERVERS;
+  return new RTCPeerConnection(iceConfiguration(stun, globalThis.TAVERN_ICE_POLICY === 'relay' ? 'relay' : 'all'));
+}
+
+/**
+ * WebRTC's side of a connection made through a room (route.ts): candidates
+ * trickled as they're gathered, the Rival's held until its description is in,
+ * and the full descriptions passed as they are, since the room carries them.
+ */
+export function directPeer(opts: { readonly iceServers?: readonly RTCIceServer[] } = {}): DirectPeer {
+  const pc = connection(opts);
+  const transport = channelTransport(pc);
+  const candidateListeners = new Set<(c: IceCandidate) => void>();
+  const failedListeners = new Set<() => void>();
+  const held: IceCandidate[] = [];
+  let described = false;
+  const add = (c: IceCandidate): void => {
+    pc.addIceCandidate(c).catch((err: unknown) => console.warn('[versus] a candidate did not take', err));
+  };
+  const takeHeld = (): void => {
+    described = true;
+    for (const c of held.splice(0)) add(c);
+  };
+  pc.addEventListener('icecandidate', (e) => {
+    if (!e.candidate?.candidate) return;
+    const c = { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex };
+    for (const l of [...candidateListeners]) l(c);
+  });
+  const failed = (): void => {
+    if (pc.iceConnectionState === 'failed' || pc.connectionState === 'failed') for (const l of [...failedListeners]) l();
+  };
+  pc.addEventListener('iceconnectionstatechange', failed);
+  pc.addEventListener('connectionstatechange', failed);
   return {
-    code, transport, session: offer.session, relay: codeRelay(relay, fields, reached), rivalRelay: holdsRelay(offer), close: () => transport.close(),
+    transport,
+    async offer() {
+      await pc.setLocalDescription(await pc.createOffer());
+      return pc.localDescription!.sdp;
+    },
+    async answer(sdp) {
+      await pc.setRemoteDescription({ type: 'offer', sdp });
+      takeHeld();
+      await pc.setLocalDescription(await pc.createAnswer());
+      return pc.localDescription!.sdp;
+    },
+    async accept(sdp) {
+      await pc.setRemoteDescription({ type: 'answer', sdp });
+      takeHeld();
+    },
+    addCandidate(c) {
+      if (described) add(c);
+      else held.push(c);
+    },
+    onCandidate(listener) {
+      candidateListeners.add(listener);
+      return () => candidateListeners.delete(listener);
+    },
+    onFailed(listener) {
+      failedListeners.add(listener);
+      return () => failedListeners.delete(listener);
+    },
+    close: () => transport.close(),
   };
 }
 
 /**
- * A new RTCPeerConnection with the STUN servers and, when the Relay answers,
- * its TURN servers. Every new connection asks getRelay(), which reuses the
- * credentials it holds until shortly before they expire.
+ * Waits for gathering for a code: done, 1 s after the first server-reflexive
+ * candidate, or 5 s. Resolves with every candidate seen.
  */
-async function connection(opts: RtcOptions): Promise<{ pc: RTCPeerConnection; relay: Relay; turn: boolean }> {
-  const relay = await (opts.relay ?? getRelay)();
-  const stun = opts.iceServers ?? globalThis.TAVERN_ICE_SERVERS ?? DEFAULT_ICE_SERVERS;
-  const config = iceConfiguration(stun, relay.ok ? relay.servers : [], globalThis.TAVERN_ICE_POLICY === 'relay' ? 'relay' : 'all');
-  if (!relay.ok && relay.why !== 'no-url') console.warn(`[versus] the Relay is unavailable (${relay.why}: ${relay.detail}); only direct connections will work`);
-  return { pc: new RTCPeerConnection(config), relay, turn: hasTurn(config.iceServers ?? []) };
-}
-
-/**
- * Waits for gathering: done, 1 s after the first relay candidate (or with no
- * TURN server, the first server-reflexive), or 5 s. Resolves with every
- * candidate seen.
- */
-function gather(pc: RTCPeerConnection, opts: RtcOptions, turn: boolean): Promise<string[]> {
+function gather(pc: RTCPeerConnection, opts: RtcOptions): Promise<string[]> {
   return new Promise((resolve) => {
     const seen: string[] = [];
     let soon: ReturnType<typeof setTimeout> | null = null;
@@ -150,7 +185,7 @@ function gather(pc: RTCPeerConnection, opts: RtcOptions, turn: boolean): Promise
     const onCandidate = (e: RTCPeerConnectionIceEvent): void => {
       if (!e.candidate) return finish();
       if (e.candidate.candidate) seen.push(e.candidate.candidate);
-      if (soon === null && startsLastSecond(e.candidate, turn)) soon = setTimeout(finish, opts.settleMs ?? 1000);
+      if (soon === null && startsLastSecond(e.candidate)) soon = setTimeout(finish, opts.settleMs ?? 1000);
     };
     const onState = (): void => {
       if (pc.iceGatheringState === 'complete') finish();

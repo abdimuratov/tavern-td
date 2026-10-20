@@ -36,6 +36,20 @@ function savedLine(info: SavedRunInfo & { ok: true }): string {
   return [info.progress, info.options, DIFFICULTY_NAME[info.difficulty], ago(info.savedAt)].filter(Boolean).join(' · ');
 }
 
+/** Line Wars' Versus row. Showing it wakes the Relay, so a sleeping server's cold start overlaps menu time. */
+function VersusRow() {
+  useEffect(() => appActions.value?.wakeVersus(), []);
+  return (
+    <div class="versus-row" data-testid="versus-row">
+      <span class="versus-label">Versus <span class="muted">a friend on another device</span></span>
+      <div class="buttons">
+        <button type="button" class="btn" data-testid="versus-host" onClick={() => appActions.value?.hostVersus()}>Host</button>
+        <button type="button" class="btn" data-testid="versus-join" onClick={() => appActions.value?.joinVersus()}>Join</button>
+      </div>
+    </div>
+  );
+}
+
 function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) {
   const saved = savedRuns.value[entry.id];
   const own = entry.ui?.MenuPage;
@@ -66,15 +80,7 @@ function ModeCard({ entry, go }: { entry: CatalogEntry; go(page: Page): void }) 
           </button>
         )}
       </div>
-      {entry.ui?.versus && (
-        <div class="versus-row" data-testid="versus-row">
-          <span class="versus-label">Versus <span class="muted">a friend on another device</span></span>
-          <div class="buttons">
-            <button type="button" class="btn" data-testid="versus-host" onClick={() => appActions.value?.hostVersus()}>Host</button>
-            <button type="button" class="btn" data-testid="versus-join" onClick={() => appActions.value?.joinVersus()}>Join</button>
-          </div>
-        </div>
-      )}
+      {entry.ui?.versus && <VersusRow />}
       {saved && !saved.ok && <p class="note">{saved.problem}</p>}
     </section>
   );

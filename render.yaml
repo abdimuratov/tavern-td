@@ -1,0 +1,20 @@
+# Render Blueprint for Versus' Relay (docs/render-setup.md): one Docker web
+# service on the free plan, built from server/ only. It gives out Room codes,
+# passes WebRTC's offer and answer, and relays a Versus connection's messages
+# when two devices can't reach each other directly. No secrets.
+services:
+  - type: web
+    name: tavern-relay
+    runtime: docker
+    dockerContext: ./server
+    dockerfilePath: ./server/Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - server/**
+        - render.yaml
+      ignoredPaths:
+        - server/tests/**

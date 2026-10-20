@@ -136,6 +136,8 @@ export interface AppActions {
   hostVersus(): void;
   /** Versus: the Join box, empty or filled in from a link. */
   joinVersus(code?: string): void;
+  /** Wakes Versus' Relay ahead of need, as the main menu shows the Versus row. */
+  wakeVersus(): void;
 }
 
 export const appActions = signal<AppActions | null>(null);

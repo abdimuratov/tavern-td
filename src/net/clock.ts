@@ -17,5 +17,17 @@ export const browserClock: Clock = {
   },
 };
 
-/** The time of day in ms since 1970, for what expires at one: the Relay's credentials (relay.ts). */
-export const wallClock = (): number => Date.now();
+/** Calls `fn` once, `ms` from now, unless the returned cancel comes first. */
+export function after(clock: Clock, ms: number, fn: () => void): () => void {
+  let live = true;
+  const cancel = clock.every(ms, () => {
+    if (!live) return;
+    live = false;
+    cancel();
+    fn();
+  });
+  return () => {
+    live = false;
+    cancel();
+  };
+}

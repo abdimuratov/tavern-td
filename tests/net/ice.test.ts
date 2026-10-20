@@ -1,64 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { codeRelay, hasTurn, iceConfiguration, selectedRoute, startsLastSecond, type StatsEntry } from '../../src/net/ice';
-import type { Relay } from '../../src/net/relay';
+import { iceConfiguration, selectedRoute, startsLastSecond, type StatsEntry } from '../../src/net/ice';
 
-// What rtc.ts decides about ICE (docs/versus-design.md §2): the servers with
-// the Relay's, when gathering stops, how the Relay stood for a code, and
-// whether the selected pair runs through the Relay, read from getStats()
-// reports shaped like Chrome's, Safari's and Firefox's.
+// What rtc.ts decides about ICE (docs/versus-design.md §2): the servers, when
+// a code's gathering stops, and whether the selected pair runs Direct, read
+// from getStats() reports shaped like Chrome's, Safari's and Firefox's.
 
 const STUN: RTCIceServer[] = [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.l.google.com:19302' }];
-const TURN = [{ urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u', credential: 'c' }];
 
 describe('the ICE servers', () => {
-  it('are the STUN servers, then the Relay\'s TURN servers with their credentials', () => {
-    expect(iceConfiguration(STUN, TURN)).toEqual({
-      iceServers: [...STUN, { urls: TURN[0]!.urls, username: 'u', credential: 'c' }],
-      iceTransportPolicy: 'all',
-    });
-    // The tests' empty STUN list still takes the Relay's; the relay-only hook sets the policy.
-    expect(iceConfiguration([], TURN, 'relay')).toEqual({ iceServers: [{ urls: TURN[0]!.urls, username: 'u', credential: 'c' }], iceTransportPolicy: 'relay' });
-    expect(iceConfiguration(STUN, []).iceServers).toEqual(STUN);
-    expect(hasTurn(STUN)).toBe(false);
-    expect(hasTurn(iceConfiguration(STUN, TURN).iceServers!)).toBe(true);
-    expect(hasTurn([{ urls: 'TURNS:turn.example.com:443' }])).toBe(true);
+  it('are the STUN servers, with the relay-only test hook as the policy', () => {
+    expect(iceConfiguration(STUN)).toEqual({ iceServers: STUN, iceTransportPolicy: 'all' });
+    expect(iceConfiguration([], 'relay')).toEqual({ iceServers: [], iceTransportPolicy: 'relay' });
+    const list = { urls: ['stun:a.example:3478', 'stun:b.example:3478'] };
+    const copy = iceConfiguration([list]).iceServers![0]!;
+    expect(copy).toEqual(list);
+    expect(copy.urls).not.toBe(list.urls);
   });
 });
 
-describe('gathering', () => {
+describe('gathering for a code', () => {
   const candidate = (type: string | null, line = ''): { type: string | null; candidate: string } => ({ type, candidate: line });
 
-  it('stops a second after the first relay candidate when there is a TURN server, not after a server-reflexive', () => {
-    expect(startsLastSecond(candidate('srflx'), true)).toBe(false);
-    expect(startsLastSecond(candidate('host'), true)).toBe(false);
-    expect(startsLastSecond(candidate('relay'), true)).toBe(true);
+  it('stops a second after the first server-reflexive candidate', () => {
+    expect(startsLastSecond(candidate('srflx'))).toBe(true);
+    expect(startsLastSecond(candidate('host'))).toBe(false);
+    expect(startsLastSecond(candidate('relay'))).toBe(false);
     // A browser that leaves `type` out: read from the line.
-    expect(startsLastSecond(candidate(null, 'candidate:3561839427 1 udp 41885439 192.0.2.77 61432 typ relay raddr 203.0.113.45 rport 54400'), true)).toBe(true);
-  });
-
-  it('stops a second after the first server-reflexive with no TURN server, as before the Relay', () => {
-    expect(startsLastSecond(candidate('srflx'), false)).toBe(true);
-    expect(startsLastSecond(candidate('host'), false)).toBe(false);
-    expect(startsLastSecond(candidate('relay'), false)).toBe(false);
-    expect(startsLastSecond(candidate(null, 'candidate:842163049 1 udp 1686052607 203.0.113.45 54400 typ srflx raddr 0.0.0.0 rport 0'), false)).toBe(true);
-  });
-});
-
-describe('how the Relay stood for a code', () => {
-  const ok: Relay = { ok: true, servers: TURN, until: 1 };
-  const host = { kind: 'host', family: 'mdns', address: '8c7a3f5e-2b1d-4e6f-9a0b-1c2d3e4f5a6b.local', port: 54400 } as const;
-  const relay = { kind: 'relay', family: 'ipv4', address: '192.0.2.77', port: 61432 } as const;
-
-  it('offered when the code holds a relay candidate, unavailable when it should have and doesn\'t, none with no Relay set up', () => {
-    expect(codeRelay(ok, { candidates: [host, relay] })).toEqual({ use: 'offered', why: null });
-    expect(codeRelay(ok, { candidates: [host, relay] }, true)).toEqual({ use: 'offered', why: null });
-    expect(codeRelay(ok, { candidates: [host] })).toEqual({ use: 'unavailable', why: 'no-candidate' });
-    // A Guest that reached the Host while gathering, so Chrome stopped before any relay candidate: nothing to warn of.
-    expect(codeRelay(ok, { candidates: [host] }, true)).toEqual({ use: 'unneeded', why: null });
-    expect(codeRelay({ ok: false, why: 'unreachable', detail: 'timeout' }, { candidates: [host] }, true)).toEqual({ use: 'unavailable', why: 'unreachable' });
-    expect(codeRelay({ ok: false, why: 'unreachable', detail: 'timeout' }, { candidates: [host] })).toEqual({ use: 'unavailable', why: 'unreachable' });
-    expect(codeRelay({ ok: false, why: 'bad-response', detail: 'HTTP 403' }, { candidates: [host] })).toEqual({ use: 'unavailable', why: 'bad-response' });
-    expect(codeRelay({ ok: false, why: 'no-url', detail: '' }, { candidates: [host] })).toEqual({ use: 'none', why: null });
+    expect(startsLastSecond(candidate(null, 'candidate:842163049 1 udp 1686052607 203.0.113.45 54400 typ srflx raddr 0.0.0.0 rport 0'))).toBe(true);
   });
 });
 

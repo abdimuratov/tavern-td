@@ -1,14 +1,14 @@
 import { signal } from '@preact/signals';
 import type { RaceId } from '../../content/maul';
-import type { RelayUse, Role, SessionStatus } from '../../net';
+import type { Role, SessionStatus } from '../../net';
 
 // What the Versus screens show and ask of the app (src/app/versus.ts writes
 // these, the screens in this folder read them). Null while no Versus session
 // is alive, so the mirror rehearsal and single-player see nothing of it.
 
 /**
- * One swap of codes by hand (docs/versus-design.md §2): the first connection,
- * or a Reconnect's fresh pair.
+ * One swap of codes by hand (docs/versus-design.md §2), the fallback to a
+ * room: the first connection, or a Reconnect's fresh pair.
  * - Host: `making` its Join code, then `offer` (the link is up and the Answer
  *   box waits), then `connecting` once the Answer is in.
  * - Guest: `paste` (the Join box), `making` its Answer code, then `answer`
@@ -18,6 +18,7 @@ import type { RelayUse, Role, SessionStatus } from '../../net';
 export type SwapStep = 'paste' | 'making' | 'offer' | 'connecting' | 'answer' | 'failed';
 
 export interface CodeSwap {
+  readonly kind: 'codes';
   readonly role: Role;
   readonly step: SwapStep;
   /** The Host's Join link, or the Guest's Answer code, once made. */
@@ -32,16 +33,44 @@ export interface CodeSwap {
   readonly prefill: string;
   /** A Reconnect during a Run or the lobby, rather than the first connection. */
   readonly reconnect: boolean;
-  /** How the Relay stood for this device's code: `unavailable` shows a note under it, and §3's message depends on it. */
-  readonly relay: RelayUse;
-  /** The Rival's code holds a relay candidate (the Host learns it from the Answer code). */
-  readonly rivalRelay: boolean;
 }
+
+/**
+ * Connecting through a room on the Relay (docs/versus-design.md §2):
+ * - `enter`: the Guest's box for the Room code.
+ * - `opening`: reaching the Relay to make or enter the room; after a moment
+ *   the screen says the server is waking.
+ * - `waiting`: in the room, but the Rival's app isn't (the Host shares its
+ *   code meanwhile), or on a Guest's Reconnect, the Host hasn't offered yet.
+ * - `connecting`: both apps are in: Direct first, then the Relay.
+ * - `failed`: the Relay couldn't be reached, or the room said no.
+ */
+export type RoomStep = 'enter' | 'opening' | 'waiting' | 'connecting' | 'failed';
+
+export interface RoomSwap {
+  readonly kind: 'room';
+  readonly role: Role;
+  readonly step: RoomStep;
+  /** The Room code: the Host's once the Relay gives it, the Guest's once entered. */
+  readonly code: string | null;
+  /** The Host's link to the room (`#room=…`), for Share, Copy and the QR. */
+  readonly link: string | null;
+  /** When this step began, on the app's clock (performance.now()). */
+  readonly since: number;
+  /** Why it failed, or what's wrong with the code typed. */
+  readonly error: string | null;
+  /** The Guest's box, filled in from a link. */
+  readonly prefill: string;
+  /** A Reconnect during a Run or the lobby, rather than the first connection. */
+  readonly reconnect: boolean;
+}
+
+export type Swap = CodeSwap | RoomSwap;
 
 export interface VersusState {
   readonly role: Role;
-  /** The code swap under way; null once connected. */
-  readonly swap: CodeSwap | null;
+  /** The swap under way, through a room or by codes; null once connected. */
+  readonly swap: Swap | null;
   /** The session as last read (4 times a second, and on each of its events); null before it exists (the Guest's Join box). */
   readonly status: SessionStatus | null;
   /** The app's clock at that read, for code ages and countdowns. */
@@ -54,9 +83,23 @@ export interface VersusState {
   readonly rejoin: boolean;
   /** The Reconnect swap is open on the Connection lost sheet. */
   readonly reconnecting: boolean;
+  /** A Relay is set up, so rooms are offered and the codes are the fallback. */
+  readonly relay: boolean;
+  /** The Room code this session connects through; null with codes passed by hand. */
+  readonly room: string | null;
+  /** The Relay is taking a while to answer: a free server waking from sleep (up to a minute). */
+  readonly waking: boolean;
 }
 
 export interface VersusActions {
+  /** Guest: enters the room whose Room code (or `#room=` link) was typed. */
+  enter(text: string): void;
+  /** Leaves the room for the codes passed by hand. */
+  useCodes(): void;
+  /** Back from the codes to a room. */
+  useRoom(): void;
+  /** After a room failed: the Host makes a new room, the Guest gets its box back. */
+  retry(): void;
   /** Guest: reads a pasted Join code or link and makes the Answer code (a first join, a Reconnect, or a restarted app's rejoin). */
   join(text: string): void;
   /** Host: takes the pasted Answer code. */
@@ -65,7 +108,8 @@ export interface VersusActions {
   newCode(): void;
   /** The Join box's text changed: says at once whether it's a rejoin's code, and clears the last error. */
   typed(text: string): void;
-  share(text: string, kind: 'link' | 'code'): Promise<boolean>;
+  /** Shares a Join link or an Answer code, or the room's link (`room`), with words to fit. */
+  share(text: string, kind: 'link' | 'code' | 'room'): Promise<boolean>;
   copy(text: string): Promise<boolean>;
   pick(race: RaceId | 'random'): void;
   setReady(on: boolean): void;

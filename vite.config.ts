@@ -89,7 +89,7 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     test: {
-      include: ['tests/**/*.test.ts'],
+      include: ['tests/**/*.test.ts', 'server/tests/**/*.test.ts'],
       environment: 'node',
     },
   };

@@ -1,5 +1,7 @@
 # Versus falls back to Cloudflare's TURN relay, with credentials minted by a small Worker
 
+_Superseded on 2026-10-20 by [ADR-0006](0006-a-relay-server-on-render.md): a room server of our own on Render, which relays when direct fails. This relay was never switched on._
+
 Versus connects two devices over WebRTC with public STUN only (ADR-0004), so a pair where both sit behind symmetric or carrier-grade NAT never connects. Now a TURN relay, the Relay, carries the connection when the devices can't reach each other directly. It is Cloudflare Realtime TURN. Its credentials are short-lived and come from a tiny Cloudflare Worker of our own, `tavern-turn` (`workers/turn/worker.js`). When the player opens Host or Join, the app GETs the Worker's public URL, and the Worker asks Cloudflare for credentials that live 6 hours and returns them with two TURN URLs: UDP on port 3478 and TLS on 443. The TURN key's API token is a secret of the Worker, set in Cloudflare's dashboard. The repo holds the Worker's source and, once it exists, its URL (`RELAY_URL` in `src/net/relay.ts`). Gathering isn't trickled, so every code carries a relay candidate as well. ICE still prefers a direct pair, so the Relay carries traffic only when direct fails. With no URL, or with the Worker out of reach, Versus connects as before, over STUN only.
 
 We chose this for four reasons:

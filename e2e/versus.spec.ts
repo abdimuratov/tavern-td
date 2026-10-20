@@ -1,20 +1,20 @@
-import type { Browser, BrowserContext, Page, Route } from '@playwright/test';
-import { createSocket } from 'node:dgram';
+import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { encodeCode, type SdpFields } from '../src/net/codes';
-import { buildInField, connectByCodes, spotCorner, tapAt, touch, worldPoint } from './app';
-import { expect, silenceAudio, test } from './fixtures';
+import { buildInField, connectByCodes, connectByRoom, spotCorner, tapAt, touch, worldPoint } from './app';
+import { expect, test, testContext } from './fixtures';
 
 // Versus as two players play it (docs/versus-design.md §9): two browser
-// contexts, each with its own storage, connected over loopback WebRTC with no
-// STUN. The Host makes a code; its link opens Join on the Guest's page with
-// the code filled in; the Guest's Answer code goes back into the Host's page.
-// Both pick, press Ready and Go, then build and send through the HUD, pause
-// together on one tick and resume, and the Guest concedes: the Host's end
-// card and Versus Record show the win. Game time runs in real time here, as
-// the lockstep holds a device that's ahead, so the Sends wait for 0:20.
-// Two more tests give both pages a Relay that Playwright answers: one whose
-// TURN server can't be reached, and one that can't be fetched at all. Both
-// still connect directly. e2e/relay.spec.ts tries the real one.
+// contexts, each with its own storage, on the local Relay (server/, started
+// by playwright.config.ts) and connected over loopback WebRTC with no STUN.
+// The Host makes a room; its link opens Join on the Guest's page with the
+// code filled in, and both reach the Lobby Direct. Both pick, press Ready and
+// Go, then build and send through the HUD, pause together on one tick and
+// resume, and the Guest concedes: the Host's end card and Versus Record show
+// the win. Game time runs in real time here, as the lockstep holds a device
+// that's ahead, so the Sends wait for 0:20. Then: two pages that can't
+// connect directly play through the Relay's WebSocket; the codes passed by
+// hand still connect; a Relay that doesn't answer shows the server waking;
+// and the Join boxes say what's wrong with what was typed or pasted.
 
 test.describe.configure({ timeout: 150_000 });
 
@@ -25,22 +25,27 @@ interface Player {
   readonly page: Page;
 }
 
-/** One player: a context of its own (so its own Records), silent, and with no STUN servers. */
-async function player(browser: Browser): Promise<Player> {
+/**
+ * One player: a context of its own (so its own Records), silent, on the local
+ * Relay, and with no STUN servers. `relay` gathers relay candidates only, and
+ * with no TURN server that's none, so nothing direct can connect.
+ */
+async function player(browser: Browser, policy: 'all' | 'relay' = 'all'): Promise<Player> {
   const context = await browser.newContext();
-  await context.addInitScript(silenceAudio);
-  await context.addInitScript(() => {
+  await testContext(context);
+  await context.addInitScript((p) => {
     globalThis.TAVERN_ICE_SERVERS = [];
-  });
+    globalThis.TAVERN_ICE_POLICY = p;
+  }, policy);
   return { context, page: await context.newPage() };
 }
 
-/** The Run as a page sees it: its tick, Viewer Side, and the session's and lockstep's status, with the route and the Relay. */
+/** The Run as a page sees it: its tick, Viewer Side, and the session's and lockstep's status, with the route and the room. */
 function versusRun(page: Page) {
   return page.evaluate(() => {
     const t = window.tavern!;
     const st = t.versus!.status();
-    return { tick: t.controller.state.tick, viewer: t.viewer, phase: st.phase, link: st.link, route: st.route, relay: st.relay, run: st.run! };
+    return { tick: t.controller.state.tick, viewer: t.viewer, phase: st.phase, link: st.link, route: st.route, room: st.room, run: st.run! };
   });
 }
 
@@ -93,7 +98,7 @@ async function loopbackProblem(a: Page, b: Page): Promise<string | null> {
   }
 }
 
-test('two devices connect by codes, play a Line Wars Run in lockstep, pause together, and the Guest concedes', async ({ browser }) => {
+test('two devices connect by room code, play a Line Wars Run in lockstep, pause together, and the Guest concedes', async ({ browser }) => {
   const host = await player(browser);
   const guest = await player(browser);
   try {
@@ -105,31 +110,22 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
       test.skip(problem !== null, `Playwright's WebKit can't run Versus here: ${problem}`);
     }
 
-    // The Host makes a code: a link with Share, Copy and a QR, and a box for the Answer code.
+    // The Host makes a room: its code, large, with Share, Copy and a QR of its link, and waits for the Rival.
     await host.page.getByTestId('mode-linewars').getByTestId('versus-host').click();
-    const linkBox = host.page.getByTestId('join-link');
-    await expect(linkBox).toHaveValue(/#join=TTDJ1\./, { timeout: 15_000 });
+    const shown = host.page.getByTestId('room-code');
+    await expect(shown).toHaveText(/^[A-HJ-NP-Z2-9]{4}$/, { timeout: 15_000 });
+    const code = (await shown.textContent())!;
     await expect(host.page.getByTestId('join-qr')).toBeVisible();
-    await expect(host.page.getByTestId('code-age')).toHaveText(/^Made 0:0\d ago/);
-    // No Relay is set up here, so the code says nothing of one.
-    await expect(host.page.getByTestId('relay-note')).toHaveCount(0);
-    const link = await linkBox.inputValue();
-    expect(link.startsWith(new URL('./', host.page.url()).href)).toBe(true);
+    await expect(host.page.getByTestId('room-wait')).toHaveText('Waiting for the Rival…');
 
-    // The Guest opens the link: Join with the code filled in, and the fragment gone from the address.
+    // The Guest opens the room's link: Join with the code filled in, and the fragment gone from the address.
     await guest.page.goto('about:blank');
-    await guest.page.goto(link);
-    const code = link.slice(link.indexOf('#join=') + 6);
-    await expect(guest.page.getByTestId('join-paste')).toHaveValue(code);
-    expect(guest.page.url()).not.toContain('#join');
-    await guest.page.getByTestId('join-go').click();
-    const answerBox = guest.page.getByTestId('answer-code');
-    await expect(answerBox).toHaveValue(/^TTDA1\./, { timeout: 15_000 });
-    await expect(guest.page.getByTestId('connecting')).toBeVisible();
+    await guest.page.goto(new URL(`./#room=${code}`, host.page.url()).href);
+    await expect(guest.page.getByTestId('room-input')).toHaveValue(code);
+    expect(guest.page.url()).not.toContain('#room');
+    await guest.page.getByTestId('room-join').click();
 
-    // The Answer code goes back into the Host's page, and both reach the Lobby, connected directly.
-    await host.page.getByTestId('answer-paste').fill(await answerBox.inputValue());
-    await host.page.getByTestId('answer-accept').click();
+    // Both reach the Lobby, connected directly.
     for (const p of [host.page, guest.page]) {
       await expect(p.getByTestId('lobby')).toBeVisible({ timeout: 20_000 });
       await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
@@ -152,7 +148,7 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
     }
     expect((await versusRun(host.page)).viewer).toBe(0);
     expect((await versusRun(guest.page)).viewer).toBe(1);
-    for (const p of [host.page, guest.page]) expect(await versusRun(p)).toMatchObject({ route: 'direct', relay: { use: 'none', why: null } });
+    for (const p of [host.page, guest.page]) expect(await versusRun(p)).toMatchObject({ route: 'direct', room: code });
     await expect(guest.page.getByTestId('speed-1')).toHaveCount(0);
     await expect(guest.page.getByTestId('versus-line')).toHaveText(/^Ping \d+ ms$/);
     await expect(host.page.getByTestId('rival')).toHaveText('Rimeborn · +10');
@@ -252,87 +248,93 @@ test('two devices connect by codes, play a Line Wars Run in lockstep, pause toge
   }
 });
 
-/** The Relay both players' pages fetch in the next two tests; Playwright answers it, so nothing leaves the machine. */
-const FAKE_RELAY = 'https://relay.test/ice';
-
-/**
- * A player with no STUN whose Relay is FAKE_RELAY, answered by `answer`.
- * Service workers are blocked, so the page's own fetch is the one routed.
- */
-async function relayPlayer(browser: Browser, answer: (route: Route) => Promise<void>): Promise<Player & { asked(): number }> {
-  const context = await browser.newContext({ serviceWorkers: 'block' });
-  await context.addInitScript(silenceAudio);
-  await context.addInitScript((url) => {
-    globalThis.TAVERN_ICE_SERVERS = [];
-    globalThis.TAVERN_RELAY_URL = url;
-  }, FAKE_RELAY);
-  const page = await context.newPage();
-  let asked = 0;
-  await page.route(FAKE_RELAY, (route) => {
-    asked++;
-    return answer(route);
-  });
-  return { context, page, asked: () => asked };
-}
-
 const desktopChromeOnly = (): void => {
-  test.skip(test.info().project.name !== 'mac-chrome', 'The Relay\'s paths run on desktop Chrome');
+  test.skip(test.info().project.name !== 'mac-chrome', 'The Relay\'s other paths run on desktop Chrome');
 };
 
-test('with a Relay whose TURN server never answers, gathering stops at its cap and the two connect directly', async ({ browser }) => {
+test('two devices that can\'t connect directly play through the Relay, Relayed on both, and agree', async ({ browser }) => {
   desktopChromeOnly();
-  // What the Worker would answer, but its TURN server is a socket that drops every request, so no
-  // allocation ever fails or succeeds, and only the 5 s cap ends the Host's gathering. (With one on
-  // port 9, gathering finished at once and the cap went untested.) The Guest's ends as soon as it
-  // reaches the Host over loopback, since Chrome stops gathering once it has a working pair.
-  const silent = createSocket('udp4');
-  await new Promise<void>((resolve) => silent.bind(0, '127.0.0.1', resolve));
-  silent.on('message', () => {});
-  const turn = `turn:127.0.0.1:${silent.address().port}?transport=udp`;
-  const servers = { iceServers: [{ urls: [turn], username: 'tavern', credential: 'dummy' }], expiresAt: Date.now() + 6 * 3_600_000 };
-  const answer = (route: Route): Promise<void> => route.fulfill({
-    status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' }, body: JSON.stringify(servers),
-  });
-  const host = await relayPlayer(browser, answer);
-  const guest = await relayPlayer(browser, answer);
+  const host = await player(browser, 'relay');
+  const guest = await player(browser, 'relay');
   try {
-    const took = await connectByCodes(host.page, guest.page, async () => {
-      // No relay candidate came, so the Host's code says only direct connections will work. The
-      // Guest had already reached the Host when its gathering ended, so its code needs no relay.
-      await expect(host.page.getByTestId('relay-note')).toHaveText('Relay unavailable: only direct connections will work.');
-      await expect(guest.page.getByTestId('guest-swap')).toBeVisible();
-      await expect(guest.page.getByTestId('relay-note')).toHaveCount(0);
-    });
-    // Each asked the Relay (opening Host or Join fetched ahead). The Host waited for a relay
-    // candidate, as it wouldn't with no TURN server, until the 5 s cap stopped it.
-    expect(host.asked()).toBeGreaterThanOrEqual(1);
-    expect(guest.asked()).toBeGreaterThanOrEqual(1);
-    test.info().annotations.push({ type: 'gathering', description: `Join code ${took.joinMs} ms, Answer code ${took.answerMs} ms` });
-    expect(took.joinMs).toBeGreaterThanOrEqual(4500);
-    expect(took.joinMs).toBeLessThan(7000);
-    expect(took.answerMs).toBeLessThan(7000);
-    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
+    // Nothing direct can open, so 5 s after the answer the Host sends both through the Relay. The Guest types the code in lower case.
+    const code = await connectByRoom(host.page, guest.page, (c) => c.toLowerCase());
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-route')).toHaveText('Relayed');
+
+    // Into a Run, where the HUD says relayed and the hash checks agree. The Lobby's ping, through the Relay, is the Run's.
+    await host.page.getByTestId('lobby-race-ironclad').click();
+    await guest.page.getByTestId('lobby-race-rimeborn').click();
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-ping')).toHaveText(/^\d+ ms$/);
+    await host.page.getByTestId('lobby-ready').click();
+    await expect(guest.page.getByTestId('lobby-rival')).toHaveText('Ironclad · Ready');
+    await guest.page.getByTestId('lobby-ready').click();
+    for (const p of [host.page, guest.page]) {
+      await p.waitForFunction(() => !!window.tavern?.versus && window.tavern.controller.state.tick > 30, null, { timeout: 20_000 });
+      expect(await versusRun(p)).toMatchObject({ route: 'relayed', room: code, link: 'open' });
+      await expect(p.getByTestId('versus-line')).toHaveText(/^Ping \d+ ms · relayed$/);
+    }
+    await expect.poll(async () => (await versusRun(host.page)).run.checks, { timeout: 20_000 }).toBeGreaterThan(2);
+    await host.page.getByTestId('pause').click();
+    await expect(guest.page.getByTestId('versus-pause-title')).toHaveText('The Rival paused');
+    const [h, g] = await Promise.all([versusRun(host.page), versusRun(guest.page)]);
+    expect(g.tick).toBe(h.tick);
+    expect(h.run.agreed).not.toBeNull();
+    expect(g.run.agreed).toEqual(h.run.agreed);
+    expect(h.run.desyncs + g.run.desyncs).toBe(0);
   } finally {
     await host.context.close();
     await guest.context.close();
-    silent.close();
   }
 });
 
-test('with a Relay that can\'t be fetched, the code screens say so and the two still connect directly', async ({ browser }) => {
+test('the codes passed by hand still connect, Direct, from the room\'s Use codes instead', async ({ browser }) => {
   desktopChromeOnly();
-  const host = await relayPlayer(browser, (route) => route.abort('internetdisconnected'));
-  const guest = await relayPlayer(browser, (route) => route.abort('internetdisconnected'));
+  const host = await player(browser);
+  const guest = await player(browser);
   try {
-    await connectByCodes(host.page, guest.page, async () => {
-      for (const p of [host.page, guest.page]) await expect(p.getByTestId('relay-note')).toHaveText('Relay unavailable: only direct connections will work.');
-    });
-    expect(host.asked()).toBeGreaterThanOrEqual(1);
+    await connectByCodes(host.page, guest.page);
     for (const p of [host.page, guest.page]) await expect(p.getByTestId('lobby-route')).toHaveText('Direct');
   } finally {
     await host.context.close();
     await guest.context.close();
   }
+});
+
+test('while the Relay doesn\'t answer, Host says the server is waking, and codes still work', async ({ browser }) => {
+  desktopChromeOnly();
+  const context = await browser.newContext();
+  // Nothing listens there, so every try fails at once.
+  await testContext(context, 'http://localhost:9');
+  const page = await context.newPage();
+  try {
+    await page.goto('./');
+    await page.getByTestId('mode-linewars').getByTestId('versus-host').click();
+    await expect(page.getByTestId('room-wait')).toHaveText('Making a room…');
+    await expect(page.getByTestId('room-wait')).toHaveText('Waking the server… up to a minute', { timeout: 5000 });
+    await page.getByTestId('use-codes').click();
+    await expect(page.getByTestId('join-link')).toHaveValue(/#join=TTDJ1\./, { timeout: 15_000 });
+  } finally {
+    await context.close();
+  }
+});
+
+test('the room\'s Join box says when a code is mistyped or no such room is open', async ({ page }) => {
+  await page.goto('./');
+  await page.getByTestId('mode-linewars').getByTestId('versus-join').click();
+  const box = page.getByTestId('room-input');
+  await box.fill('K0QX');
+  await page.getByTestId('room-join').click();
+  await expect(page.getByTestId('swap-error')).toHaveText('A room code is 4 letters and digits, with no O, 0, I or 1.');
+  await box.fill('zzzz');
+  await page.getByTestId('room-join').click();
+  await expect(page.getByTestId('room-error')).toHaveText('No room ZZZZ is open. Check the code with the Host.');
+  await page.getByTestId('room-retry').click();
+  await expect(box).toHaveValue('ZZZZ');
+  // Codes instead, and back.
+  await page.getByTestId('use-codes').click();
+  await expect(page.getByTestId('join-paste')).toBeVisible();
+  await page.getByTestId('use-room').click();
+  await expect(box).toBeVisible();
 });
 
 // Codes made here in Node, as a browser's description would give them; none needs WebRTC to be refused.
@@ -346,6 +348,7 @@ test('the Join box says what is wrong with a damaged code, an Answer code or ano
   const answer = encodeCode({ kind: 'answer', sim: '00000000', session: null, ...FIELDS });
   await page.goto('./');
   await page.getByTestId('mode-linewars').getByTestId('versus-join').click();
+  await page.getByTestId('use-codes').click();
   const box = page.getByTestId('join-paste');
   const error = page.getByTestId('swap-error');
   for (const [text, says] of [

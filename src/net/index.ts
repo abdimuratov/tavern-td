@@ -1,6 +1,6 @@
 // Versus' net layer (docs/versus-design.md §8). The app imports from here.
 
-export { browserClock, type Clock } from './clock';
+export { after, browserClock, type Clock } from './clock';
 export { canSend, type Route, type Transport, type TransportState } from './transport';
 export {
   CodeError, decodeCode, encodeCode, joinLink, readCode, sdpFields, sdpFromCode,
@@ -19,8 +19,9 @@ export {
 export { decodeReport, encodeReport, ReportError, type DesyncReport } from './report';
 export { BUILD, SIM_HASH } from './version';
 export {
-  CONNECT_TIMEOUT_MS, DEFAULT_ICE_SERVERS, answerJoinCode, makeJoinCode,
+  CONNECT_TIMEOUT_MS, DEFAULT_ICE_SERVERS, answerJoinCode, directPeer, makeJoinCode,
   type GuestLink, type HostLink, type RtcOptions,
 } from './rtc';
-export { RELAY_URL, getRelay, type Relay, type RelayProblem, type RelayServer } from './relay';
-export type { CodeRelay, RelayUse } from './ice';
+export { RELAY_URL, createWake, relayTransport, relayUrl, roomSocketUrl, type Wake, type WakeState } from './relay';
+export { OPEN_MS, ROOM_CODE_ALPHABET, isRoomCode, openRoom, type Room, type RoomProblem, type RoomState, type RoomStatus } from './room';
+export { DIRECT_MS, guestLinks, hostLink, type DirectPeer, type RoomLink } from './route';

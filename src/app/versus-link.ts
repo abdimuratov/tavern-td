@@ -1,9 +1,10 @@
-import { readCode } from '../net';
+import { isRoomCode, readCode } from '../net';
 
 // Versus links and this device's name (docs/versus-design.md §2). The Host's
-// Join code goes out as a link with the code after `#`; opening it goes
-// straight to Join with the code filled in, and the app drops the fragment
-// from the address. Pure, so the tests read it in Node.
+// Room code, or with codes passed by hand its Join code, goes out as a link
+// with the code after `#`; opening it goes straight to Join with the code
+// filled in, and the app drops the fragment from the address. Pure, so the
+// tests read it in Node.
 
 /** Where GitHub Pages serves the app. The Android app's links point here: its own address is the WebView's. */
 export const PAGES_URL = 'https://abdimuratov.github.io/tavern-td/';
@@ -17,10 +18,26 @@ export function linkBase(platform: string, origin: string, base: string): string
   return new URL(base, `${origin}/`).href;
 }
 
+/** The link to a room: the app's address with `#room=` and the code. */
+export function roomLink(base: string, code: string): string {
+  return `${base}#room=${code}`;
+}
+
 /**
- * A Join code carried by an address (`#join=…`, or `?join=…` if a messenger
- * moved it), and the address to put back without it, as a path for
- * history.replaceState. Null when the address carries none.
+ * A Room code from what the Guest typed or pasted: the code in any case, with
+ * spaces or a dash, or a whole `#room=` link. Null when it isn't one.
+ */
+export function readRoomCode(text: string): string | null {
+  const m = /[#?&]room=([^&#\s]*)/i.exec(text);
+  const code = decoded(m ? m[1]! : text).toUpperCase().replace(/[\s\u200b-\u200d\u2060\ufeff-]+/g, '');
+  return isRoomCode(code) ? code : null;
+}
+
+/**
+ * A Join code (`#join=…`, or `?join=…` if a messenger moved it) or a Room
+ * code (`#room=…`) carried by an address, and the address to put back
+ * without it, as a path for history.replaceState. Null when the address
+ * carries neither.
  */
 export function joinInUrl(href: string): { readonly code: string; readonly clean: string } | null {
   let url: URL;
@@ -28,6 +45,10 @@ export function joinInUrl(href: string): { readonly code: string; readonly clean
     url = new URL(href);
   } catch {
     return null;
+  }
+  if (/(^#|&)room=/i.test(url.hash)) {
+    const code = readRoomCode(url.hash);
+    return code ? { code, clean: url.pathname + url.search } : null;
   }
   // The address percent-encodes what a messenger broke the code with (a space is %20); readCode drops it once decoded.
   if (/(^#|&)join=/i.test(url.hash)) {

@@ -1,17 +1,18 @@
 import { useRef, useState } from 'preact/hooks';
 import { isIos } from '../../app/versus-link';
 import { isNative } from '../../platform/native';
-import { canShare } from '../../platform/share';
 import { JoinQr } from './Qr';
-import type { CodeSwap, VersusActions, VersusState } from './state';
+import { RoomPanel } from './Room';
+import { ShareCopy } from './Share';
+import type { CodeSwap, Swap, VersusActions, VersusState } from './state';
 import { CONNECT_TIMEOUT_MS } from '../../net';
-import { ageText, ANDROID_JOIN_NOTE, failText, FAIL_TITLE, iosJoinNote, RELAY_NOTE, swapStale } from './text';
+import { ageText, ANDROID_JOIN_NOTE, failText, FAIL_TITLE, iosJoinNote, swapStale } from './text';
 
-// The code swap (docs/versus-design.md §2–§3), as the first connection and a
-// Reconnect both show it. The Host's side: its Join link with Share, Copy and
-// a QR, how long it has waited, and a box for the Answer code. The Guest's: a
-// box for the Join code or link, then its Answer code with Share and Copy.
-// Either notes a code made without the Relay, when one is set up.
+// The code swap (docs/versus-design.md §2–§3), the fallback to a room, as the
+// first connection and a Reconnect both show it. The Host's side: its Join
+// link with Share, Copy and a QR, how long it has waited, and a box for the
+// Answer code. The Guest's: a box for the Join code or link, then its Answer
+// code with Share and Copy. With a Relay set up, either offers a room instead.
 
 /** A code to copy by hand: read-only, and selected whole on focus (select() alone doesn't on iOS). */
 function CodeBox({ value, testid, rows = 3 }: { value: string; testid: string; rows?: number }) {
@@ -31,34 +32,17 @@ function CodeBox({ value, testid, rows = 3 }: { value: string; testid: string; r
   );
 }
 
-/** Share (where there's a share sheet) and Copy, saying whether the copy took. */
-function ShareCopy({ text, kind, a }: { text: string; kind: 'link' | 'code'; a: VersusActions }) {
-  const [said, setSaid] = useState<string | null>(null);
-  const copy = async (): Promise<void> => {
-    setSaid((await a.copy(text)) ? 'Copied' : 'Copy failed: select the code above and copy it');
-  };
-  return (
-    <div class="buttons vs-share">
-      {canShare() && (
-        <button type="button" class="btn primary" data-testid="share" onClick={() => void a.share(text, kind)}>Share</button>
-      )}
-      <button type="button" class={`btn${canShare() ? '' : ' primary'}`} data-testid="copy" onClick={() => void copy()}>Copy</button>
-      {said && <span class="note" data-testid="copied">{said}</span>}
-    </div>
-  );
-}
-
-/** "Relay unavailable" under a code, when a Relay is set up but the code holds no relay candidate (§2). */
-function RelayNote({ swap }: { swap: CodeSwap }) {
-  return swap.relay === 'unavailable' ? <p class="note" data-testid="relay-note">{RELAY_NOTE}</p> : null;
+/** "Use a room code instead", when a Relay is set up. */
+function UseRoom({ v, a }: { v: VersusState; a: VersusActions }) {
+  return v.relay ? <button type="button" class="btn link" data-testid="use-room" onClick={a.useRoom}>Use a room code instead</button> : null;
 }
 
 /** §3: no connection 20 s after both codes were in hand, or the connection failed outright. */
-function Failed({ swap, a, onBack }: { swap: CodeSwap; a: VersusActions; onBack?: () => void }) {
+function Failed({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: VersusActions; onBack?: () => void }) {
   return (
     <div class="vs-failed" data-testid="swap-failed">
       <h2>{FAIL_TITLE}</h2>
-      <p data-testid="fail-text">{failText(swap)}</p>
+      <p data-testid="fail-text">{failText(v.relay)}</p>
       {swap.error && <p class="error">{swap.error}</p>}
       <div class="buttons">
         <button type="button" class="btn primary" data-testid="new-code" onClick={a.newCode}>
@@ -67,6 +51,7 @@ function Failed({ swap, a, onBack }: { swap: CodeSwap; a: VersusActions; onBack?
         {onBack
           ? <button type="button" class="btn" data-testid="swap-back" onClick={onBack}>Back</button>
           : <button type="button" class="btn" data-testid="swap-menu" onClick={a.leave}>Menu</button>}
+        <UseRoom v={v} a={a} />
       </div>
     </div>
   );
@@ -75,7 +60,7 @@ function Failed({ swap, a, onBack }: { swap: CodeSwap; a: VersusActions; onBack?
 function HostSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: VersusActions; onBack?: () => void }) {
   const [answer, setAnswer] = useState('');
   if (swap.step === 'making') return <p class="vs-wait" data-testid="making-code">Making a code…</p>;
-  if (swap.step === 'failed' || !swap.code) return <Failed swap={swap} a={a} {...(onBack ? { onBack } : {})} />;
+  if (swap.step === 'failed' || !swap.code) return <Failed v={v} swap={swap} a={a} {...(onBack ? { onBack } : {})} />;
   const stale = swapStale(swap, v.now);
   const connecting = swap.step === 'connecting';
   return (
@@ -89,7 +74,6 @@ function HostSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: V
             Made {ageText(v.now - (swap.madeAt ?? v.now))} ago
             {stale && <span class="warn"> · Over 2 minutes old, so it may not connect</span>}
           </p>
-          <RelayNote swap={swap} />
           {stale && !connecting && (
             <button type="button" class="btn" data-testid="new-code" onClick={a.newCode}>New code</button>
           )}
@@ -119,6 +103,7 @@ function HostSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: V
               Connect
             </button>
             {onBack && <button type="button" class="btn" data-testid="swap-back" onClick={onBack}>Back</button>}
+            <UseRoom v={v} a={a} />
           </div>
           {swap.error && <p class="error" data-testid="swap-error">{swap.error}</p>}
         </div>
@@ -158,6 +143,7 @@ function JoinPaste({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: 
           {v.rejoin && !swap.reconnect ? "Rejoin the Host's Run" : 'Join'}
         </button>
         {onBack && <button type="button" class="btn" data-testid="swap-back" onClick={onBack}>Back</button>}
+        <UseRoom v={v} a={a} />
       </div>
       {swap.error && <p class="error" data-testid="swap-error">{swap.error}</p>}
     </div>
@@ -168,7 +154,7 @@ function GuestSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: 
   // A new link filled in starts the box afresh.
   if (swap.step === 'paste') return <JoinPaste key={swap.prefill} v={v} swap={swap} a={a} {...(onBack ? { onBack } : {})} />;
   if (swap.step === 'making') return <p class="vs-wait" data-testid="making-code">Making your Answer code…</p>;
-  if (swap.step === 'failed' || !swap.code) return <Failed swap={swap} a={a} {...(onBack ? { onBack } : {})} />;
+  if (swap.step === 'failed' || !swap.code) return <Failed v={v} swap={swap} a={a} {...(onBack ? { onBack } : {})} />;
   const stale = swapStale(swap, v.now);
   const waited = v.now - (swap.connectingAt ?? v.now);
   // The Guest can't tell when the Host pastes its code, so after 20 s it says §3's words but keeps the code up.
@@ -178,14 +164,13 @@ function GuestSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: 
       <p class="vs-step">Send this back to the Host.</p>
       <CodeBox value={swap.code} testid="answer-code" rows={2} />
       <ShareCopy text={swap.code} kind="code" a={a} />
-      <RelayNote swap={swap} />
       <p class="vs-wait" data-testid="connecting">Connecting… {ageText(waited)}</p>
       {stale && <p class="note warn">This code is over 2 minutes old. If it doesn't connect, ask the Host for a new one.</p>}
       {slow && (
         <div class="vs-failed" data-testid="swap-slow">
           <p class="muted">No connection yet. If the Host has already pasted your code:</p>
           <h2>{FAIL_TITLE}</h2>
-          <p data-testid="fail-text">{failText(swap)}</p>
+          <p data-testid="fail-text">{failText(v.relay)}</p>
         </div>
       )}
       <div class="buttons">
@@ -198,8 +183,9 @@ function GuestSwap({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: 
   );
 }
 
-/** The swap as this device's role shows it. `onBack` closes it inside a sheet, rather than leaving for the menu. */
-export function SwapPanel({ v, swap, a, onBack }: { v: VersusState; swap: CodeSwap; a: VersusActions; onBack?: () => void }) {
+/** The swap, through a room or by codes, as this device's role shows it. `onBack` closes it inside a sheet, rather than leaving for the menu. */
+export function SwapPanel({ v, swap, a, onBack }: { v: VersusState; swap: Swap; a: VersusActions; onBack?: () => void }) {
+  if (swap.kind === 'room') return <RoomPanel v={v} swap={swap} a={a} onBack={onBack} />;
   const back = onBack ? { onBack } : {};
   return swap.role === 'host' ? <HostSwap v={v} swap={swap} a={a} {...back} /> : <GuestSwap v={v} swap={swap} a={a} {...back} />;
 }

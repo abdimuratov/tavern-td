@@ -341,32 +341,36 @@ _Avoid_: overtime, endgame, drain mode
 ### Versus (Line Wars on two devices)
 
 **Versus**:
-Line Wars between two people on two devices, connected over WebRTC with no server of our own: directly where their networks allow, else through the Relay. Each device runs the whole sim in lockstep, and they send each other only commands.
+Line Wars between two people on two devices, who meet by a Room code on the Relay and connect over WebRTC directly where their networks allow, else through the Relay. Each device runs the whole sim in lockstep, and they send each other only commands.
 _Avoid_: multiplayer, online, PvP, match, netplay
 
 **Host**:
-In Versus, the player who makes the Join code. The Host plays Side 0 and starts the Run, and its state is the one a resync copies.
+In Versus, the player who makes the room (or, with codes, the Join code). The Host plays Side 0 and starts the Run, and its state is the one a resync copies.
 _Avoid_: server, owner, player 1
 
 **Guest**:
-In Versus, the player who joins with the Host's Join code and plays Side 1.
+In Versus, the player who joins with the Host's Room code (or Join code) and plays Side 1.
 _Avoid_: client, joiner, player 2
 
 **Session**:
 In code only (`src/net/session.ts`), one Versus connection's life: Hello, the Lobby, each Run and each Rematch. A session id names each Run, so a rejoin finds it. Never a Run, and never player-facing.
 _Avoid_: match, Run, game
 
+**Room code**:
+In Versus, the 4 letters and digits (no O, 0, I or 1) the Relay gives the Host for its room, which the Guest types in Join or opens as a link. A room holds the two apps while they connect and lives while either is in it, plus 10 minutes, so Reconnect and Rejoin find it.
+_Avoid_: lobby (that's where you pick a Race), invite, Join code, game code
+
 **Join code**:
-The Host's text that lets a Guest connect, passed on as a link, a QR or a copy. It holds only what can't be rebuilt of WebRTC's offer.
+The fallback to a Room code, when the Relay can't be reached: the Host's text that lets a Guest connect, passed on as a link, a QR or a copy. It holds only what can't be rebuilt of WebRTC's offer, and connects only directly.
 _Avoid_: invite, room code, password, offer (fine in code)
 
 **Answer code**:
-The Guest's text that the Host pastes back to finish connecting.
+With codes passed by hand, the Guest's text that the Host pastes back to finish connecting.
 _Avoid_: reply, response, answer on its own (fine in code)
 
 **Relay**:
-The TURN server that carries a Versus connection when the two devices can't reach each other directly: Cloudflare's, with short-lived credentials from our small Worker. It sees the two addresses and how much they send, never the commands. The connection's status says Relayed through it, or Direct.
-_Avoid_: TURN server (in player text; fine in code), proxy, server
+Our small server for Versus, on Render's free plan (`server/`). It gives out Room codes, passes WebRTC's offer and answer between the two apps in a room, and carries their messages when the two devices can't reach each other directly. It sees both addresses and a Relayed Run's commands, and keeps nothing. The connection's status says Relayed through it, or Direct. In player text it's "the server" or "the relay".
+_Avoid_: TURN server, proxy, backend, signaling server (fine in code)
 
 **Turn**:
 In Versus, three ticks (100 ms) that step together. No tick of a Turn steps until both players' Batches for it are in.
@@ -397,11 +401,11 @@ In Versus, both players going back from the end card to the Lobby with their pic
 _Avoid_: replay (a seed and its commands), restart, play again
 
 **Reconnect**:
-In Versus, connecting again after the connection drops, on the same session: the Host makes a new Join code, and the Guest pastes it and sends back a new Answer code. Both then stop on one tick and press Ready.
+In Versus, connecting again after the connection drops, on the same session: both press Reconnect and connect again through the same room, Direct first, then Relayed. With codes, the Host makes a new Join code, and the Guest pastes it and sends back a new Answer code. Both then stop on one tick and press Ready.
 _Avoid_: retry, resume, ICE restart
 
 **Rejoin**:
-In Versus, a Guest whose app restarted taking up its Side again from the Host's state, through the Host's Reconnect code ("Rejoin the Host's Run"). A Host whose app restarted can't be rejoined: its Run is gone.
+In Versus, a Guest whose app restarted taking up its Side again from the Host's state: it joins the same room once the Host presses Reconnect, or takes the Host's Reconnect code ("Rejoin the Host's Run"). A Host whose app restarted can't be rejoined: its Run is gone.
 _Avoid_: reload, restore, resume
 
 **Concede**:

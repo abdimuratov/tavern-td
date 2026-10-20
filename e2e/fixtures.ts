@@ -1,4 +1,4 @@
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type BrowserContext } from '@playwright/test';
 
 /**
  * Routes a page's Web Audio output through a silent gain, so a test run makes
@@ -26,11 +26,25 @@ export function silenceAudio(): void {
   });
 }
 
-/** Every test page starts silent (silenceAudio). */
+/** The Relay the tests use: server/ run locally as Playwright's second webServer, never the deployed one. */
+export const LOCAL_RELAY = 'http://localhost:8787';
+
+/** Points the app at a Relay, or at none with '' (an init script). */
+export function useRelay(url: string): void {
+  globalThis.TAVERN_RELAY_URL = url;
+}
+
+/** A context as every test gets one: silent, and on the local Relay, so no test wakes the deployed one. */
+export async function testContext(context: BrowserContext, relay = LOCAL_RELAY): Promise<void> {
+  await context.addInitScript(silenceAudio);
+  await context.addInitScript(useRelay, relay);
+}
+
+/** Every test page starts silent and on the local Relay (testContext). */
 export const test = base.extend({
-  page: async ({ page }, use) => {
-    await page.addInitScript(silenceAudio);
-    await use(page);
+  context: async ({ context }, use) => {
+    await testContext(context);
+    await use(context);
   },
 });
 

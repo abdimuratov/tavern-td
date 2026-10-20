@@ -167,6 +167,7 @@ export function createShell(boardHost: HTMLElement, opts: { fps?(fps: number): v
   appActions.value = {
     hostVersus: () => vs.host(),
     joinVersus: (code) => vs.openJoin(code),
+    wakeVersus: () => vs.wake(),
     newRun(modeId, difficulty, choices) {
       const entry = catalogEntry(modeId);
       if (entry?.ui) void begin(targetFor(entry, difficulty, choices), { save: true });

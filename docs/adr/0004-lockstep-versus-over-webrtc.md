@@ -2,6 +2,8 @@
 
 _TURN: since 2026-10-20 Versus has a relay after all. [ADR-0005](0005-a-turn-relay-for-versus.md) records it and supersedes what this ADR says about TURN._
 
+_Signaling: since 2026-10-20 Versus has a server of its own after all, for Room codes and a relay. [ADR-0006](0006-a-relay-server-on-render.md) records it and supersedes the signaling-server alternative below; the codes passed by hand stay as the fallback._
+
 Versus plays Line Wars between two devices. Each runs the whole deterministic sim (ADR-0002) with both Sides driven by people (ADR-0003), and the devices send each other only commands. Every 100 ms Turn, each sends a Batch of its own Side's commands, and a Turn steps only once both Batches are in, Side 0's first. They talk over one reliable, ordered WebRTC DataChannel. There is no server of our own (GitHub Pages only serves files), so WebRTC's offer and answer travel by hand as two short codes, the Join code and the Answer code. Each holds only the ICE credentials, the DTLS fingerprint and a few candidates, and the other end rebuilds the SDP. Public STUN only, no TURN. The net code lives in `src/net` and reaches a Run through one seam in the controller, a tick source. `src/sim` keeps its rules, state and hashes.
 
 We chose this for four reasons:

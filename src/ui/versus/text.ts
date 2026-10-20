@@ -1,14 +1,16 @@
 import type { RaceId } from '../../content/maul';
 import {
-  CONNECT_TIMEOUT_MS, type LobbyStatus, type Mismatch, type Outcome, type PauseStatus, type Route, type SessionStatus, type SideId,
+  CONNECT_TIMEOUT_MS, type LobbyStatus, type Mismatch, type Outcome, type PauseStatus, type Role, type RoomProblem, type Route, type SessionStatus,
+  type SideId,
 } from '../../net';
 import { linewars, type GameState } from '../../sim';
 import { raceName } from '../modes/maul/text';
 import type { RunEnd } from '../state';
-import type { CodeSwap } from './state';
+import type { CodeSwap, RoomSwap } from './state';
 
 // Versus' words (docs/versus-design.md §2–§6) and the small decisions behind
-// them: when a code is stale, when "Connecting…" gives up, what the HUD's
+// them: what a room's screens say, when a code is stale, when "Connecting…"
+// gives up, what the HUD's
 // connection line, the board's banner, the pause and Connection lost sheets
 // and the end card say. Pure, so the tests read them in Node. The other
 // person is always "the Rival".
@@ -42,26 +44,68 @@ export function swapTimedOut(swap: CodeSwap, now: number): boolean {
 }
 
 export const FAIL_TITLE = "Couldn't reach the Rival.";
-/** §3's words with no Relay set up, as before there was one. */
-export const FAIL_TEXT = 'Some networks, often mobile data, block direct connections between two devices, and Tavern TD has no relay server. '
+/** §3's words for codes passed by hand, which connect only directly. */
+export const FAIL_TEXT = 'Some networks, often mobile data, block direct connections between two devices, and codes connect only directly. '
   + "Put both devices on the same Wi-Fi, or on one phone's hotspot, then make a new code.";
-/** A Relay is set up, but neither code got a relay candidate: its credentials didn't come, or it couldn't be reached. */
-export const FAIL_TEXT_NO_RELAY = "Some networks, often mobile data, block direct connections between two devices, and the relay couldn't be reached this time. "
-  + "Put both devices on the same Wi-Fi, or on one phone's hotspot, then make a new code.";
-/** A code held a relay candidate, and still nothing connected. */
-export const FAIL_TEXT_RELAYED = "Even the relay couldn't link you: a network may block it too, or a code went stale. "
-  + "Make a new code and try again, or put both devices on the same Wi-Fi, or on one phone's hotspot.";
+/** The same, with a Relay set up: a room gets round it. */
+export const FAIL_TEXT_ROOM = 'Some networks, often mobile data, block direct connections between two devices, and codes connect only directly. '
+  + "Use a room code instead, which goes through the relay when direct fails, or put both devices on the same Wi-Fi.";
 
-/** §3's message for this swap: whether the relay was in either code, and if not, whether one is set up. */
-export function failText(swap: Pick<CodeSwap, 'relay' | 'rivalRelay'>): string {
-  if (swap.relay === 'offered' || swap.rivalRelay) return FAIL_TEXT_RELAYED;
-  return swap.relay === 'none' ? FAIL_TEXT : FAIL_TEXT_NO_RELAY;
+/** §3's message for codes: whether a room is there to get round a blocked network. */
+export function failText(relay: boolean): string {
+  return relay ? FAIL_TEXT_ROOM : FAIL_TEXT;
 }
 
-/** Under a code made without the Relay, though one is set up (§2). */
-export const RELAY_NOTE = 'Relay unavailable: only direct connections will work.';
+/** "Waking the server…" once the Relay hasn't answered for this long (1.5 s); an awake one answers well inside it. */
+export const WAKE_NOTE_MS = 1500;
+export const WAKING_TEXT = 'Waking the server… up to a minute';
+export const ROOM_CODE_ERROR = 'A room code is 4 letters and digits, with no O, 0, I or 1.';
 
-/** The Lobby's word for how the connection runs. */
+/** What a room's screen says while it waits (§2). */
+export function roomWaitText(swap: Pick<RoomSwap, 'role' | 'step' | 'code' | 'reconnect'>): string {
+  const host = swap.role === 'host';
+  switch (swap.step) {
+    case 'opening':
+      return host ? 'Making a room…' : `Joining room ${swap.code ?? ''}…`;
+    case 'waiting':
+      if (host) return swap.reconnect ? "Waiting for the Rival's app to come back…" : 'Waiting for the Rival…';
+      return swap.reconnect ? 'Waiting for the Host to press Reconnect…' : "Waiting for the Host's app…";
+    case 'connecting':
+      return host ? 'The Rival is here. Connecting…' : 'Connecting…';
+    default:
+      return '';
+  }
+}
+
+/** Both apps have been in the room 20 s and nothing connected: say so, and offer a way out. */
+export function roomSlow(swap: Pick<RoomSwap, 'step' | 'since'>, now: number): boolean {
+  return swap.step === 'connecting' && now - swap.since >= CONNECT_TIMEOUT_MS;
+}
+
+export const ROOM_SLOW_TEXT = 'Still connecting. Keep Tavern TD open on both devices, or try again.';
+
+/** Why a room failed, as the player reads it. */
+export function roomProblemText(problem: RoomProblem, role: Role, code: string | null): string {
+  switch (problem) {
+    case 'unreachable':
+      return "Couldn't reach the server. Check the connection and try again, or use codes instead.";
+    case 'no-room':
+      return `No room ${code ?? ''} is open. Check the code with the Host.`;
+    case 'full':
+      return `Room ${code ?? ''} already has two players.`;
+    case 'expired':
+      return 'Nobody joined in 15 minutes, so the room closed.';
+    case 'busy':
+      return 'The server is busy. Try again in a minute, or use codes instead.';
+    case 'version':
+      return "This app and the server don't match. Reload the web app, or update the Android app.";
+    case 'taken':
+    case 'closed':
+      return role === 'host' ? 'The room was lost. Make a new one.' : 'The room closed. Ask the Host for a new code.';
+  }
+}
+
+/** The Lobby's word for how the connection runs: straight between the devices, or through the Relay. */
 export function routeText(route: Route): string {
   return route === 'relayed' ? 'Relayed' : 'Direct';
 }
@@ -138,14 +182,14 @@ export function pauseView(p: PauseStatus, me: SideId, away: readonly [boolean, b
   return { title, text, mine: p.ready[me] ?? false, rival: p.ready[them] ?? false, resumeIn: p.resumeInMs };
 }
 
-/** The Connection lost sheet's words (§5.3–§5.5). */
-export function lostText(st: SessionStatus): { readonly title: string; readonly text: string; readonly claim: string } {
+/** The Connection lost sheet's words (§5.3–§5.5), through the room the session used, or by codes. */
+export function lostText(st: SessionStatus, room: string | null = null): { readonly title: string; readonly text: string; readonly claim: string } {
   const text = st.rivalAway
     ? "The Rival's app went to the background, and the connection dropped."
     : 'Nothing has come from the Rival for a while, or the connection dropped.';
-  const how = st.role === 'host'
-    ? 'Reconnect makes a new code to send the Rival.'
-    : 'Reconnect takes a new code from the Host.';
+  let how: string;
+  if (room) how = `Reconnect, both of you, to connect again through room ${room}.`;
+  else how = st.role === 'host' ? 'Reconnect makes a new code to send the Rival.' : 'Reconnect takes a new code from the Host.';
   const claim = st.canClaim
     ? 'The Rival has been gone 2 minutes, so you may claim the win.'
     : 'If the Rival is gone 2 minutes while you stay here, you may claim the win.';
