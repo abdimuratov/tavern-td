@@ -1,5 +1,6 @@
 import { stageByNumber, type Family, type OriginalCreepSpec, type OriginalTowerSpec, type Region } from '../../../content/original';
 import type { ShootVariant } from '../../../platform/audio';
+import { art } from '../../../render/art';
 import type {
   BoardExtra, CreepLook, CreepStatusLook, EffectCue, ModeLook, Shape, TerrainLook, TowerLabel, TowerLook,
 } from '../../../render/look';
@@ -34,14 +35,17 @@ const SOUND: Readonly<Record<Family, ShootVariant>> = {
 const CREST = 0xf2c14e;
 const LEVEL_GOLD = 0xffd24a;
 
-function towerLook(spec: OriginalTowerSpec): TowerLook {
+function towerLook(id: string, spec: OriginalTowerSpec): TowerLook {
   const i = spec.original;
   const special = i.tier === 4;
+  const sprite = art(`original/${id}`);
   return {
     shape: FAMILY_SHAPE[i.family],
+    ...(sprite ? { art: sprite } : {}),
     color: FAMILY_COLOR[i.family],
-    size: 0.46 + 0.05 * Math.min(i.tier, 3) + (special ? 0.04 : 0),
-    plate: true,
+    // A sprite stands on its own base, so it fills the footprint without a plate; both grow with each Tier.
+    size: sprite ? 0.8 + 0.06 * Math.min(i.tier, 3) + (special ? 0.06 : 0) : 0.46 + 0.05 * Math.min(i.tier, 3) + (special ? 0.04 : 0),
+    plate: !sprite,
     ...(special ? { crest: CREST, halo: FAMILY_COLOR[i.family] } : { pips: i.tier }),
     shot: SHOT[i.family],
     sound: SOUND[i.family],
@@ -73,7 +77,9 @@ export function creepColor(id: string): number {
 }
 
 function creepLook(id: string, spec: OriginalCreepSpec): CreepLook {
-  return CREEP_LOOK[id] ?? (spec.flying ? { shape: 'chevron', color: 0x9fd2ff, size: 0.46 } : { shape: 'circle', color: 0xb0a890, size: 0.42 });
+  const look = CREEP_LOOK[id] ?? (spec.flying ? { shape: 'chevron', color: 0x9fd2ff, size: 0.46 } : { shape: 'circle', color: 0xb0a890, size: 0.42 });
+  const sprite = art(`original/${id}`);
+  return sprite ? { ...look, art: sprite } : look;
 }
 
 const FROZEN: CreepStatusLook = { tint: 0xeaf8ff, alpha: 1, scale: 0.94 };
@@ -220,7 +226,7 @@ export function regionOf(state: GameState): Region {
 }
 
 export const ORIGINAL_LOOK: ModeLook = {
-  tower: (_id, spec) => ((spec as Partial<OriginalTowerSpec>).original ? towerLook(spec as OriginalTowerSpec)
+  tower: (id, spec) => ((spec as Partial<OriginalTowerSpec>).original ? towerLook(id, spec as OriginalTowerSpec)
     : { shape: 'square', color: 0x888888, size: 0.5, plate: true, shot: 0xffffff, sound: 'arrow' }),
   creep: (id, spec) => creepLook(id, spec as OriginalCreepSpec),
   creepStatus,
@@ -228,4 +234,5 @@ export const ORIGINAL_LOOK: ModeLook = {
   effects,
   towerLabel,
   terrain: (state) => REGION_TERRAIN[regionOf(state)],
+  art: 'original',
 };

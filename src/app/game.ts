@@ -2,6 +2,7 @@ import { play } from '../platform/audio';
 import { onBackground } from '../platform/lifecycle';
 import { haptic } from '../platform/native';
 import { clearRun, recordResult, saveRun, type RecordUpdate } from '../platform/storage';
+import { loadArt } from '../render/art';
 import { createBoard } from '../render/board';
 import { cellsBox, towerCells } from '../render/footprint';
 import type { BoardMark } from '../render/marks';
@@ -116,6 +117,8 @@ export async function startPlay(target: PlayTarget, boardHost: HTMLElement, opts
     mirror: side === 1,
   });
   const look = typeof ui.look === 'function' ? ui.look(side) : ui.look;
+  // Sprites are looked up as towers and creeps appear, so they load before the first Run is set.
+  if (look?.art) await loadArt(look.art);
   board.setShowGrid(opts.showGrid ?? true);
 
   let lastWrite: Promise<unknown> = Promise.resolve();

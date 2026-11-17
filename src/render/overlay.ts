@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { CELL, type MapSpec, type Point } from '../sim';
+import { ART_UNIT, artTexture } from './art';
 import { ATLAS_UNIT, type Atlas } from './atlas';
 import type { Box } from './footprint';
 import type { TowerLook } from './look';
@@ -14,7 +15,7 @@ export interface GhostView {
   readonly box: Box;
   readonly valid: boolean;
   /** The tower being placed, or null for a generic marker. */
-  readonly look: Pick<TowerLook, 'shape' | 'color' | 'size' | 'plate'> | null;
+  readonly look: Pick<TowerLook, 'shape' | 'art' | 'color' | 'size' | 'plate'> | null;
   /** Attack range in world units, 0 for none. */
   readonly range: number;
 }
@@ -142,10 +143,11 @@ export class Overlay {
     this.ghostPlate.position.set(cx, cy);
     this.ghostPlate.scale.set((span * 0.9) / ATLAS_UNIT);
     this.ghostPlate.tint = 0x3a3027;
-    this.ghostTop.texture = this.atlas.shape(look?.shape ?? 'square');
+    const art = artTexture(look?.art);
+    this.ghostTop.texture = art ?? this.atlas.shape(look?.shape ?? 'square');
     this.ghostTop.position.set(cx, cy);
-    this.ghostTop.scale.set((span * (look?.size ?? 0.5)) / ATLAS_UNIT);
-    this.ghostTop.tint = valid ? (look?.color ?? 0xffffff) : INVALID;
+    this.ghostTop.scale.set((span * (look?.size ?? 0.5)) / (art ? ART_UNIT : ATLAS_UNIT));
+    this.ghostTop.tint = !valid ? INVALID : art ? 0xffffff : look?.color ?? 0xffffff;
     drawRange(this.ghostRange, cx, cy, ghost.range, tint);
   }
 

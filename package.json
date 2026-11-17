@@ -16,7 +16,8 @@
     "icons": "node tools/icons.mjs",
     "apk": "node tools/apk.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
-    "balance": "node tools/balance/cli.mjs"
+    "balance": "node tools/balance/cli.mjs",
+    "sprites": "node tools/sprites.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

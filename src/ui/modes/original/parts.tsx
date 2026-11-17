@@ -1,13 +1,16 @@
 import type { Family } from '../../../content/original';
+import { artUrl } from '../../../render/art';
 import { hex } from '../../Hud';
 import { FAMILY_COLOR } from './look';
 import { FAMILY_NAME } from './text';
 
-// Small pieces the Original's screens share: a family's shape in its colour,
-// Stars, and Tier pips.
+// Small pieces the Original's screens share: a family's emblem (or its shape
+// in its colour), Stars, and Tier pips.
 
-/** A family's shape, as its towers wear it on the board: triangle, circle, hexagon, diamond, drop, pillar. */
+/** A family's painted emblem; without one, its shape as its towers wore it on the board: triangle, circle, hexagon, diamond, drop, pillar. */
 export function FamilyIcon({ family }: { family: Family }) {
+  const emblem = artUrl(`original/emblem_${family}`);
+  if (emblem) return <img class="or-family" src={emblem} alt="" title={FAMILY_NAME[family]} aria-hidden="true" />;
   return <span class={`or-family ${family}`} style={{ background: hex(FAMILY_COLOR[family]) }} title={FAMILY_NAME[family]} aria-hidden="true" />;
 }
 

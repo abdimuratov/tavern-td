@@ -28,6 +28,8 @@ export const SHAPES: readonly Shape[] = [
 
 export interface TowerLook {
   readonly shape: Shape;
+  /** A painted sprite's key (src/render/art.ts), drawn in its own colours instead of the tinted shape once its folder has loaded. */
+  readonly art?: string;
   /** 0xRRGGBB. */
   readonly color: number;
   /** Of the footprint's width, 0–1. */
@@ -62,6 +64,8 @@ export interface TowerLabel {
 
 export interface CreepLook {
   readonly shape: Shape;
+  /** A painted sprite's key, facing right: drawn instead of the shape and mark, and mirrored while the creep heads left. */
+  readonly art?: string;
   readonly color: number;
   /** Of a cell's width. */
   readonly size: number;
@@ -182,6 +186,8 @@ export interface ModeLook {
   towerLabel?(tower: Tower, state: GameState): TowerLabel | null;
   /** The ground's colours, or a function of the Run for Maps whose palette varies, such as the Original's Regions. */
   readonly terrain?: TerrainLook | ((state: GameState) => TerrainLook);
+  /** The folder of painted sprites its looks name, loaded before a Run's board draws. */
+  readonly art?: string;
 }
 
 /** Saturated enough to read on the dark ground, distinct from the red ghost and the route line. */

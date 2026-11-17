@@ -1,5 +1,6 @@
 import type { MaulCreepSpec, MaulTowerSpec, RaceId } from '../../../content/maul';
 import type { ShootVariant } from '../../../platform/audio';
+import { art } from '../../../render/art';
 import type { CreepLook, EffectCue, ModeLook, Shape, TowerLook } from '../../../render/look';
 import type { CreepSpec, TowerSpec } from '../../../sim';
 
@@ -41,16 +42,20 @@ function stone(color: number, k: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
-function towerLook(_id: string, spec: TowerSpec): TowerLook {
+function towerLook(id: string, spec: TowerSpec): TowerLook {
   const info = (spec as Partial<MaulTowerSpec>).maul;
   if (!info) return { shape: 'square', color: 0x888888, size: 0.5, plate: true, shot: 0xffffff, sound: 'arrow' };
   const color = RACE_COLOR[info.race];
-  if (info.line === 'wall') return { shape: 'rock', color: stone(color, WALL_TINT), size: 0.9, plate: false, shot: color, sound: 'arrow' };
+  const sprite = art(`maul/${id}`);
+  // A Wall's sprite fills its footprint, so a row of them reads as one wall.
+  if (info.line === 'wall') return { shape: 'rock', ...(sprite ? { art: sprite } : {}), color: stone(color, WALL_TINT), size: sprite ? 1 : 0.9, plate: false, shot: color, sound: 'arrow' };
   const i = info.line === 'a' ? 0 : 1;
   const splash = spec.attack?.effects?.find((e) => e.kind === 'splash') as { bands?: readonly (readonly [number, number])[] } | undefined;
   const band = splash?.bands?.[splash.bands.length - 1]?.[0];
   return {
-    shape: LINE_SHAPE[info.race][i]!, color, size: 0.44 + 0.05 * info.tier, plate: true, pips: info.tier, shot: color,
+    shape: LINE_SHAPE[info.race][i]!, ...(sprite ? { art: sprite } : {}), color,
+    // A sprite stands on its own base, so it fills the footprint without a plate; both grow with each Tier.
+    size: sprite ? 0.8 + 0.06 * info.tier : 0.44 + 0.05 * info.tier, plate: !sprite, pips: info.tier, shot: color,
     sound: SOUND[info.race][i]!,
     ...(info.tier === 3 ? { crest: CREST } : {}),
     ...(band !== undefined ? { splash: band } : {}),
@@ -75,7 +80,8 @@ const CREEP: Readonly<Record<string, CreepLook>> = {
 
 function creepLook(id: string, spec: CreepSpec): CreepLook {
   const own = Object.hasOwn(CREEP, id) ? CREEP[id] : undefined;
-  if (own) return own;
+  const sprite = art(`maul/${id}`);
+  if (own) return sprite ? { ...own, art: sprite } : own;
   const big = (spec as Partial<MaulCreepSpec>).maul?.kind === 'boss';
   return { shape: big ? 'octagon' : 'circle', color: 0xcccccc, size: big ? 0.8 : 0.4 };
 }
@@ -85,6 +91,7 @@ const CHAIN = 0xd8c2ff;
 export const MAUL_LOOK: Partial<ModeLook> = {
   tower: towerLook,
   creep: creepLook,
+  art: 'maul',
   effects(event) {
     if (event.name !== 'maul.chain') return null;
     const points = ((event.data as { points?: [number, number][] } | null)?.points ?? []);

@@ -61,6 +61,7 @@ function lookFor(me: ViewerSide): Partial<ModeLook> {
     ...(MAUL_LOOK.tower ? { tower: MAUL_LOOK.tower } : {}),
     ...(MAUL_LOOK.creep ? { creep: MAUL_LOOK.creep } : {}),
     terrain: terrainFor(me),
+    ...(MAUL_LOOK.art ? { art: MAUL_LOOK.art } : {}),
     effects(event, state) {
       if (event.name === 'lw.sent') return sendArc(event.data);
       return MAUL_LOOK.effects?.(event, state) ?? null;

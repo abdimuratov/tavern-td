@@ -936,13 +936,15 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 
 /* ---------- Original ---------- */
 /* A family's shape in its colour, as its towers wear it on the board. */
-.or-family { display: inline-block; flex: none; width: 14px; height: 14px; vertical-align: -2px; }
+.or-family { display: inline-block; flex: none; width: 14px; height: 14px; vertical-align: -2px; object-fit: contain; }
 .or-family.arrow { clip-path: polygon(50% 4%, 96% 92%, 4% 92%); }
 .or-family.cannon { border-radius: 50%; }
 .or-family.frost { clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0 50%); }
 .or-family.arcane { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
 .or-family.poison { border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; clip-path: polygon(50% 0, 82% 40%, 100% 66%, 92% 88%, 70% 100%, 30% 100%, 8% 88%, 0 66%, 18% 40%); }
 .or-family.totem { clip-path: polygon(18% 0, 82% 0, 82% 20%, 70% 20%, 70% 80%, 88% 80%, 88% 100%, 12% 100%, 12% 80%, 30% 80%, 30% 20%, 18% 20%); }
+/* A painted emblem is a dark badge, so it needs a little more room than a shape to read. */
+img.or-family { width: 18px; height: 18px; vertical-align: -4px; }
 .or-stars { display: inline-flex; gap: 1px; letter-spacing: 0; color: #5a4c3a; font-size: 14px; line-height: 1; }
 .or-stars .on { color: #f2c14e; text-shadow: 0 0 6px rgba(242, 193, 78, 0.35); }
 .or-star-count { display: inline-flex; align-items: center; gap: 3px; font-weight: 750; }
@@ -1042,6 +1044,7 @@ table.records { width: 100%; border-collapse: collapse; font-size: 13px; font-va
 .ring-btn .coin { width: 8px; height: 8px; margin-right: 1px; }
 .ring-btn .key { position: absolute; top: -4px; right: -4px; }
 .ring-btn .or-family { width: 13px; height: 13px; }
+.ring-btn img.or-family { width: 18px; height: 18px; }
 
 /* The end card. */
 .or-end { display: grid; justify-items: center; gap: 6px; }

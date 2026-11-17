@@ -68,7 +68,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'prompt',
         injectRegister: false,
         includeAssets: ['icons/*.png', 'favicon.svg'],
-        workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+        workbox: { globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'] },
         manifest: {
           id: '/tavern-td/',
           name: 'Tavern TD',

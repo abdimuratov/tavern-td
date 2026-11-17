@@ -215,6 +215,14 @@ Waves & Towers (2026-10-20), at your request: a sheet with a Waves tab and a Tow
 - Tested: 74 unit tests (the ranking, and each mode's rows against a real Run's or the sim's own numbers at each Difficulty, Challenge, Full and Express) and `e2e/reference.spec.ts` from the main menu in every Game Mode, from the war map and from an Original Run, in Chrome and on the iPhone project.
 - My calls, open to change: no DPS figure, since poison, clouds, beams and crits have no single one, so a tower shows damage per hit, attacks per second and its abilities; numbers leave out Talents and Tower Levels; Totem is left out of the family rankings, since it doesn't attack before its Specialisations; the main menu opens on Stage 1, the war map on the Stage picked.
 
+Art (2026-11-17), at your request: painted sprites for the Original's and Maul's towers and creeps, which Line Wars and Versus share with Maul ([art-prompts.md](art-prompts.md)).
+- Done: the 14 sheets you made in ChatGPT from the prompts are in `art/sheets/`. `pnpm sprites` (`tools/sprites.mjs`) cuts them into 97 sprites in `src/assets/art/`: 30 Original towers, 13 Original creeps, the 6 family emblems, 36 Maul towers and 12 Maul creeps. Each is a 256 × 256 WebP, 1.8 MB in all. It finds each item on the white, keeps loose bits (snow, sparks) with the item whose cell they fall in, clears big flat-white holes (between a bow and its string, inside Nova Circle), and takes the white out of the outline's edge so no pale rim shows on dark ground.
+- Done: the board. A look can name a sprite. A Run loads its mode's folder before the board draws, and a sprite replaces the tinted shape and its plate. Towers keep their Tier pips, crest, Tower Level and halo, and grow a little with each Tier; Maul's Walls fill their footprint, so a row reads as one wall. Creeps face right and are mirrored while heading left, flyers included, instead of turning; status effects tint them outright. The placement Ghost shows the sprite. Gem, Element, terrain and effects keep their shapes.
+- Done: the menus. The Original's family icon is its emblem (build ring, Stage panel, Talents, tower panel), and Line Wars' send buttons show the Send's creep. The service worker precaches WebP.
+- Tested: typecheck, lint and 947 unit tests; the Original, Maul, Line Wars, Versus and Waves & Towers e2e in Chrome; and by eye in the dev server: towers at every zoom, walking creeps facing their way, Maul's Wall row, Line Wars' send menu, the ring's emblems and the Ghost.
+- My calls, open to change: a painted creep is drawn at 1.6 × its shape's size, since a figure fills less of its box than a disc does; a sprite tower is 0.86–0.98 of its footprint by Tier and 1.04 as a Specialisation; the Maul creep sheet keeps its closed-in white (the Snowling's body, the Ice Golem's snow); an emblem is 18 px where a shape was 13–14, since a dark badge needs the room.
+- Watch in play-testing: whether creeps read at fit zoom on a phone (a Ghoul's sprite box is about 9 pt), whether mirroring creeps that zigzag through a maze looks jittery, and frame times in Line Wars, since each sprite is its own texture where the shapes shared one.
+
 - [x] Phase 0: foundations
 - [ ] Phase 1: engine core + Gem
 - [ ] Phase 2: Element
@@ -231,7 +239,7 @@ Waves & Towers (2026-10-20), at your request: a sheet with a Waves tab and a Tow
 | Hosting | Public GitHub repo `abdimuratov/tavern-td`, deployed to GitHub Pages |
 | Game logic | Deterministic, with no drawing code, ready for versus play later ([ADR-0002](adr/0002-deterministic-simulation-core.md)) |
 | Players | Single-player now; versus is a stretch goal |
-| Look | 2D top-down, clean geometric shapes drawn in code, **landscape only**. The UI is designed fresh and doesn't copy WC3. |
+| Look | 2D top-down, **landscape only**. The Original's and Maul's towers and creeps are painted sprites ([art-prompts.md](art-prompts.md), 2026-11-17); Gem, Element, terrain and effects are clean geometric shapes drawn in code. The UI is designed fresh and doesn't copy WC3. |
 | Game Modes | **Gem** (Gem TD), **Element** (Element TD), **Original** (our Campaign), **Maul** (Wintermaul), in that build order. Line Wars against an AI is the stretch goal. Legion TD is out (2026-10-18). |
 | Faithfulness | Gem and Element copy the Classic 1:1 from public source code. Maul keeps faithful rules with our own numbers. Classics keep their randomness and have no progression. |
 | Progression | Classics keep Records only. The Original has a Campaign, Stars, Talents and Tower Levels. |

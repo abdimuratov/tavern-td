@@ -51,7 +51,7 @@ export interface RunView {
 }
 
 /** What a ghost looks like when there's no tower spec to take it from. */
-export type GhostLook = Pick<TowerLook, 'shape' | 'color' | 'size' | 'plate'>;
+export type GhostLook = Pick<TowerLook, 'shape' | 'art' | 'color' | 'size' | 'plate'>;
 
 /** A structure the player could place with the pointer where it is. */
 export interface Placement {

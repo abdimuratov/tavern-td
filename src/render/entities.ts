@@ -1,5 +1,6 @@
 import { Text, type Container, type Sprite } from 'pixi.js';
 import { CELL, type Creep, type GameState, type Projectile, type Tower } from '../sim';
+import { ART_UNIT, artTexture } from './art';
 import { arcGlyph, ATLAS_UNIT, type Atlas } from './atlas';
 import { cellsBox, towerCells } from './footprint';
 import type { CreepLook, CreepStatusLook, LookCache, TowerLook } from './look';
@@ -31,6 +32,10 @@ interface CreepView {
   spec: string;
   look: CreepLook;
   air: boolean;
+  /** Drawn as a painted sprite, which faces its way instead of turning. */
+  art: boolean;
+  /** 1 facing right, −1 mirrored to face left. */
+  face: 1 | -1;
   /** Positions at the previous and the latest tick, for smoothing between them. */
   px: number;
   py: number;
@@ -94,6 +99,8 @@ const MARK_TINT = 0x17110c;
 /** A mark's size, of the body's. */
 const MARK_SIZE = 0.52;
 const PIP_SIZE = 0.13;
+/** A painted creep's box against its shape's size: a figure fills less of its box than a disc does. */
+const ART_CREEP = 1.6;
 
 function hpColour(frac: number): number {
   return frac > 0.5 ? 0x6fdc5a : frac > 0.25 ? 0xf2c14e : 0xf0503c;
@@ -114,7 +121,7 @@ export class Entities {
   private shotsNext: ShotView[] = [];
 
   private readonly creepViews = new ObjectPool<CreepView>(() => ({
-    id: 0, spec: '', look: { shape: 'circle', color: 0, size: 0 }, air: false,
+    id: 0, spec: '', look: { shape: 'circle', color: 0, size: 0 }, air: false, art: false, face: 1,
     px: 0, py: 0, x: 0, y: 0, size: 0, hp: 1, status: null, body: null, mark: null, shadow: null, barBack: null, barFill: null,
   }));
   private readonly towerViews = new ObjectPool<TowerView>(() => ({
@@ -231,7 +238,16 @@ export class Entities {
         v.py = far ? c.y : v.y;
         v.x = c.x;
         v.y = c.y;
-        if (v.air && (dx !== 0 || dy !== 0) && !far) v.body!.rotation = Math.atan2(dy, dx);
+        if (v.art) {
+          // Painted creeps face right and mirror while heading left; straight up or down keeps the last way.
+          const face = dx < -0.01 ? -1 : dx > 0.01 ? 1 : v.face;
+          if (face !== v.face && !far) {
+            v.face = face;
+            this.scaleCreep(v, v.status?.scale ?? 1);
+          }
+        } else if (v.air && (dx !== 0 || dy !== 0) && !far) {
+          v.body!.rotation = Math.atan2(dy, dx);
+        }
       } else {
         v = this.addCreep(c);
       }
@@ -253,15 +269,18 @@ export class Entities {
     v.air = c.air;
     v.px = v.x = c.x;
     v.py = v.y = c.y;
-    v.size = look.size * CELL;
+    const art = artTexture(look.art);
+    v.art = art !== undefined;
+    v.face = 1;
+    v.size = look.size * CELL * (art ? ART_CREEP : 1);
     v.hp = 1;
     v.status = null;
-    const body = (c.air ? this.air : this.ground).acquire(this.atlas.shape(look.shape));
-    body.tint = look.color;
-    body.scale.set(v.size / ATLAS_UNIT);
+    const body = (c.air ? this.air : this.ground).acquire(art ?? this.atlas.shape(look.shape));
+    body.tint = art ? 0xffffff : look.color;
     body.position.set(c.x, c.y);
     v.body = body;
-    if (look.mark) {
+    this.scaleCreep(v, 1);
+    if (look.mark && !art) {
       const mark = this.marks.acquire(this.atlas.shape(look.mark));
       mark.tint = MARK_TINT;
       mark.alpha = 0.85;
@@ -301,11 +320,13 @@ export class Entities {
     if (status !== v.status) {
       v.status = status;
       const body = v.body!;
-      body.tint = status === null || status.tint === null ? v.look.color : mix(v.look.color, status.tint);
+      // A sprite keeps its own colours, so its status tints it outright; a shape's is mixed into its colour.
+      if (v.art) body.tint = status?.tint ?? 0xffffff;
+      else body.tint = status === null || status.tint === null ? v.look.color : mix(v.look.color, status.tint);
       const alpha = status?.alpha ?? 1;
       const scale = status?.scale ?? 1;
       body.alpha = alpha;
-      body.scale.set((v.size * scale) / ATLAS_UNIT);
+      this.scaleCreep(v, scale);
       if (v.mark) {
         v.mark.alpha = 0.85 * alpha;
         v.mark.scale.set((v.size * MARK_SIZE * scale) / ATLAS_UNIT);
@@ -315,6 +336,11 @@ export class Entities {
         v.barFill!.alpha = alpha;
       }
     }
+  }
+
+  private scaleCreep(v: CreepView, scale: number): void {
+    const k = (v.size * scale) / (v.art ? ART_UNIT : ATLAS_UNIT);
+    v.body!.scale.set(v.face * k, k);
   }
 
   private setBar(v: CreepView, frac: number): void {
@@ -430,9 +456,10 @@ export class Entities {
         v.ring.push(seg);
       }
     }
-    const top = this.tops.acquire(this.atlas.shape(look.shape));
-    top.tint = look.color;
-    top.scale.set((span * look.size) / ATLAS_UNIT);
+    const art = artTexture(look.art);
+    const top = this.tops.acquire(art ?? this.atlas.shape(look.shape));
+    top.tint = art ? 0xffffff : look.color;
+    top.scale.set((span * look.size) / (art ? ART_UNIT : ATLAS_UNIT));
     top.position.set(t.x, t.y);
     v.top = top;
     if (look.crest !== undefined) {

@@ -1,9 +1,10 @@
+import { artUrl } from '../../../render/art';
 import type { Shape } from '../../../render/look';
 import { hex } from '../../Hud';
 import { sendLook } from './look';
 
-// A Send's creep as the board draws it, small enough for a button: its shape
-// in its colour with its dark mark, one copy per creep for a pack.
+// A Send's creep as the board draws it, small enough for a button: its sprite,
+// or its shape in its colour with its dark mark, one copy per creep for a pack.
 
 const R = 46;
 
@@ -51,6 +52,7 @@ function cross(r: number): string {
 /** `creep` is a Maul creep id, as a Send's spec names it; `count` draws a pack as that many, up to three. */
 export function CreepIcon({ creep, count = 1 }: { creep: string; count?: number }) {
   const look = sendLook(creep);
+  const art = look.art === undefined ? undefined : artUrl(look.art);
   const n = Math.max(1, Math.min(3, count));
   // Bigger creeps read bigger, but the smallest stays visible.
   const scale = (0.62 + 0.38 * Math.min(1, look.size / 0.86)) * (n > 1 ? 0.62 : 1);
@@ -59,8 +61,8 @@ export function CreepIcon({ creep, count = 1 }: { creep: string; count?: number 
     <svg class="lw-creep" viewBox="-60 -50 120 100" aria-hidden="true">
       {Array.from({ length: n }, (_, i) => (
         <g key={i} transform={`translate(${((i - (n - 1) / 2) * step).toFixed(1)} ${n === 3 && i === 1 ? -10 : n > 1 ? 6 : 0}) scale(${scale.toFixed(3)})`}>
-          {body(look.shape, R, hex(look.color), 'rgba(10, 8, 6, 0.85)', 7)}
-          {look.mark && <g transform="scale(0.5)">{body(look.mark, R, '#17110c', 'none', 0)}</g>}
+          {art ? <image href={art} x={-R * 1.2} y={-R * 1.2} width={R * 2.4} height={R * 2.4} /> : body(look.shape, R, hex(look.color), 'rgba(10, 8, 6, 0.85)', 7)}
+          {!art && look.mark && <g transform="scale(0.5)">{body(look.mark, R, '#17110c', 'none', 0)}</g>}
         </g>
       ))}
     </svg>

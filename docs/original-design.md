@@ -30,7 +30,7 @@ Every number here is a starting point. It comes from the baseline in [PLAN §4](
 - **Tone:** serious and spare, in the spirit of Warcraft III's darker campaigns, with our own names. No jokes in the text.
 - **Text stays tiny:** a two-line Region intro, one line per Stage on the select screen, one line from each boss. No cutscenes.
 - **Stage select** is the war map spread on the table of the last tavern on the road, with a pin for each Stage. It is the one nod to the app's name.
-- **Shapes, not sprites** (PLAN §1): each Region is a palette, each creep a silhouette, each family a shape.
+- **Painted sprites on Region palettes** (PLAN §1): each Region is a palette, and each tower, creep and family emblem is a sprite cut from the art sheets ([art-prompts.md](art-prompts.md)). Without its sprite, a creep is a silhouette and a family a shape, as first built.
 - **The horde escalates by Region:** the risen dead first, then plague and the cults that spread it, then the demons themselves.
 
 | Region | Stages | Land | Palette | Enemy | Boss |
